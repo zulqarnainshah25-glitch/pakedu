@@ -692,7 +692,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               onClick={handleInstantFallbackSession}
               className="text-[#5b21b6] dark:text-pink-400 font-semibold hover:underline cursor-pointer"
             >
-              Quick Guest Teacher Access →
+              🧪 Try Demo Mode (Sandbox) →
             </button>
           </div>
         </div>

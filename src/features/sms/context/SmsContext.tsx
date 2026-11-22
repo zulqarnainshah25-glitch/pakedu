@@ -20,6 +20,37 @@ import {
   INITIAL_MOCK_ATTENDANCE,
   INITIAL_MOCK_JOIN_REQUESTS,
 } from '../data/mockSmsData';
+import {
+  saveSchoolToFirestore,
+  fetchSchoolsFromFirestore,
+  saveUserProfileToFirestore,
+  saveClassToFirestore,
+  deleteClassFromFirestore,
+  fetchClassesFromFirestore,
+  saveStudentToFirestore,
+  deleteStudentFromFirestore,
+  fetchStudentsFromFirestore,
+  saveAttendanceToFirestore,
+  fetchAttendanceFromFirestore,
+  saveJoinRequestToFirestore,
+  fetchJoinRequestsFromFirestore,
+} from '../services/smsFirestoreService';
+
+export const EMPTY_DEFAULT_SCHOOL: School = {
+  id: '',
+  name: 'No School Selected',
+  semisCode: '',
+  board: 'Sindh STBB',
+  district: '',
+  taluka: '',
+  activeAcademicYear: '2025-2026',
+  adminUids: [],
+  status: 'active',
+  primaryAdminType: 'principal',
+  primaryAdminName: '',
+  primaryAdminEmail: '',
+  createdAt: '',
+};
 
 export interface TodayAttendanceStats {
   totalMarkedClasses: number;
@@ -128,15 +159,6 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const setDemoMode = (enabled: boolean) => {
-    setDemoModeState(enabled);
-    try {
-      localStorage.setItem(SMS_DEMO_MODE_STORAGE_KEY, String(enabled));
-    } catch {
-      // Ignore
-    }
-  };
-
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(() => {
     try {
       const saved = localStorage.getItem(SMS_USER_PROFILE_STORAGE_KEY);
@@ -172,15 +194,19 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Registered Schools list
   const [registeredSchools, setRegisteredSchools] = useState<School[]>(() => {
     try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
       const saved = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_SCHOOLS;
+          return parsed.filter((s: School) => s.id !== 'sch_seld_khi_01');
+        }
       }
+      return isDemo ? INITIAL_MOCK_SCHOOLS : [];
     } catch {
-      // Ignore
+      return [];
     }
-    return INITIAL_MOCK_SCHOOLS;
   });
 
   useEffect(() => {
@@ -192,7 +218,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [registeredSchools]);
 
   const [activeSchool, setActiveSchool] = useState<School>(() => {
-    return registeredSchools[0] || INITIAL_MOCK_SCHOOL;
+    const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+    if (registeredSchools.length > 0) return registeredSchools[0];
+    return isDemo ? INITIAL_MOCK_SCHOOL : EMPTY_DEFAULT_SCHOOL;
   });
 
   // Super Admin & Impersonation State
@@ -200,12 +228,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [impersonationOriginalRole, setImpersonationOriginalRole] = useState<UserRole | null>(null);
 
   const isSuperAdmin = useMemo(() => {
-    return (
-      (demoMode && userRole === 'super-admin') ||
-      currentUserProfile?.role === 'super-admin' ||
-      currentUserProfile?.email === 'owner@pakedu.com' ||
-      Boolean(currentUserProfile?.isSuperAdmin)
-    );
+    if (currentUserProfile?.email === 'owner@pakedu.com' || Boolean(currentUserProfile?.isSuperAdmin)) {
+      return true;
+    }
+    if (demoMode && userRole === 'super-admin') {
+      return true;
+    }
+    return false;
   }, [demoMode, userRole, currentUserProfile]);
 
   const toggleSchoolStatus = (schoolId: string, reason?: string) => {
@@ -253,15 +282,19 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Faculty Join Requests
   const [joinRequests, setJoinRequests] = useState<TeacherJoinRequest[]>(() => {
     try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
       const saved = localStorage.getItem(SMS_JOIN_REQUESTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_JOIN_REQUESTS;
+          return parsed.filter((r: TeacherJoinRequest) => !r.id.startsWith('req_mock_'));
+        }
       }
+      return isDemo ? INITIAL_MOCK_JOIN_REQUESTS : [];
     } catch {
-      // Ignore
+      return [];
     }
-    return INITIAL_MOCK_JOIN_REQUESTS;
   });
 
   useEffect(() => {
@@ -272,52 +305,123 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [joinRequests]);
 
-  const [teachers, setTeachers] = useState<TeacherInfo[]>(INITIAL_MOCK_TEACHERS);
-  
+  const [teachers, setTeachers] = useState<TeacherInfo[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      return isDemo ? INITIAL_MOCK_TEACHERS : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [classes, setClasses] = useState<ClassSection[]>(() => {
     try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
       const saved = localStorage.getItem(SMS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed.classes) && parsed.classes.length > 0) {
-          return parsed.classes;
+        if (Array.isArray(parsed?.classes)) {
+          if (isDemo) return parsed.classes.length > 0 ? parsed.classes : INITIAL_MOCK_CLASSES;
+          return parsed.classes.filter((c: ClassSection) => !c.id.startsWith('cls_9') && !c.id.startsWith('cls_10'));
         }
       }
+      return isDemo ? INITIAL_MOCK_CLASSES : [];
     } catch (e) {
-      console.warn('Failed to parse saved SMS classes, using mock data:', e);
+      console.warn('Failed to parse saved SMS classes:', e);
+      return [];
     }
-    return INITIAL_MOCK_CLASSES;
   });
 
   const [students, setStudents] = useState<Student[]>(() => {
     try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
       const saved = localStorage.getItem(SMS_STUDENTS_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_STUDENTS;
+          return parsed.filter((s: Student) => !s.id.startsWith('std_0'));
         }
       }
+      return isDemo ? INITIAL_MOCK_STUDENTS : [];
     } catch (e) {
-      console.warn('Failed to parse saved SMS students, using mock data:', e);
+      console.warn('Failed to parse saved SMS students:', e);
+      return [];
     }
-    return INITIAL_MOCK_STUDENTS;
   });
 
   const [attendanceRegisters, setAttendanceRegisters] = useState<Record<string, DailyClassAttendance>>(() => {
     try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
       const saved = localStorage.getItem(SMS_ATTENDANCE_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed && typeof parsed === 'object') {
-          return parsed;
+          if (isDemo) return parsed;
+          const clean: Record<string, DailyClassAttendance> = {};
+          for (const [key, val] of Object.entries(parsed as Record<string, DailyClassAttendance>)) {
+            if (!key.includes('cls_9') && !key.includes('cls_10')) {
+              clean[key] = val;
+            }
+          }
+          return clean;
         }
       }
+      return isDemo ? INITIAL_MOCK_ATTENDANCE : {};
     } catch (e) {
-      console.warn('Failed to parse saved SMS attendance, using mock data:', e);
+      console.warn('Failed to parse saved SMS attendance:', e);
+      return {};
     }
-    return INITIAL_MOCK_ATTENDANCE;
   });
+
+  const setDemoMode = (enabled: boolean) => {
+    setDemoModeState(enabled);
+    try {
+      localStorage.setItem(SMS_DEMO_MODE_STORAGE_KEY, String(enabled));
+    } catch {
+      // Ignore
+    }
+    if (enabled) {
+      setRegisteredSchools(INITIAL_MOCK_SCHOOLS);
+      setActiveSchool(INITIAL_MOCK_SCHOOL);
+      setClasses(INITIAL_MOCK_CLASSES);
+      setTeachers(INITIAL_MOCK_TEACHERS);
+      setStudents(INITIAL_MOCK_STUDENTS);
+      setAttendanceRegisters(INITIAL_MOCK_ATTENDANCE);
+      setJoinRequests(INITIAL_MOCK_JOIN_REQUESTS);
+    } else {
+      try {
+        const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
+        const parsedSchools: School[] = savedSchools ? JSON.parse(savedSchools) : [];
+        const realSchools = parsedSchools.filter((s) => s.id !== 'sch_seld_khi_01');
+        setRegisteredSchools(realSchools);
+        setActiveSchool(realSchools[0] || EMPTY_DEFAULT_SCHOOL);
+
+        const savedClasses = localStorage.getItem(SMS_STORAGE_KEY);
+        const parsedClasses = savedClasses ? JSON.parse(savedClasses)?.classes || [] : [];
+        setClasses(parsedClasses.filter((c: ClassSection) => !c.id.startsWith('cls_9') && !c.id.startsWith('cls_10')));
+
+        const savedStudents = localStorage.getItem(SMS_STUDENTS_STORAGE_KEY);
+        const parsedStudents: Student[] = savedStudents ? JSON.parse(savedStudents) : [];
+        setStudents(parsedStudents.filter((s: Student) => !s.id.startsWith('std_0')));
+
+        const savedReqs = localStorage.getItem(SMS_JOIN_REQUESTS_STORAGE_KEY);
+        const parsedReqs: TeacherJoinRequest[] = savedReqs ? JSON.parse(savedReqs) : [];
+        setJoinRequests(parsedReqs.filter((r: TeacherJoinRequest) => !r.id.startsWith('req_mock_')));
+
+        setTeachers([]);
+        setAttendanceRegisters({});
+      } catch {
+        setRegisteredSchools([]);
+        setActiveSchool(EMPTY_DEFAULT_SCHOOL);
+        setClasses([]);
+        setStudents([]);
+        setTeachers([]);
+        setJoinRequests([]);
+        setAttendanceRegisters({});
+      }
+    }
+  };
 
   // Save classes changes to localStorage
   useEffect(() => {
@@ -363,6 +467,71 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ignore storage errors
     }
   };
+
+  // Cloud Firestore Sync when not in demo mode
+  useEffect(() => {
+    if (demoMode) return;
+
+    // 1. Sync registered schools
+    fetchSchoolsFromFirestore()
+      .then((remoteSchools) => {
+        if (remoteSchools && remoteSchools.length > 0) {
+          setRegisteredSchools((prev) => {
+            const map = new Map<string, School>();
+            prev.forEach((s) => {
+              if (s.id && s.id !== 'sch_seld_khi_01') map.set(s.id, s);
+            });
+            remoteSchools.forEach((s) => {
+              if (s.id && s.id !== 'sch_seld_khi_01') map.set(s.id, s);
+            });
+            const merged = Array.from(map.values());
+            if (!activeSchool.id && merged.length > 0) {
+              setActiveSchool(merged[0]);
+            }
+            return merged;
+          });
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: School fetch error:', err));
+
+    if (!activeSchool.id || activeSchool.id === 'sch_seld_khi_01') return;
+
+    // 2. Sync classes for active school
+    fetchClassesFromFirestore(activeSchool.id)
+      .then((remoteClasses) => {
+        if (remoteClasses && remoteClasses.length > 0) {
+          setClasses(remoteClasses);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Classes fetch error:', err));
+
+    // 3. Sync students for active school
+    fetchStudentsFromFirestore(activeSchool.id)
+      .then((remoteStudents) => {
+        if (remoteStudents && remoteStudents.length > 0) {
+          setStudents(remoteStudents);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Students fetch error:', err));
+
+    // 4. Sync attendance for active school
+    fetchAttendanceFromFirestore(activeSchool.id)
+      .then((remoteAttendance) => {
+        if (remoteAttendance && Object.keys(remoteAttendance).length > 0) {
+          setAttendanceRegisters(remoteAttendance);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Attendance fetch error:', err));
+
+    // 5. Sync join requests for active school
+    fetchJoinRequestsFromFirestore(activeSchool.id)
+      .then((remoteRequests) => {
+        if (remoteRequests && remoteRequests.length > 0) {
+          setJoinRequests(remoteRequests);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Join requests fetch error:', err));
+  }, [demoMode, activeSchool.id]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
   const registerNewSchool = (
@@ -426,6 +595,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setCurrentUserProfile(newProfile);
     setUserRole(registeringRole);
+
+    if (!demoMode) {
+      saveSchoolToFirestore(newSchool).catch((err) =>
+        console.warn('[Firestore] Notice: School save:', err)
+      );
+      saveUserProfileToFirestore(newProfile).catch((err) =>
+        console.warn('[Firestore] Notice: Profile save:', err)
+      );
+    }
+
     return newSchool;
   };
 
@@ -460,6 +639,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setCurrentUserProfile(updatedProfile);
+
+    if (!demoMode) {
+      saveJoinRequestToFirestore(requestData.schoolId, newReq).catch((err) =>
+        console.warn('[Firestore] Notice: Join request save:', err)
+      );
+      saveUserProfileToFirestore(updatedProfile).catch((err) =>
+        console.warn('[Firestore] Notice: Profile save:', err)
+      );
+    }
   };
 
   // Admin approves a teacher join request and assigns class(es)
@@ -525,6 +713,32 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
       setUserRole('teacher');
     }
+
+    // 5. Cloud Firestore persistence
+    if (!demoMode && target.schoolId) {
+      saveJoinRequestToFirestore(target.schoolId, {
+        ...target,
+        status: 'approved',
+        reviewedAt: new Date().toISOString(),
+        assignedClassIds,
+      }).catch((err) => console.warn('[Firestore] Notice: Request update:', err));
+
+      if (target.uid) {
+        saveUserProfileToFirestore({
+          uid: target.uid,
+          email: target.email,
+          fullName: target.fullName,
+          role: 'teacher',
+          schoolId: target.schoolId,
+          schoolName: target.schoolName,
+          status: 'active',
+          designation: target.designation,
+          phone: target.phone,
+          assignedClassIds,
+          createdAt: new Date().toISOString(),
+        }).catch((err) => console.warn('[Firestore] Notice: Teacher profile activate:', err));
+      }
+    }
   };
 
   // Admin rejects a join request
@@ -564,16 +778,38 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString().split('T')[0],
     };
     setClasses((prev) => [newClass, ...prev]);
+
+    if (!demoMode && activeSchool.id) {
+      saveClassToFirestore(activeSchool.id, newClass).catch((err) =>
+        console.warn('[Firestore] Notice: Class save:', err)
+      );
+    }
   };
 
   const updateClass = (id: string, updated: Partial<ClassSection>) => {
     setClasses((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, ...updated } : c))
+      prev.map((c) => {
+        if (c.id === id) {
+          const merged = { ...c, ...updated };
+          if (!demoMode && activeSchool.id) {
+            saveClassToFirestore(activeSchool.id, merged).catch((err) =>
+              console.warn('[Firestore] Notice: Class update:', err)
+            );
+          }
+          return merged;
+        }
+        return c;
+      })
     );
   };
 
   const deleteClass = (id: string) => {
     setClasses((prev) => prev.filter((c) => c.id !== id));
+    if (!demoMode && activeSchool.id) {
+      deleteClassFromFirestore(activeSchool.id, id).catch((err) =>
+        console.warn('[Firestore] Notice: Class delete:', err)
+      );
+    }
   };
 
   const addStudent = (newStudentData: Omit<Student, 'id'>) => {
@@ -592,6 +828,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : c
       )
     );
+
+    if (!demoMode && activeSchool.id) {
+      saveStudentToFirestore(activeSchool.id, newStudent).catch((err) =>
+        console.warn('[Firestore] Notice: Student save:', err)
+      );
+    }
   };
 
   const updateStudent = (id: string, updated: Partial<Student>) => {
@@ -601,8 +843,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const oldClassId = existing.classId;
     const newClassId = updated.classId;
 
+    const updatedStudent = { ...existing, ...updated };
+
     setStudents((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, ...updated } : s))
+      prev.map((s) => (s.id === id ? updatedStudent : s))
     );
 
     // If class changed, adjust total students in both classes
@@ -617,6 +861,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
           return c;
         })
+      );
+    }
+
+    if (!demoMode && activeSchool.id) {
+      saveStudentToFirestore(activeSchool.id, updatedStudent).catch((err) =>
+        console.warn('[Firestore] Notice: Student update:', err)
       );
     }
   };
@@ -635,6 +885,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : c
       )
     );
+
+    if (!demoMode && activeSchool.id) {
+      deleteStudentFromFirestore(activeSchool.id, id).catch((err) =>
+        console.warn('[Firestore] Notice: Student delete:', err)
+      );
+    }
   };
 
   // Save or update attendance register (keyed by "YYYY-MM-DD_{classId}")
@@ -643,6 +899,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...prev,
       [attendance.id]: attendance,
     }));
+
+    if (!demoMode && activeSchool.id) {
+      saveAttendanceToFirestore(activeSchool.id, attendance).catch((err) =>
+        console.warn('[Firestore] Notice: Attendance save:', err)
+      );
+    }
   };
 
   const getAttendance = (date: string, classId: string): DailyClassAttendance | undefined => {

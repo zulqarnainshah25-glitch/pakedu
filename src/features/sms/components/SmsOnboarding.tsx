@@ -176,23 +176,6 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
     );
   };
 
-  // Fast-Forward Auto Approve (For Evaluation)
-  const handleFastForwardApprove = () => {
-    if (currentUserProfile && currentUserProfile.status === 'pending') {
-      const matchReq = pendingJoinRequests.find(
-        (r) => r.uid === currentUserProfile.uid || r.email === currentUserProfile.email
-      );
-      const reqId = matchReq ? matchReq.id : 'demo_req';
-      const assignClass = classes[0]?.id ? [classes[0].id] : [];
-
-      approveJoinRequest(reqId, assignClass, assignClass[0]);
-      setSuccessToast('Your application has been approved! Redirecting to SMS Workspace...');
-      setTimeout(() => {
-        onOnboardingComplete();
-      }, 1200);
-    }
-  };
-
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Top Institutional Header */}
@@ -295,18 +278,14 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
             </div>
           </div>
 
-          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <span className="text-slate-500 text-[11px]">
-              Tip: You can fast-forward approval for demonstration and evaluation purposes.
-            </span>
-            <button
-              type="button"
-              onClick={handleFastForwardApprove}
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-semibold shadow-xs transition cursor-pointer"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Fast-Forward Auto Approve</span>
-            </button>
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+            <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Strict Institutional Security Policy Active</span>
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              Your application is securely queued for administrative review. Once your school headmaster or administrator verifies your account and allocates your classes under &ldquo;Faculty &amp; Requests&rdquo;, your School Operations workspace will unlock automatically.
+            </p>
           </div>
         </div>
       ) : isActive ? (

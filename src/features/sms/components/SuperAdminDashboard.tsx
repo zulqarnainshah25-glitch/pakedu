@@ -38,6 +38,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     teachers,
     classes,
     registerNewSchool,
+    demoMode,
   } = useSms();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -144,15 +145,17 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            <button
-              type="button"
-              onClick={handleSeedDemoSchool}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer shadow-xs"
-              title="Add a sample Sindh school to test multi-tenancy"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400" />
-              <span>Seed Demo School</span>
-            </button>
+            {demoMode && (
+              <button
+                type="button"
+                onClick={handleSeedDemoSchool}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition cursor-pointer shadow-xs"
+                title="Add a sample Sindh school to test multi-tenancy"
+              >
+                <Sparkles className="w-4 h-4 text-amber-400" />
+                <span>Seed Demo School</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenRegisterSchool}
