@@ -17,9 +17,14 @@ import {
   RefreshCw,
   Sparkles,
   Info,
+  Clock,
+  XCircle,
+  Mail,
+  Phone,
+  UserCheck,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
-import { School, SchoolStatus, PrimaryAdminType } from '../types';
+import { School, SchoolStatus, PrimaryAdminType, SchoolRegistrationRequest } from '../types';
 
 interface SuperAdminDashboardProps {
   onNavigateToSchool: (schoolId: string) => void;
@@ -39,8 +44,13 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
     classes,
     registerNewSchool,
     demoMode,
+    schoolRegistrationRequests,
+    pendingSchoolRegistrationRequests,
+    approveSchoolRegistration,
+    rejectSchoolRegistration,
   } = useSms();
 
+  const [activeTab, setActiveTab] = useState<'directory' | 'pending_requests'>('directory');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'suspended'>('all');
   const [copiedSemis, setCopiedSemis] = useState<string | null>(null);
@@ -87,6 +97,18 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   const handleImpersonate = (schoolId: string) => {
     impersonateSchool(schoolId);
     onNavigateToSchool(schoolId);
+  };
+
+  const handleApproveSchoolRequest = (req: SchoolRegistrationRequest) => {
+    approveSchoolRegistration(req.id);
+    setStatusNotice(`School "${req.schoolName}" (SEMIS: ${req.semisCode}) has been officially APPROVED and activated!`);
+    setTimeout(() => setStatusNotice(null), 5000);
+  };
+
+  const handleRejectSchoolRequest = (req: SchoolRegistrationRequest) => {
+    rejectSchoolRegistration(req.id, 'SELD Administrative Clearance Requirements Not Satisfied');
+    setStatusNotice(`Registration request for "${req.schoolName}" has been rejected.`);
+    setTimeout(() => setStatusNotice(null), 5000);
   };
 
   const handleSeedDemoSchool = () => {
@@ -236,26 +258,234 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           </div>
         </div>
 
-        {/* Platform Mesh Status */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+        {/* Pending School Registration Approvals */}
+        <div
+          onClick={() => setActiveTab('pending_requests')}
+          className={`bg-white dark:bg-slate-900 border rounded-2xl p-5 shadow-xs cursor-pointer transition ${
+            pendingSchoolRegistrationRequests.length > 0
+              ? 'border-amber-300 dark:border-amber-700/80 bg-amber-50/30 dark:bg-amber-950/20'
+              : 'border-slate-200 dark:border-slate-800'
+          }`}
+        >
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-              Platform Status
+              Pending Approvals
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              pendingSchoolRegistrationRequests.length > 0
+                ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-600 dark:text-amber-300 animate-pulse'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+            }`}>
+              <Clock className="w-4 h-4" />
             </div>
           </div>
-          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-            Active
+          <div className="text-2xl font-bold text-slate-900 dark:text-white">
+            {pendingSchoolRegistrationRequests.length}
           </div>
           <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-            Multi-Tenant Isolation Protected
+            {pendingSchoolRegistrationRequests.length > 0
+              ? 'Institutional clearances pending review'
+              : 'All requests processed & cleared'}
           </div>
         </div>
       </div>
 
-      {/* School Fleet Directory Table */}
+      {/* Tabs Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('directory')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeTab === 'directory'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Building className="w-4 h-4" />
+          <span>Registered Schools Fleet</span>
+          <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+            activeTab === 'directory' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+          }`}>
+            {totalSchools}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('pending_requests')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+            activeTab === 'pending_requests'
+              ? 'bg-amber-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Clock className="w-4 h-4" />
+          <span>Pending School Registrations</span>
+          {pendingSchoolRegistrationRequests.length > 0 ? (
+            <span className="px-1.5 py-0.2 rounded text-[10px] font-mono font-bold bg-amber-400 text-slate-950 animate-pulse">
+              {pendingSchoolRegistrationRequests.length} Action Required
+            </span>
+          ) : (
+            <span className={`px-1.5 py-0.2 rounded text-[10px] font-mono ${
+              activeTab === 'pending_requests' ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+            }`}>
+              0
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* VIEW 1: PENDING REGISTRATIONS */}
+      {activeTab === 'pending_requests' && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <div className="space-y-0.5">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Institutional Registration Approvals</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                  Super Admin Authorization
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Review applicant schools, verify SEMIS codes, and approve or reject institutional access.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-6">
+            {schoolRegistrationRequests.length === 0 ? (
+              <div className="py-12 text-center space-y-3">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+                </div>
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  No Pending Registration Requests
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  All submitted school registration applications have been reviewed. When a school admin registers, their request will appear here for clearance.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {schoolRegistrationRequests.map((req) => {
+                  const isPending = req.status === 'pending';
+                  const isApproved = req.status === 'approved';
+                  const isRejected = req.status === 'rejected';
+
+                  return (
+                    <div
+                      key={req.id}
+                      className={`p-5 rounded-2xl border transition-all ${
+                        isPending
+                          ? 'border-amber-300 dark:border-amber-700/80 bg-amber-50/20 dark:bg-amber-950/20 shadow-xs'
+                          : isApproved
+                          ? 'border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/10 dark:bg-emerald-950/10'
+                          : 'border-slate-200 dark:border-slate-800 opacity-60'
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900 dark:text-white">
+                              {req.schoolName}
+                            </span>
+                            <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-indigo-50 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              SEMIS {req.semisCode}
+                            </span>
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                              {req.board} · {req.activeAcademicYear}
+                            </span>
+                            {isPending && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300 animate-pulse">
+                                Pending Approval
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 dark:bg-emerald-900/60 dark:text-emerald-300">
+                                Approved &amp; Active
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 dark:bg-rose-900/60 dark:text-rose-300">
+                                Rejected
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-xs text-slate-600 dark:text-slate-300">
+                            <div>
+                              <span className="text-slate-500 text-[11px] block">Location:</span>
+                              <span className="font-medium text-slate-900 dark:text-white">
+                                {req.district}, {req.taluka}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 text-[11px] block">Applicant Administrator:</span>
+                              <span className="font-semibold text-slate-900 dark:text-white">
+                                {req.adminName}
+                              </span>
+                              <span className="text-[11px] text-slate-500 block">
+                                {req.adminDesignation || 'Principal'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-slate-500 text-[11px] block">Contact Details:</span>
+                              <span className="font-mono text-[11px] text-slate-800 dark:text-slate-200 block truncate">
+                                {req.adminEmail}
+                              </span>
+                              {req.adminPhone && (
+                                <span className="font-mono text-[11px] text-slate-500 block">
+                                  {req.adminPhone}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="text-[11px] text-slate-400 flex items-center gap-2">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>Submitted: {new Date(req.requestedAt).toLocaleString()}</span>
+                            {req.reviewedAt && (
+                              <>
+                                <span>·</span>
+                                <span>Reviewed: {new Date(req.reviewedAt).toLocaleString()}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Actions for Pending Requests */}
+                        {isPending && (
+                          <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0">
+                            <button
+                              type="button"
+                              onClick={() => handleApproveSchoolRequest(req)}
+                              className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                              <span>✓ Approve &amp; Activate School</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRejectSchoolRequest(req)}
+                              className="inline-flex items-center gap-1.5 px-3 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold transition cursor-pointer"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              <span>✕ Reject</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 2: REGISTERED SCHOOLS FLEET */}
+      {activeTab === 'directory' && (
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden">
         {/* Table Filter Bar */}
         <div className="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -439,6 +669,7 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
           </table>
         </div>
       </div>
+      )}
 
       {/* Super Admin Governance & Firebase Documentation */}
       <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 text-slate-300 space-y-3 text-xs">

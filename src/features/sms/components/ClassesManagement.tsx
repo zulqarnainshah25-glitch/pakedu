@@ -57,6 +57,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
     filteredClassesForUser,
     activeTeacher,
     stats,
+    demoMode,
   } = useSms();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -222,16 +223,18 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-base">🧑‍🏫</span>
             <span>
-              You are currently logged in with <strong>Teacher Access ({activeTeacher.name})</strong>. You can view your assigned classes and take attendance. To create new classes or manage school sections, switch to Admin view.
+              You are currently logged in with <strong>Teacher Access ({activeTeacher.name})</strong>. You can view your assigned classes and take attendance. Adding, editing, or deleting grade sections is restricted to School Administrators.
             </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setUserRole('admin')}
-            className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-[11px] shrink-0 cursor-pointer transition"
-          >
-            Switch to 👑 Admin View
-          </button>
+          {demoMode && (
+            <button
+              type="button"
+              onClick={() => setUserRole('admin')}
+              className="px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-lg text-[11px] shrink-0 cursor-pointer transition"
+            >
+              Demo: Switch to 👑 Admin View
+            </button>
+          )}
         </div>
       )}
 

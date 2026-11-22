@@ -1,6 +1,6 @@
 export type UserRole = 'admin' | 'principal' | 'teacher' | 'super-admin';
 export type MembershipStatus = 'none' | 'pending' | 'active' | 'rejected';
-export type SchoolStatus = 'active' | 'suspended';
+export type SchoolStatus = 'active' | 'suspended' | 'pending_approval';
 export type PrimaryAdminType = 'principal' | 'teacher_admin' | 'delegated';
 
 export interface UserProfile {
@@ -16,7 +16,33 @@ export interface UserProfile {
   phone?: string;
   assignedClassIds: string[];
   createdAt?: string;
+  joiningDate?: string;
   isSuperAdmin?: boolean;
+  isAdmissionIncharge?: boolean;
+}
+
+export interface SchoolRegistrationRequest {
+  id: string;
+  schoolId: string;
+  schoolName: string;
+  semisCode: string;
+  board: 'Sindh STBB' | 'Punjab PTB' | 'Federal';
+  district: string;
+  taluka: string;
+  activeAcademicYear: string;
+  phone?: string;
+  email?: string;
+  primaryAdminType: PrimaryAdminType;
+  adminUid: string;
+  adminName: string;
+  adminEmail: string;
+  adminPhone?: string;
+  adminDesignation?: string;
+  requestedAt: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedAt?: string;
+  reviewedBy?: string;
+  rejectionReason?: string;
 }
 
 export interface TeacherJoinRequest {
@@ -63,6 +89,10 @@ export interface TeacherInfo {
   designation: string; // e.g., 'HST (Science)', 'JEST', 'PST', 'Lecturer'
   email: string;
   phone?: string;
+  cnic?: string;
+  joiningDate?: string;
+  isAdmissionIncharge?: boolean;
+  status?: 'active' | 'on_leave' | 'resigned';
   assignedClasses: string[];
 }
 

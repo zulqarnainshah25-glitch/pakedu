@@ -14,6 +14,11 @@ import {
   AlertCircle,
   X,
   Check,
+  Edit2,
+  Key,
+  Award,
+  Calendar,
+  Search,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 import { TeacherJoinRequest, TeacherInfo } from '../types';
@@ -25,16 +30,28 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
     pendingJoinRequests,
     approveJoinRequest,
     rejectJoinRequest,
+    updateTeacherProfile,
+    toggleAdmissionIncharge,
     activeSchool,
   } = useSms();
 
-  const [activeTab, setActiveTab] = useState<'roster' | 'requests'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'profiles' | 'requests'>('roster');
   const [selectedRequest, setSelectedRequest] = useState<TeacherJoinRequest | null>(null);
+  const [teacherSearch, setTeacherSearch] = useState('');
 
   // Approval Modal State
   const [assignedClassIds, setAssignedClassIds] = useState<string[]>([]);
   const [classTeacherForId, setClassTeacherForId] = useState<string>('');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Edit Teacher Profile Modal State
+  const [editingTeacher, setEditingTeacher] = useState<TeacherInfo | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesignation, setEditDesignation] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editCnic, setEditCnic] = useState('');
+  const [editJoiningDate, setEditJoiningDate] = useState('');
+  const [editIsAdmissionIncharge, setEditIsAdmissionIncharge] = useState(false);
 
   const openApproveModal = (req: TeacherJoinRequest) => {
     setSelectedRequest(req);
@@ -63,6 +80,59 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
     setToastMessage(`Request from "${req.fullName}" has been rejected.`);
     setTimeout(() => setToastMessage(null), 4000);
   };
+
+  // Open Edit Profile Modal
+  const openEditProfile = (t: TeacherInfo) => {
+    setEditingTeacher(t);
+    setEditName(t.name);
+    setEditDesignation(t.designation);
+    setEditPhone(t.phone || '');
+    setEditCnic(t.cnic || '');
+    setEditJoiningDate(t.joiningDate || '2023-08-15');
+    setEditIsAdmissionIncharge(!!t.isAdmissionIncharge);
+  };
+
+  const handleSaveTeacherProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTeacher) return;
+
+    updateTeacherProfile(editingTeacher.id, {
+      name: editName.trim(),
+      designation: editDesignation.trim(),
+      phone: editPhone.trim(),
+      cnic: editCnic.trim(),
+      joiningDate: editJoiningDate,
+      isAdmissionIncharge: editIsAdmissionIncharge,
+    });
+
+    setToastMessage(`Profile for "${editName}" updated successfully.`);
+    setEditingTeacher(null);
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  const handleToggleIncharge = (t: TeacherInfo) => {
+    toggleAdmissionIncharge(t.id);
+    const updatedStatus = !t.isAdmissionIncharge;
+    setToastMessage(
+      updatedStatus
+        ? `"${t.name}" designated as Official Admission Incharge (مجاز داخلہ انچارج).`
+        : `Admission Incharge privileges revoked for "${t.name}".`
+    );
+    setTimeout(() => setToastMessage(null), 4000);
+  };
+
+  // Filtered teachers for profiles tab
+  const filteredTeachers = teachers.filter((t) => {
+    const q = teacherSearch.toLowerCase().trim();
+    return (
+      !q ||
+      t.name.toLowerCase().includes(q) ||
+      t.designation.toLowerCase().includes(q) ||
+      t.email.toLowerCase().includes(q) ||
+      (t.cnic && t.cnic.includes(q)) ||
+      (t.phone && t.phone.includes(q))
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -120,11 +190,11 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
       {/* Tab Navigation */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex border-b border-slate-200 dark:border-slate-800">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('roster')}
-            className={`py-3.5 px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`py-3.5 px-5 sm:px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'roster'
                 ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20'
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -136,8 +206,21 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
           <button
             type="button"
+            onClick={() => setActiveTab('profiles')}
+            className={`py-3.5 px-5 sm:px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
+              activeTab === 'profiles'
+                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            }`}
+          >
+            <Award className="w-4 h-4" />
+            <span>Teacher Profiles &amp; Institutional Roles</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTab('requests')}
-            className={`py-3.5 px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+            className={`py-3.5 px-5 sm:px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'requests'
                 ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20'
                 : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
@@ -226,7 +309,170 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
           </div>
         )}
 
-        {/* TAB 2: PENDING JOIN REQUESTS */}
+        {/* TAB 2: TEACHER PROFILES & INSTITUTIONAL ROLES */}
+        {activeTab === 'profiles' && (
+          <div className="p-5 space-y-4">
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search by teacher name, designation, CNIC, or phone..."
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+                <span>Admin Delegation: Assigning <strong>Admission Incharge</strong> allows the teacher to admit and edit students.</span>
+              </div>
+            </div>
+
+            {/* Teacher Profiles Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredTeachers.map((teacher) => {
+                const inchargeClasses = classes.filter((c) => c.classTeacherId === teacher.id);
+                const assignedClasses = classes.filter((c) => (teacher.assignedClasses || []).includes(c.id));
+
+                return (
+                  <div
+                    key={teacher.id}
+                    className="p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-4 hover:border-indigo-300 dark:hover:border-indigo-700 transition"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                          {teacher.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                              {teacher.name}
+                            </h3>
+                          </div>
+                          <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                            {teacher.designation}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col items-end gap-1">
+                        {teacher.isAdmissionIncharge ? (
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                            <Award className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                            Admission Incharge
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                            Faculty
+                          </span>
+                        )}
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          ID: {teacher.id}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Detailed Institutional Attributes */}
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">CNIC (شناختی کارڈ)</span>
+                        <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
+                          {teacher.cnic || '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Joining Date</span>
+                        <span className="font-mono text-slate-800 dark:text-slate-200 text-[11px]">
+                          {teacher.joiningDate || '2023-08-15'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Official Contact</span>
+                        <span className="font-mono text-slate-700 dark:text-slate-300 text-[11px] truncate block">
+                          {teacher.phone || '0300-1122334'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-slate-400 block">Email Address</span>
+                        <span className="text-slate-700 dark:text-slate-300 text-[11px] truncate block" title={teacher.email}>
+                          {teacher.email}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Assigned Classes */}
+                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                      <span className="text-[10px] text-slate-400 block mb-1">
+                        Class Incharge &amp; Sections:
+                      </span>
+                      {inchargeClasses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {inchargeClasses.map((c) => (
+                            <span
+                              key={c.id}
+                              className="px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[10px] font-semibold"
+                            >
+                              Incharge: {c.grade} - {c.section}
+                            </span>
+                          ))}
+                        </div>
+                      ) : assignedClasses.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {assignedClasses.map((c) => (
+                            <span
+                              key={c.id}
+                              className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-semibold"
+                            >
+                              {c.grade} - {c.section}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">No class currently assigned</span>
+                      )}
+                    </div>
+
+                    {/* Actions: Edit Profile & Toggle Admission Incharge */}
+                    <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditProfile(teacher)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Edit Profile</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleIncharge(teacher)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                          teacher.isAdmissionIncharge
+                            ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700'
+                            : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                        }`}
+                        title={teacher.isAdmissionIncharge ? 'Revoke Admission Incharge Authority' : 'Designate as Admission Incharge'}
+                      >
+                        <Key className="w-3.5 h-3.5" />
+                        <span>
+                          {teacher.isAdmissionIncharge
+                            ? 'Revoke Admission Incharge'
+                            : 'Assign Admission Incharge'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 3: PENDING JOIN REQUESTS */}
         {activeTab === 'requests' && (
           <div className="p-5">
             {pendingJoinRequests.length === 0 ? (
@@ -390,6 +636,143 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 Confirm Approval &amp; Activate
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Teacher Profile Modal */}
+      {editingTeacher && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                  <Edit2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    Edit Teacher Profile &amp; Role
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Institutional details for {editingTeacher.name}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTeacher(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTeacherProfile} className="space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Full Name:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Designation:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editDesignation}
+                    onChange={(e) => setEditDesignation(e.target.value)}
+                    placeholder="e.g., HST (Science), PST, JST"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    CNIC (شناختی کارڈ نمبر):
+                  </label>
+                  <input
+                    type="text"
+                    value={editCnic}
+                    onChange={(e) => setEditCnic(e.target.value)}
+                    placeholder="41303-1234567-1"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Official Contact Phone:
+                  </label>
+                  <input
+                    type="text"
+                    value={editPhone}
+                    onChange={(e) => setEditPhone(e.target.value)}
+                    placeholder="0300-1234567"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Joining / Appointment Date:
+                </label>
+                <input
+                  type="date"
+                  value={editJoiningDate}
+                  onChange={(e) => setEditJoiningDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              {/* Special Institutional Role: Admission Incharge */}
+              <div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl space-y-1.5">
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={editIsAdmissionIncharge}
+                    onChange={(e) => setEditIsAdmissionIncharge(e.target.checked)}
+                    className="mt-0.5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer"
+                  />
+                  <div>
+                    <span className="font-bold text-amber-950 dark:text-amber-200 block text-xs">
+                      Designate as Official Admission Incharge (داخلہ انچارج)
+                    </span>
+                    <span className="text-[11px] text-amber-800/80 dark:text-amber-300/80 block mt-0.5">
+                      Grants this teacher delegated institutional authority to register new admissions (+ Admit New Student), update General Register (GR) bio-data, and manage student enrollments.
+                    </span>
+                  </div>
+                </label>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTeacher(null)}
+                  className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                >
+                  Save Profile Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

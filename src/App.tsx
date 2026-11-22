@@ -697,6 +697,7 @@ function AppContent() {
                   )}
                 </div>
                 {/* SMS Command Center */}
+                {/* SMS Command Center / My Dashboard */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-dashboard')}
@@ -708,14 +709,16 @@ function AppContent() {
                 >
                   <SchoolIcon className={`w-4 h-4 shrink-0 ${activeTool === 'sms-dashboard' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div className="truncate flex-1">
-                    <span className="block truncate">SMS Command Center</span>
+                    <span className="block truncate">
+                      {userRole === 'teacher' ? 'My Dashboard' : 'SMS Command Center'}
+                    </span>
                     <span className="text-[11px] block truncate text-slate-500">
-                      School Admin &amp; Overview
+                      {userRole === 'teacher' ? 'Teaching Overview & Schedule' : 'School Admin & Overview'}
                     </span>
                   </div>
                 </button>
 
-                {/* Classes & Sections */}
+                {/* Classes & Sections / My Classes */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-classes')}
@@ -728,7 +731,9 @@ function AppContent() {
                   <GraduationCap className={`w-4 h-4 shrink-0 ${activeTool === 'sms-classes' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="block truncate">Classes &amp; Sections</span>
+                      <span className="block truncate">
+                        {userRole === 'teacher' ? 'My Classes' : 'Classes & Sections'}
+                      </span>
                       <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
                         userRole === 'admin'
                           ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
@@ -738,12 +743,12 @@ function AppContent() {
                       </span>
                     </div>
                     <span className="text-[11px] block truncate text-slate-500">
-                      {userRole === 'admin' ? 'Manage KG–12 & Incharges' : 'View Assigned Sections'}
+                      {userRole === 'admin' ? 'Manage KG–12 & Incharges' : 'Assigned Sections & Subjects'}
                     </span>
                   </div>
                 </button>
 
-                {/* Student Register (SIS) */}
+                {/* Student Register (SIS) / My Students */}
                 <button
                   type="button"
                   onClick={() => {
@@ -759,18 +764,20 @@ function AppContent() {
                   <Users className={`w-4 h-4 shrink-0 ${activeTool === 'sms-students' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="block truncate">Student Register (SIS)</span>
+                      <span className="block truncate">
+                        {userRole === 'teacher' ? 'My Students' : 'Student Register (SIS)'}
+                      </span>
                       <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        Active
+                        {userRole === 'teacher' ? 'Roster' : 'Active'}
                       </span>
                     </div>
                     <span className="text-[11px] block truncate text-slate-500">
-                      GR Admissions &amp; B-Form
+                      {userRole === 'teacher' ? 'Assigned Class Students' : 'GR Admissions & B-Form'}
                     </span>
                   </div>
                 </button>
 
-                {/* Daily Attendance Register */}
+                {/* Daily Attendance Register / Take Attendance */}
                 <button
                   type="button"
                   onClick={() => {
@@ -786,13 +793,15 @@ function AppContent() {
                   <CalendarCheck2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-attendance' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
-                      <span className="block truncate">Daily Attendance</span>
+                      <span className="block truncate">
+                        {userRole === 'teacher' ? 'Take Attendance' : 'Daily Attendance'}
+                      </span>
                       <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        Active
+                        {userRole === 'teacher' ? 'Roll Call' : 'Active'}
                       </span>
                     </div>
                     <span className="text-[11px] block truncate text-slate-500">
-                      Roll Call &amp; A4 Register
+                      {userRole === 'teacher' ? 'Daily Section Register' : 'Roll Call & A4 Register'}
                     </span>
                   </div>
                 </button>
@@ -829,7 +838,7 @@ function AppContent() {
                   </button>
                 )}
 
-                {/* Teacher Profile & Portfolio */}
+                {/* Teacher Profile & Portfolio / My Profile */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-profile')}
@@ -841,15 +850,17 @@ function AppContent() {
                 >
                   <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-profile' ? 'text-indigo-400' : 'text-slate-500'}`} />
                   <div className="truncate flex-1">
-                    <span className="block truncate">My School Profile</span>
+                    <span className="block truncate">
+                      {userRole === 'teacher' ? 'My Profile' : 'My School Profile'}
+                    </span>
                     <span className="text-[11px] block truncate text-slate-500">
-                      Assigned Classes &amp; Info
+                      {userRole === 'teacher' ? 'Institutional Credentials & Roles' : 'Admin Credentials & School Info'}
                     </span>
                   </div>
                 </button>
 
-                {/* School Onboarding / Switch School */}
-                {(demoMode || isAffiliatedUser) && (
+                {/* School Onboarding / Switch School (Admin / Super Admin / Demo Only) */}
+                {(userRole === 'admin' || isSuperAdmin || demoMode) && (
                   <button
                     type="button"
                     onClick={() => selectTool('sms-onboarding')}
@@ -1181,7 +1192,7 @@ function AppContent() {
                       : 'hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Command Center
+                  {userRole === 'teacher' ? 'My Dashboard' : 'Command Center'}
                 </button>
                 <button
                   type="button"
@@ -1192,7 +1203,7 @@ function AppContent() {
                       : 'hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Classes
+                  {userRole === 'teacher' ? 'My Classes' : 'Classes'}
                 </button>
                 <button
                   type="button"
@@ -1206,7 +1217,7 @@ function AppContent() {
                       : 'hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Students
+                  {userRole === 'teacher' ? 'My Students' : 'Students'}
                 </button>
                 <button
                   type="button"
@@ -1220,7 +1231,7 @@ function AppContent() {
                       : 'hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
-                  Attendance
+                  {userRole === 'teacher' ? 'Take Attendance' : 'Attendance'}
                 </button>
                 {userRole === 'admin' && (
                   <button

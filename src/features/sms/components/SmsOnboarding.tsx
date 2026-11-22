@@ -38,11 +38,13 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
     activeSchool,
     registeredSchools,
     registerNewSchool,
+    submitSchoolRegistration,
     submitJoinRequest,
     currentUserProfile,
     pendingJoinRequests,
     approveJoinRequest,
     classes,
+    demoMode,
   } = useSms();
 
   const [activeTab, setActiveTab] = useState<'register' | 'join'>('register');
@@ -106,7 +108,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
     const primaryAdminEmail =
       primaryAdminType === 'delegated' ? delegatedAdminEmail.trim().toLowerCase() : email;
 
-    registerNewSchool(
+    submitSchoolRegistration(
       {
         name: schoolName.trim(),
         semisCode: semisCode.trim(),
@@ -116,7 +118,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
         activeAcademicYear: academicYear,
         phone: adminPhone.trim(),
         email: primaryAdminEmail,
-        status: 'active',
+        status: 'pending_approval',
         primaryAdminType,
         primaryAdminName,
         primaryAdminEmail,
@@ -127,14 +129,12 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
         phone: adminPhone.trim(),
         uid,
         primaryAdminType,
-        registeringUserRole: primaryAdminType === 'delegated' ? 'teacher' : 'admin',
       }
     );
 
-    setSuccessToast(`School "${schoolName}" registered successfully! Redirecting to SMS Dashboard...`);
-    setTimeout(() => {
-      onOnboardingComplete();
-    }, 1500);
+    setSuccessToast(
+      `School registration for "${schoolName}" submitted! Application forwarded to Super Admin (owner@pakedu.com) for verification.`
+    );
   };
 
   // Handle Join School as Teacher (Path B)
@@ -230,64 +230,126 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
           </div>
         </div>
       ) : isPending ? (
-        /* CASE 2: APPLICATION PENDING REVIEW */
-        <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Clock className="w-6 h-6 animate-pulse" />
+        /* CASE 2: APPLICATION PENDING REVIEW (ADMIN VS TEACHER) */
+        currentUserProfile?.role === 'admin' ? (
+          /* Subcase A: School Registration Pending Super Admin Approval */
+          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Building className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                  Super Admin Approval Pending
+                </span>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  School Registration Under Review
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Your registration application for <strong className="text-slate-800 dark:text-slate-200">{currentUserProfile?.schoolName}</strong> has been submitted to the Portal Super Admin (<span className="font-mono text-indigo-600 dark:text-indigo-400">owner@pakedu.com</span>). Once reviewed and approved, your School Administrator role and command center will activate automatically.
+                </p>
+              </div>
             </div>
-            <div className="space-y-1">
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
-                Application Under Review
-              </span>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
-                Faculty Affiliation Request Submitted
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Your application has been received by the School Administrator. Once verified and assigned to your classes, you will have immediate access to your attendance register.
+
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Registered Institution:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {currentUserProfile?.schoolName || 'New School Registration'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Applicant Administrator:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {currentUserProfile?.fullName || currentUser.displayName || 'Administrator'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Designation:</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {currentUserProfile?.designation || 'Principal / Administrator'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Official Email:</span>
+                  <span className="font-mono text-slate-900 dark:text-white">
+                    {currentUserProfile?.email || currentUser.email}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>Super Admin Verification Gate Active</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                As an institutional security policy, all new school establishments require clearance by the Portal Super Administrator to prevent unauthorized data access and preserve multi-tenant isolation.
               </p>
             </div>
           </div>
-
-          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-3 text-xs">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <span className="text-slate-500 text-[11px] block">Applied School:</span>
-                <span className="font-semibold text-slate-900 dark:text-white">
-                  {currentUserProfile?.schoolName || 'Govt. Comprehensive High School'}
-                </span>
+        ) : (
+          /* Subcase B: Teacher Affiliation Pending School Admin Approval */
+          <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/80 rounded-3xl p-6 sm:p-8 space-y-6 shadow-sm">
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Clock className="w-6 h-6 animate-pulse" />
               </div>
-              <div>
-                <span className="text-slate-500 text-[11px] block">SEMIS Code:</span>
-                <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                  {currentUserProfile?.schoolId || '403020101'}
+              <div className="space-y-1">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300">
+                  Application Under Review
                 </span>
-              </div>
-              <div>
-                <span className="text-slate-500 text-[11px] block">Designation:</span>
-                <span className="font-medium text-slate-900 dark:text-white">
-                  {currentUserProfile?.designation || 'Faculty Member'}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500 text-[11px] block">Applicant Email:</span>
-                <span className="font-mono text-slate-900 dark:text-white">
-                  {currentUserProfile?.email || currentUser.email}
-                </span>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                  Faculty Affiliation Request Submitted
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Your application has been received by the School Administrator. Once verified and assigned to your classes under &ldquo;Faculty &amp; Requests&rdquo;, you will have immediate access to your attendance register.
+                </p>
               </div>
             </div>
-          </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-            <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
-              <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-              <span>Strict Institutional Security Policy Active</span>
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl p-5 space-y-3 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Applied School:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {currentUserProfile?.schoolName || 'Govt. Comprehensive High School'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">SEMIS Code:</span>
+                  <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                    {currentUserProfile?.schoolId || '403020101'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Designation:</span>
+                  <span className="font-medium text-slate-900 dark:text-white">
+                    {currentUserProfile?.designation || 'Faculty Member'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Applicant Email:</span>
+                  <span className="font-mono text-slate-900 dark:text-white">
+                    {currentUserProfile?.email || currentUser.email}
+                  </span>
+                </div>
+              </div>
             </div>
-            <p className="text-[11px] leading-relaxed">
-              Your application is securely queued for administrative review. Once your school headmaster or administrator verifies your account and allocates your classes under &ldquo;Faculty &amp; Requests&rdquo;, your School Operations workspace will unlock automatically.
-            </p>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                <span>Strict Institutional Security Policy Active</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Your application is securely queued for administrative review. Once your school headmaster or administrator verifies your account and allocates your classes under &ldquo;Faculty &amp; Requests&rdquo;, your School Operations workspace will unlock automatically.
+              </p>
+            </div>
           </div>
-        </div>
+        )
       ) : isActive ? (
         /* CASE 3: ALREADY AFFILIATED */
         <div className="bg-white dark:bg-slate-900 border border-emerald-200 dark:border-emerald-800/80 rounded-3xl p-6 sm:p-8 space-y-4 shadow-sm">
@@ -331,6 +393,16 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
       ) : (
         /* CASE 4: LOGGED IN BUT UNAFFILIATED -> CHOOSE PATH A OR PATH B */
         <div className="space-y-6">
+          {/* Explicit Role Selection Header */}
+          <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl">
+            <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider block mb-1">
+              Select Your Institutional Role:
+            </span>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Please specify whether you are registering a new school institution as an administrator or joining an existing school as a faculty teacher.
+            </p>
+          </div>
+
           {/* Path Selector Tabs */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Path A Tab Card */}
@@ -357,14 +429,14 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    Path A: Register a New School
+                    (a) School Admin / Principal
                   </span>
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
-                    Admin
+                    Register School
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  For Headmasters, Principals, or designated administrators setting up their institution on PakEdu.
+                  Register a new school establishment. Application goes to Super Admin (owner@pakedu.com) for review &amp; clearance.
                 </p>
               </div>
             </div>
@@ -393,14 +465,14 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-slate-900 dark:text-white">
-                    Path B: Join Existing School
+                    (b) Teacher / Faculty
                   </span>
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                    Faculty
+                    Join Existing
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  For subject teachers and class incharges (PST, JEST, HST, SS) connecting to an existing SEMIS code.
+                  Join an existing registered school by entering its SEMIS code. Application goes to your School Administrator for approval.
                 </p>
               </div>
             </div>

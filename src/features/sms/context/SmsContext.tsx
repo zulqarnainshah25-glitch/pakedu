@@ -8,6 +8,7 @@ import {
   DailyClassAttendance,
   UserProfile,
   TeacherJoinRequest,
+  SchoolRegistrationRequest,
   SchoolStatus,
   PrimaryAdminType,
 } from '../types';
@@ -19,6 +20,7 @@ import {
   INITIAL_MOCK_STUDENTS,
   INITIAL_MOCK_ATTENDANCE,
   INITIAL_MOCK_JOIN_REQUESTS,
+  INITIAL_MOCK_SCHOOL_REG_REQUESTS,
 } from '../data/mockSmsData';
 import {
   saveSchoolToFirestore,
@@ -34,6 +36,10 @@ import {
   fetchAttendanceFromFirestore,
   saveJoinRequestToFirestore,
   fetchJoinRequestsFromFirestore,
+  saveSchoolRegistrationRequestToFirestore,
+  fetchSchoolRegistrationRequestsFromFirestore,
+  saveTeacherToFirestore,
+  fetchTeachersFromFirestore,
 } from '../services/smsFirestoreService';
 
 export const EMPTY_DEFAULT_SCHOOL: School = {
@@ -100,6 +106,28 @@ interface SmsContextType {
       registeringUserRole?: 'admin' | 'teacher';
     }
   ) => School;
+
+  // School Registration Requests (Super Admin Approval)
+  schoolRegistrationRequests: SchoolRegistrationRequest[];
+  pendingSchoolRegistrationRequests: SchoolRegistrationRequest[];
+  submitSchoolRegistration: (
+    schoolData: Omit<School, 'id' | 'adminUids' | 'status'> & {
+      status?: SchoolStatus;
+      primaryAdminType?: PrimaryAdminType;
+      primaryAdminName?: string;
+      primaryAdminEmail?: string;
+    },
+    adminProfile: {
+      fullName: string;
+      email: string;
+      phone?: string;
+      designation?: string;
+      uid?: string;
+      primaryAdminType?: PrimaryAdminType;
+    }
+  ) => SchoolRegistrationRequest;
+  approveSchoolRegistration: (requestId: string) => void;
+  rejectSchoolRegistration: (requestId: string, reason?: string) => void;
   
   // Join Requests (Faculty Onboarding)
   joinRequests: TeacherJoinRequest[];
@@ -121,6 +149,11 @@ interface SmsContextType {
   filteredClassesForUser: ClassSection[];
   filteredStudentsForUser: Student[];
   activeTeacher: TeacherInfo;
+
+  // Teacher Profile Management & Admission Rights
+  updateTeacherProfile: (teacherId: string, updates: Partial<TeacherInfo>) => void;
+  toggleAdmissionIncharge: (teacherId: string) => void;
+  canAdmitStudents: boolean;
 
   // Attendance
   attendanceRegisters: Record<string, DailyClassAttendance>;
@@ -145,6 +178,8 @@ const SMS_DEMO_MODE_STORAGE_KEY = 'pakedu_sms_demo_mode_v1';
 const SMS_USER_PROFILE_STORAGE_KEY = 'pakedu_sms_user_profile_v1';
 const SMS_SCHOOLS_STORAGE_KEY = 'pakedu_sms_registered_schools_v1';
 const SMS_JOIN_REQUESTS_STORAGE_KEY = 'pakedu_sms_join_requests_v1';
+const SMS_SCHOOL_REG_REQUESTS_STORAGE_KEY = 'pakedu_sms_school_reg_requests_v1';
+const SMS_TEACHERS_STORAGE_KEY = 'pakedu_sms_teachers_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -279,6 +314,36 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  // School Registration Requests (Super Admin Approval)
+  const [schoolRegistrationRequests, setSchoolRegistrationRequests] = useState<SchoolRegistrationRequest[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_SCHOOL_REG_REQUESTS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_SCHOOL_REG_REQUESTS;
+          return parsed.filter((r: SchoolRegistrationRequest) => !r.id.startsWith('sch_req_00'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_SCHOOL_REG_REQUESTS : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_SCHOOL_REG_REQUESTS_STORAGE_KEY, JSON.stringify(schoolRegistrationRequests));
+    } catch {
+      // Ignore
+    }
+  }, [schoolRegistrationRequests]);
+
+  const pendingSchoolRegistrationRequests = useMemo(() => {
+    return schoolRegistrationRequests.filter((r) => r.status === 'pending');
+  }, [schoolRegistrationRequests]);
+
   // Faculty Join Requests
   const [joinRequests, setJoinRequests] = useState<TeacherJoinRequest[]>(() => {
     try {
@@ -308,11 +373,27 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [teachers, setTeachers] = useState<TeacherInfo[]>(() => {
     try {
       const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_TEACHERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          if (isDemo) return parsed;
+          return parsed.filter((t: TeacherInfo) => !t.id.startsWith('t_00'));
+        }
+      }
       return isDemo ? INITIAL_MOCK_TEACHERS : [];
     } catch {
       return [];
     }
   });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_TEACHERS_STORAGE_KEY, JSON.stringify(teachers));
+    } catch {
+      // Ignore
+    }
+  }, [teachers]);
 
   const [classes, setClasses] = useState<ClassSection[]>(() => {
     try {
@@ -389,6 +470,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setStudents(INITIAL_MOCK_STUDENTS);
       setAttendanceRegisters(INITIAL_MOCK_ATTENDANCE);
       setJoinRequests(INITIAL_MOCK_JOIN_REQUESTS);
+      setSchoolRegistrationRequests(INITIAL_MOCK_SCHOOL_REG_REQUESTS);
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -409,7 +491,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsedReqs: TeacherJoinRequest[] = savedReqs ? JSON.parse(savedReqs) : [];
         setJoinRequests(parsedReqs.filter((r: TeacherJoinRequest) => !r.id.startsWith('req_mock_')));
 
-        setTeachers([]);
+        const savedSchoolReqs = localStorage.getItem(SMS_SCHOOL_REG_REQUESTS_STORAGE_KEY);
+        const parsedSchoolReqs: SchoolRegistrationRequest[] = savedSchoolReqs ? JSON.parse(savedSchoolReqs) : [];
+        setSchoolRegistrationRequests(parsedSchoolReqs.filter((r) => !r.id.startsWith('sch_req_00')));
+
+        const savedTeachers = localStorage.getItem(SMS_TEACHERS_STORAGE_KEY);
+        const parsedTeachers: TeacherInfo[] = savedTeachers ? JSON.parse(savedTeachers) : [];
+        setTeachers(parsedTeachers.filter((t) => !t.id.startsWith('t_00')));
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -418,6 +507,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setStudents([]);
         setTeachers([]);
         setJoinRequests([]);
+        setSchoolRegistrationRequests([]);
         setAttendanceRegisters({});
       }
     }
@@ -494,6 +584,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch((err) => console.warn('[Firestore] Notice: School fetch error:', err));
 
+    // 1b. Sync school registration requests (for Super Admin review)
+    fetchSchoolRegistrationRequestsFromFirestore()
+      .then((remoteReqs) => {
+        if (remoteReqs && remoteReqs.length > 0) {
+          setSchoolRegistrationRequests(remoteReqs);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: School requests fetch error:', err));
+
     if (!activeSchool.id || activeSchool.id === 'sch_seld_khi_01') return;
 
     // 2. Sync classes for active school
@@ -504,6 +603,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Classes fetch error:', err));
+
+    // 2b. Sync teachers for active school
+    fetchTeachersFromFirestore(activeSchool.id)
+      .then((remoteTeachers) => {
+        if (remoteTeachers && remoteTeachers.length > 0) {
+          setTeachers(remoteTeachers);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Teachers fetch error:', err));
 
     // 3. Sync students for active school
     fetchStudentsFromFirestore(activeSchool.id)
@@ -608,6 +716,199 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newSchool;
   };
 
+  // Submit School Registration Request (Requires Super Admin Approval)
+  const submitSchoolRegistration = (
+    schoolData: Omit<School, 'id' | 'adminUids' | 'status'> & {
+      status?: SchoolStatus;
+      primaryAdminType?: PrimaryAdminType;
+      primaryAdminName?: string;
+      primaryAdminEmail?: string;
+    },
+    adminProfile: {
+      fullName: string;
+      email: string;
+      phone?: string;
+      designation?: string;
+      uid?: string;
+      primaryAdminType?: PrimaryAdminType;
+    }
+  ): SchoolRegistrationRequest => {
+    const schoolId = `sch_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const adminUid = adminProfile.uid || `uid_admin_${Date.now().toString(36)}`;
+    const primaryAdminType = adminProfile.primaryAdminType || schoolData.primaryAdminType || 'principal';
+    const primaryAdminName = schoolData.primaryAdminName || adminProfile.fullName;
+    const primaryAdminEmail = schoolData.primaryAdminEmail || adminProfile.email;
+
+    const newSchool: School = {
+      ...schoolData,
+      id: schoolId,
+      adminUids: [adminUid],
+      status: 'pending_approval',
+      primaryAdminType,
+      primaryAdminName,
+      primaryAdminEmail,
+      createdAt: new Date().toISOString(),
+    };
+
+    const requestId = `sch_req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const newRequest: SchoolRegistrationRequest = {
+      id: requestId,
+      schoolId: newSchool.id,
+      schoolName: newSchool.name,
+      semisCode: newSchool.semisCode,
+      board: newSchool.board,
+      district: newSchool.district,
+      taluka: newSchool.taluka,
+      activeAcademicYear: newSchool.activeAcademicYear,
+      phone: newSchool.phone,
+      email: newSchool.email,
+      primaryAdminType,
+      adminUid,
+      adminName: primaryAdminName,
+      adminEmail: primaryAdminEmail,
+      adminPhone: adminProfile.phone,
+      adminDesignation:
+        adminProfile.designation ||
+        (primaryAdminType === 'principal' ? 'Principal / Headmaster' : 'School Administrator'),
+      requestedAt: new Date().toISOString(),
+      status: 'pending',
+    };
+
+    setSchoolRegistrationRequests((prev) => [newRequest, ...prev]);
+    setRegisteredSchools((prev) => [newSchool, ...prev]);
+    setActiveSchool(newSchool);
+
+    const pendingProfile: UserProfile = {
+      uid: adminUid,
+      email: adminProfile.email,
+      fullName: adminProfile.fullName,
+      role: 'admin',
+      schoolId: newSchool.id,
+      schoolName: newSchool.name,
+      status: 'pending',
+      designation:
+        adminProfile.designation ||
+        (primaryAdminType === 'principal' ? 'Principal / Headmaster' : 'School Administrator'),
+      phone: adminProfile.phone,
+      assignedClassIds: [],
+      createdAt: new Date().toISOString(),
+    };
+
+    setCurrentUserProfile(pendingProfile);
+
+    if (!demoMode) {
+      saveSchoolToFirestore(newSchool).catch((err) =>
+        console.warn('[Firestore] Notice: School save:', err)
+      );
+      saveSchoolRegistrationRequestToFirestore(newRequest).catch((err) =>
+        console.warn('[Firestore] Notice: School request save:', err)
+      );
+      saveUserProfileToFirestore(pendingProfile).catch((err) =>
+        console.warn('[Firestore] Notice: Profile save:', err)
+      );
+    }
+
+    return newRequest;
+  };
+
+  // Super Admin Approves School Registration
+  const approveSchoolRegistration = (requestId: string) => {
+    const target = schoolRegistrationRequests.find((r) => r.id === requestId);
+    if (!target) return;
+
+    const updatedRequest: SchoolRegistrationRequest = {
+      ...target,
+      status: 'approved',
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: 'Super Admin (owner@pakedu.com)',
+    };
+
+    setSchoolRegistrationRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? updatedRequest : r))
+    );
+
+    setRegisteredSchools((prev) =>
+      prev.map((s) => (s.id === target.schoolId ? { ...s, status: 'active' } : s))
+    );
+
+    if (activeSchool.id === target.schoolId) {
+      setActiveSchool((prev) => ({ ...prev, status: 'active' }));
+    }
+
+    // If applicant is currently logged in, activate their admin profile
+    if (
+      currentUserProfile &&
+      (currentUserProfile.uid === target.adminUid || currentUserProfile.email === target.adminEmail)
+    ) {
+      setCurrentUserProfile((prev) => (prev ? { ...prev, status: 'active', role: 'admin' } : null));
+      setUserRole('admin');
+    }
+
+    if (!demoMode) {
+      saveSchoolRegistrationRequestToFirestore(updatedRequest).catch((err) =>
+        console.warn('[Firestore] Notice: Request update:', err)
+      );
+      const targetSchool = registeredSchools.find((s) => s.id === target.schoolId);
+      if (targetSchool) {
+        saveSchoolToFirestore({ ...targetSchool, status: 'active' }).catch((err) =>
+          console.warn('[Firestore] Notice: School activate:', err)
+        );
+      }
+      if (target.adminUid) {
+        saveUserProfileToFirestore({
+          uid: target.adminUid,
+          email: target.adminEmail,
+          fullName: target.adminName,
+          role: 'admin',
+          schoolId: target.schoolId,
+          schoolName: target.schoolName,
+          status: 'active',
+          designation: target.adminDesignation,
+          phone: target.adminPhone,
+          assignedClassIds: [],
+          createdAt: target.requestedAt,
+        }).catch((err) => console.warn('[Firestore] Notice: Admin activate:', err));
+      }
+    }
+  };
+
+  // Super Admin Rejects School Registration
+  const rejectSchoolRegistration = (requestId: string, reason?: string) => {
+    const target = schoolRegistrationRequests.find((r) => r.id === requestId);
+    if (!target) return;
+
+    const updatedRequest: SchoolRegistrationRequest = {
+      ...target,
+      status: 'rejected',
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: 'Super Admin (owner@pakedu.com)',
+      rejectionReason: reason || 'Administrative Policy Review / Non-Compliant Details',
+    };
+
+    setSchoolRegistrationRequests((prev) =>
+      prev.map((r) => (r.id === requestId ? updatedRequest : r))
+    );
+
+    setRegisteredSchools((prev) =>
+      prev.map((s) =>
+        s.id === target.schoolId ? { ...s, status: 'suspended', suspendedReason: reason } : s
+      )
+    );
+
+    if (
+      currentUserProfile &&
+      (currentUserProfile.uid === target.adminUid || currentUserProfile.email === target.adminEmail)
+    ) {
+      setCurrentUserProfile((prev) => (prev ? { ...prev, status: 'rejected' } : null));
+    }
+
+    if (!demoMode) {
+      saveSchoolRegistrationRequestToFirestore(updatedRequest).catch((err) =>
+        console.warn('[Firestore] Notice: Request update:', err)
+      );
+    }
+  };
+
   // Submit join request as a Teacher
   const submitJoinRequest = (
     requestData: Omit<TeacherJoinRequest, 'id' | 'requestedAt' | 'status'>
@@ -680,10 +981,20 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       designation: target.designation,
       email: target.email,
       phone: target.phone,
+      cnic: target.cnic,
+      joiningDate: new Date().toISOString().split('T')[0],
+      isAdmissionIncharge: false,
+      status: 'active',
       assignedClasses: assignedClassIds,
     };
 
     setTeachers((prev) => [newTeacher, ...prev]);
+
+    if (!demoMode && target.schoolId) {
+      saveTeacherToFirestore(target.schoolId, newTeacher).catch((err) =>
+        console.warn('[Firestore] Notice: Teacher save:', err)
+      );
+    }
 
     // 3. Assign as class teacher if specified
     if (assignAsClassTeacherFor) {
@@ -769,6 +1080,53 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       (r) => r.status === 'pending' && r.schoolId === activeSchool.id
     );
   }, [joinRequests, activeSchool.id]);
+
+  // Update Teacher Profile (Admin can edit any teacher; teachers see their own)
+  const updateTeacherProfile = (teacherId: string, updates: Partial<TeacherInfo>) => {
+    setTeachers((prev) =>
+      prev.map((t) => (t.id === teacherId ? { ...t, ...updates } : t))
+    );
+
+    // If updating current logged in user's profile
+    if (
+      currentUserProfile &&
+      (currentUserProfile.uid === teacherId || currentUserProfile.email === updates.email)
+    ) {
+      setCurrentUserProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              fullName: updates.name || prev.fullName,
+              designation: updates.designation || prev.designation,
+              phone: updates.phone || prev.phone,
+              cnic: updates.cnic || prev.cnic,
+              isAdmissionIncharge:
+                updates.isAdmissionIncharge !== undefined
+                  ? updates.isAdmissionIncharge
+                  : prev.isAdmissionIncharge,
+              assignedClassIds: updates.assignedClasses || prev.assignedClassIds,
+            }
+          : null
+      );
+    }
+
+    if (!demoMode && activeSchool.id) {
+      const existing = teachers.find((t) => t.id === teacherId);
+      if (existing) {
+        saveTeacherToFirestore(activeSchool.id, { ...existing, ...updates }).catch((err) =>
+          console.warn('[Firestore] Notice: Teacher profile save:', err)
+        );
+      }
+    }
+  };
+
+  // Toggle Admission Incharge special role for a teacher
+  const toggleAdmissionIncharge = (teacherId: string) => {
+    const teacher = teachers.find((t) => t.id === teacherId);
+    if (!teacher) return;
+    const nextVal = !teacher.isAdmissionIncharge;
+    updateTeacherProfile(teacherId, { isAdmissionIncharge: nextVal });
+  };
 
   const addClass = (newClassData: Omit<ClassSection, 'id' | 'createdAt'>) => {
     const id = `cls_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
@@ -1018,6 +1376,18 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [students, classes, teachers]);
 
+  // Permission Guard: Only School Admin or designated Admission Incharge can admit/edit students
+  const canAdmitStudents = useMemo(() => {
+    if (effectiveRole === 'admin' || effectiveRole === 'principal') return true;
+    if (effectiveRole === 'teacher') {
+      const currentTeacher = teachers.find(
+        (t) => t.email === currentUserProfile?.email || t.id === currentUserProfile?.uid
+      );
+      return Boolean(currentTeacher?.isAdmissionIncharge || currentUserProfile?.isAdmissionIncharge);
+    }
+    return false;
+  }, [effectiveRole, teachers, currentUserProfile]);
+
   return (
     <SmsContext.Provider
       value={{
@@ -1036,6 +1406,11 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveSchool,
         registeredSchools,
         registerNewSchool,
+        schoolRegistrationRequests,
+        pendingSchoolRegistrationRequests,
+        submitSchoolRegistration,
+        approveSchoolRegistration,
+        rejectSchoolRegistration,
         joinRequests,
         pendingJoinRequests,
         submitJoinRequest,
@@ -1053,6 +1428,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         filteredClassesForUser,
         filteredStudentsForUser,
         activeTeacher,
+        updateTeacherProfile,
+        toggleAdmissionIncharge,
+        canAdmitStudents,
         attendanceRegisters,
         saveAttendance,
         getAttendance,

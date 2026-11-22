@@ -46,9 +46,11 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     deleteStudent,
     activeSchool,
     activeTeacher,
+    canAdmitStudents,
   } = useSms();
 
   const isAdmin = userRole === 'admin' || userRole === 'principal';
+  const canAdmitOrEdit = isAdmin || canAdmitStudents;
 
   // Filters & Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -268,7 +270,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            {isAdmin ? (
+            {canAdmitOrEdit ? (
               <button
                 type="button"
                 onClick={openAddModal}
@@ -297,6 +299,18 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                 </span>
               </div>
               <span className="text-[11px] font-mono text-slate-400">Total Records: {students.length}</span>
+            </div>
+          ) : canAdmitStudents ? (
+            <div className="flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3.5 py-2 rounded-xl">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                <span>
+                  <strong>Delegated Admission Incharge (مجاز داخلہ انچارج):</strong> Authorized by school administration to admit new students, issue GR numbers, and edit student records.
+                </span>
+              </div>
+              <span className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+                {displayedStudents.length} Students in view
+              </span>
             </div>
           ) : (
             <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 px-3.5 py-2 rounded-xl">
@@ -508,7 +522,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                         ? 'Try adjusting your search query or class filter.'
                         : 'No student records have been created in this register yet.'}
                     </p>
-                    {isAdmin && (
+                    {canAdmitOrEdit && (
                       <button
                         type="button"
                         onClick={openAddModal}
@@ -646,26 +660,26 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             <Eye className="w-3.5 h-3.5" />
                           </button>
 
-                          {isAdmin && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(student)}
-                                className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
-                                title="Edit Bio-data"
-                              >
-                                <Edit2 className="w-3.5 h-3.5" />
-                              </button>
+                          {canAdmitOrEdit && (
+                            <button
+                              type="button"
+                              onClick={() => openEditModal(student)}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                              title="Edit Bio-data"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
-                              <button
-                                type="button"
-                                onClick={() => setDeleteConfirmId(student.id)}
-                                className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
-                                title="Delete / Withdraw"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(student.id)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                              title="Delete / Withdraw"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </td>

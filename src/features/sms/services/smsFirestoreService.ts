@@ -14,6 +14,8 @@ import {
   Student,
   DailyClassAttendance,
   TeacherJoinRequest,
+  SchoolRegistrationRequest,
+  TeacherInfo,
 } from '../types';
 
 /**
@@ -252,6 +254,80 @@ export async function fetchJoinRequestsFromFirestore(
     return requests;
   } catch (err) {
     console.warn('[Firestore] Notice: Loading join requests from local cache:', err);
+    return [];
+  }
+}
+
+// 7. Super Admin School Registration Requests
+export async function saveSchoolRegistrationRequestToFirestore(
+  request: SchoolRegistrationRequest
+): Promise<boolean> {
+  if (!request.id) return false;
+  try {
+    const reqRef = doc(db, 'schoolRegistrationRequests', request.id);
+    await setDoc(reqRef, {
+      ...request,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    console.warn('[Firestore] Notice: School registration request saved locally:', err);
+    return false;
+  }
+}
+
+export async function fetchSchoolRegistrationRequestsFromFirestore(): Promise<SchoolRegistrationRequest[]> {
+  try {
+    const reqCol = collection(db, 'schoolRegistrationRequests');
+    const snapshot = await getDocs(reqCol);
+    const requests: SchoolRegistrationRequest[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        requests.push(d.data() as SchoolRegistrationRequest);
+      }
+    });
+    return requests;
+  } catch (err) {
+    console.warn('[Firestore] Notice: Loading school registration requests from local cache:', err);
+    return [];
+  }
+}
+
+// 8. Teacher Profiles Management
+export async function saveTeacherToFirestore(
+  schoolId: string,
+  teacher: TeacherInfo
+): Promise<boolean> {
+  if (!schoolId || !teacher.id) return false;
+  try {
+    const teacherRef = doc(db, 'schools', schoolId, 'teachers', teacher.id);
+    await setDoc(teacherRef, {
+      ...teacher,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+    return true;
+  } catch (err) {
+    console.warn('[Firestore] Notice: Teacher profile saved locally:', err);
+    return false;
+  }
+}
+
+export async function fetchTeachersFromFirestore(
+  schoolId: string
+): Promise<TeacherInfo[]> {
+  if (!schoolId) return [];
+  try {
+    const teacherCol = collection(db, 'schools', schoolId, 'teachers');
+    const snapshot = await getDocs(teacherCol);
+    const teachers: TeacherInfo[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        teachers.push(d.data() as TeacherInfo);
+      }
+    });
+    return teachers;
+  } catch (err) {
+    console.warn('[Firestore] Notice: Loading teachers from local cache:', err);
     return [];
   }
 }
