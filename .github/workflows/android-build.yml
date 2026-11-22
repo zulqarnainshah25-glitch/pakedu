@@ -29,7 +29,8 @@ jobs:
       # Step 3: Set up Android SDK & Install Build-Tools 36.0.0
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-
+        with:
+            packages: 'platform-tools'
       - name: Install Android Build-Tools 36.0.0
         run: |
           yes | sdkmanager --licenses || true
