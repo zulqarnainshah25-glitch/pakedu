@@ -54,6 +54,7 @@ import {
   parseIncomingSsoSessionFromSearch,
 } from './utils/authAndSso';
 import { SmsProvider, useSms } from './features/sms/context/SmsContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ClassesManagement } from './features/sms/components/ClassesManagement';
 import { SmsDashboard } from './features/sms/components/SmsDashboard';
 import { StudentDirectory } from './features/sms/components/StudentDirectory';
@@ -220,16 +221,22 @@ function AppContent() {
     setUserRole,
     demoMode,
     setDemoMode,
-    currentUserProfile,
     pendingJoinRequests,
     activeSchool,
     isSuperAdmin,
     isImpersonating,
     exitImpersonation,
   } = useSms();
+  const {
+    currentUser,
+    currentUserProfile,
+    authLoading,
+    smartRoute,
+    signOutUser,
+  } = useAuth();
+
   const [activeTool, setActiveTool] = useState<ActiveToolId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [pendingSmsRedirect, setPendingSmsRedirect] = useState(false);
   const [demoSession, setDemoSession] = useState<DemoUserSession | null>(() => {
     try {
@@ -241,7 +248,6 @@ function AppContent() {
       return null;
     }
   });
-  const [authInitializing, setAuthInitializing] = useState(true);
   const [logoutNotice, setLogoutNotice] = useState<string | null>(null);
   const [isPrintPreview, setIsPrintPreview] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -297,23 +303,23 @@ function AppContent() {
     try {
       localStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
       sessionStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
+      sessionStorage.removeItem('pakedu_active_tool');
     } catch {
       // Ignore storage errors
     }
     try {
-      await signOut(auth);
+      await signOutUser();
     } catch (err) {
       console.error('Sign-out error:', err);
     }
-    setCurrentUser(null);
     setAuthModalMode('signin');
     setLogoutNotice(
       customNotice ||
         'Aap successfully Logout ho chuke hain. Portal kholne ke liye dobara Sign In karein.'
     );
-  }, []);
+  }, [signOutUser]);
 
-  // Listen to Auth State and SSO query parameters
+  // Listen to SSO query parameters
   useEffect(() => {
     const searchStr = typeof window !== 'undefined' ? window.location.search : '';
     const triggeredByAtlierLogout = shouldTriggerSsoLogoutFromSearch(searchStr);
@@ -323,9 +329,7 @@ function AppContent() {
       window.history.replaceState({}, document.title, cleanUrl);
       performUnifiedLogout(
         'Aap successfully Logout ho chuke hain. Dobara access ke liye Sign In karein.'
-      ).finally(() => {
-        setAuthInitializing(false);
-      });
+      );
       return;
     }
 
@@ -339,27 +343,51 @@ function AppContent() {
         // Ignore storage errors
       }
     }
+  }, [performUnifiedLogout]);
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-      if (user) {
-        setLogoutNotice(null);
-        if (user.email === 'owner@pakedu.com') {
-          setUserRole('super-admin');
-          setActiveTool('super-admin');
-        } else if (pendingSmsRedirect) {
-          setPendingSmsRedirect(false);
-          if (currentUserProfile?.status === 'active' && currentUserProfile?.schoolId) {
-            setActiveTool('sms-dashboard');
-          } else {
-            setActiveTool('sms-onboarding');
-          }
+  // Automatic Smart Login Routing System & Session Persistence
+  useEffect(() => {
+    if (!authLoading && currentUser && smartRoute) {
+      setLogoutNotice(null);
+
+      // Condition A: Super Admin
+      if (smartRoute.targetTool === 'super-admin') {
+        setUserRole('super-admin');
+        setActiveTool('super-admin');
+        return;
+      }
+
+      // Condition B: Pending Approval (Force to onboarding "Application Under Review")
+      if (smartRoute.targetTool === 'sms-onboarding') {
+        setUserRole(smartRoute.role);
+        setActiveTool('sms-onboarding');
+        return;
+      }
+
+      // Restore session if user was already on an authorized tool
+      const savedSessionTool = typeof window !== 'undefined' ? sessionStorage.getItem('pakedu_active_tool') : null;
+      if (savedSessionTool) {
+        if (smartRoute.role === 'admin' && savedSessionTool.startsWith('sms-')) {
+          setUserRole('admin');
+          setActiveTool(savedSessionTool as ActiveToolId);
+          return;
+        }
+        if (smartRoute.role === 'teacher' && savedSessionTool.startsWith('sms-') && savedSessionTool !== 'sms-staff') {
+          setUserRole('teacher');
+          setActiveTool(savedSessionTool as ActiveToolId);
+          return;
+        }
+        if (smartRoute.targetTool === 'dashboard' && !savedSessionTool.startsWith('sms-')) {
+          setActiveTool(savedSessionTool as ActiveToolId);
+          return;
         }
       }
-      setAuthInitializing(false);
-    });
-    return () => unsubscribe();
-  }, [performUnifiedLogout, pendingSmsRedirect, currentUserProfile, setUserRole]);
+
+      // Condition C, D, or E: Route directly to smartRoute.targetTool
+      setUserRole(smartRoute.role);
+      setActiveTool(smartRoute.targetTool);
+    }
+  }, [authLoading, currentUser, smartRoute, setUserRole]);
 
   const handleDemoSessionSuccess = (session: DemoUserSession) => {
     setDemoSession(session);
@@ -453,6 +481,9 @@ function AppContent() {
       }
     }
     setActiveTool(tool);
+    try {
+      sessionStorage.setItem('pakedu_active_tool', tool);
+    } catch {}
     setMobileMenuOpen(false);
     // Smooth scroll to top when switching views
     if (typeof window !== 'undefined') {
@@ -464,7 +495,7 @@ function AppContent() {
   const portalAccess = isPortalAccessAllowed({
     currentUser,
     demoSession,
-    authInitializing,
+    authInitializing: authLoading,
   });
 
   if (portalAccess.isInitializing) {
@@ -1962,8 +1993,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <SmsProvider>
-      <AppContent />
-    </SmsProvider>
+    <AuthProvider>
+      <SmsProvider>
+        <AppContent />
+      </SmsProvider>
+    </AuthProvider>
   );
 }

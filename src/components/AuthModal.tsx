@@ -735,6 +735,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
 
             {/* Email / Password Form */}
+            {mode === 'signin' && (
+              <div className="p-3 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl text-xs text-purple-950 dark:text-purple-200 flex items-start gap-2.5 my-2">
+                <Sparkles className="w-4 h-4 text-[#5b21b6] dark:text-purple-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-relaxed">
+                  Sign in with your registered email. The system will automatically route you to your respective dashboard (Portal Tools, School Admin, Teacher, or Super Admin).
+                </p>
+              </div>
+            )}
             <form onSubmit={handleEmailAuth} className="space-y-3.5 mt-3">
               {mode === 'signup' && (
                 <>

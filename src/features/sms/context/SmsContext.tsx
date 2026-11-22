@@ -41,6 +41,7 @@ import {
   saveTeacherToFirestore,
   fetchTeachersFromFirestore,
 } from '../services/smsFirestoreService';
+import { useAuth } from '../../../context/AuthContext';
 
 export const EMPTY_DEFAULT_SCHOOL: School = {
   id: '',
@@ -203,6 +204,21 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     return null;
   });
+
+  // Synchronize with AuthContext when available
+  try {
+    const authCtx = useAuth();
+    useEffect(() => {
+      if (authCtx.currentUserProfile) {
+        setCurrentUserProfile(authCtx.currentUserProfile);
+        if (authCtx.currentUserProfile.role) {
+          setUserRoleState(authCtx.currentUserProfile.role);
+        }
+      }
+    }, [authCtx.currentUserProfile]);
+  } catch {
+    // If rendered outside AuthProvider (e.g. standalone test)
+  }
 
   // Save current profile changes
   useEffect(() => {

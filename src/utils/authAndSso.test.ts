@@ -23,6 +23,8 @@ import {
   UNIFIED_FIREBASE_PROJECT_ID,
 } from './authAndSso';
 import { calculateSindhSalary2026 } from '../data/salaryScale2026';
+import { determineSmartRoute } from './smartRouting';
+import { School, UserProfile } from '../features/sms/types';
 import {
   getClassesForSection,
   getFieldExamplesForClass,
@@ -529,6 +531,172 @@ function runAllUnitTests() {
       '.env must never contain a hardcoded leaked key'
     );
     console.log('✅ PASS: Environment Config Validation, Model Allowlist & Secret Leakage Security Audit Tests');
+  }
+
+  // 13. Automatic Smart Login Routing System Tests (All 4 Account Types + Pending)
+  {
+    const mockActiveSchool: School = {
+      id: 'sch_403020101',
+      name: 'Govt. Comprehensive High School Latifabad',
+      semisCode: '403020101',
+      board: 'Sindh STBB',
+      district: 'Hyderabad',
+      taluka: 'Latifabad',
+      adminUids: ['uid_admin_01'],
+      activeAcademicYear: '2025-2026',
+      status: 'active',
+      primaryAdminType: 'principal',
+      primaryAdminName: 'Muhammad Farooq',
+      primaryAdminEmail: 'admin@pakedu.com',
+    };
+
+    const mockSuspendedSchool: School = {
+      ...mockActiveSchool,
+      id: 'sch_suspended_01',
+      semisCode: '403020999',
+      status: 'suspended',
+    };
+
+    const schoolDirectory = [mockActiveSchool, mockSuspendedSchool];
+
+    // Case A: Super Admin Account
+    const superAdminByEmail = determineSmartRoute(
+      { email: 'owner@pakedu.com', uid: 'super_uid_1' },
+      null,
+      schoolDirectory
+    );
+    assert.equal(superAdminByEmail.targetTool, 'super-admin');
+    assert.equal(superAdminByEmail.role, 'super-admin');
+
+    const superAdminByProfile = determineSmartRoute(
+      { email: 'delegate@pakedu.com', uid: 'super_uid_2' },
+      {
+        uid: 'super_uid_2',
+        email: 'delegate@pakedu.com',
+        fullName: 'Super Delegate',
+        role: 'super-admin',
+        isSuperAdmin: true,
+        status: 'active',
+        assignedClassIds: [],
+      },
+      schoolDirectory
+    );
+    assert.equal(superAdminByProfile.targetTool, 'super-admin');
+    assert.equal(superAdminByProfile.role, 'super-admin');
+
+    // Case B: Pending Approval (Admin or Teacher)
+    const pendingAdmin = determineSmartRoute(
+      { email: 'pending.admin@gmail.com', uid: 'admin_req_1' },
+      {
+        uid: 'admin_req_1',
+        email: 'pending.admin@gmail.com',
+        fullName: 'Applicant Principal',
+        role: 'admin',
+        schoolId: 'sch_pending_01',
+        schoolName: 'Govt. New School',
+        status: 'pending',
+        assignedClassIds: [],
+      },
+      schoolDirectory
+    );
+    assert.equal(pendingAdmin.targetTool, 'sms-onboarding');
+    assert.equal(pendingAdmin.role, 'admin');
+
+    const pendingTeacher = determineSmartRoute(
+      { email: 'pending.teacher@gmail.com', uid: 'teacher_req_1' },
+      {
+        uid: 'teacher_req_1',
+        email: 'pending.teacher@gmail.com',
+        fullName: 'Applicant Teacher',
+        role: 'teacher',
+        schoolId: mockActiveSchool.id,
+        schoolName: mockActiveSchool.name,
+        status: 'pending',
+        assignedClassIds: [],
+      },
+      schoolDirectory
+    );
+    assert.equal(pendingTeacher.targetTool, 'sms-onboarding');
+    assert.equal(pendingTeacher.role, 'teacher');
+
+    // Case C: Verified School Admin
+    const verifiedAdmin = determineSmartRoute(
+      { email: 'admin@pakedu.com', uid: 'uid_admin_01' },
+      {
+        uid: 'uid_admin_01',
+        email: 'admin@pakedu.com',
+        fullName: 'Muhammad Farooq',
+        role: 'admin',
+        schoolId: mockActiveSchool.id,
+        schoolName: mockActiveSchool.name,
+        status: 'active',
+        assignedClassIds: [],
+      },
+      schoolDirectory
+    );
+    assert.equal(verifiedAdmin.targetTool, 'sms-dashboard');
+    assert.equal(verifiedAdmin.role, 'admin');
+
+    // Case C2: School Admin with suspended school -> must go to onboarding
+    const suspendedAdmin = determineSmartRoute(
+      { email: 'suspended@pakedu.com', uid: 'uid_admin_sus' },
+      {
+        uid: 'uid_admin_sus',
+        email: 'suspended@pakedu.com',
+        fullName: 'Suspended Admin',
+        role: 'admin',
+        schoolId: mockSuspendedSchool.id,
+        schoolName: mockSuspendedSchool.name,
+        status: 'active',
+        assignedClassIds: [],
+      },
+      schoolDirectory
+    );
+    assert.equal(suspendedAdmin.targetTool, 'sms-onboarding');
+
+    // Case D: Verified Teacher
+    const verifiedTeacher = determineSmartRoute(
+      { email: 'teacher@seld.gos.pk', uid: 'uid_teacher_01' },
+      {
+        uid: 'uid_teacher_01',
+        email: 'teacher@seld.gos.pk',
+        fullName: 'Ms. Shabana Parveen',
+        role: 'teacher',
+        schoolId: mockActiveSchool.id,
+        schoolName: mockActiveSchool.name,
+        status: 'active',
+        assignedClassIds: ['cls_9_a'],
+      },
+      schoolDirectory
+    );
+    assert.equal(verifiedTeacher.targetTool, 'sms-dashboard');
+    assert.equal(verifiedTeacher.role, 'teacher');
+
+    // Case E: General Public User (No schoolId or unaffiliated)
+    const generalUserWithProfile = determineSmartRoute(
+      { email: 'freelancer@gmail.com', uid: 'gen_uid_1' },
+      {
+        uid: 'gen_uid_1',
+        email: 'freelancer@gmail.com',
+        fullName: 'General Educator',
+        role: 'teacher',
+        status: 'none',
+        assignedClassIds: [],
+      },
+      schoolDirectory
+    );
+    assert.equal(generalUserWithProfile.targetTool, 'dashboard');
+    assert.equal(generalUserWithProfile.role, 'teacher');
+
+    const generalUserWithoutProfile = determineSmartRoute(
+      { email: 'user@example.com', uid: 'gen_uid_2' },
+      null,
+      schoolDirectory
+    );
+    assert.equal(generalUserWithoutProfile.targetTool, 'dashboard');
+    assert.equal(generalUserWithoutProfile.role, 'teacher');
+
+    console.log('✅ PASS: Automatic Smart Login Routing System Tests (All 4 Account Types + Pending)');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
