@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -42,6 +42,7 @@ import {
   saveSchoolRegistrationRequestToFirestore,
   saveUserProfileToFirestore,
   saveJoinRequestToFirestore,
+  fetchSchoolsFromFirestore,
 } from '../features/sms/services/smsFirestoreService';
 import {
   School,
@@ -94,6 +95,44 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [designation, setDesignation] = useState('JEST');
   const [teacherPhone, setTeacherPhone] = useState('0300-');
   const [targetSemisCode, setTargetSemisCode] = useState('');
+  const [selectedSchoolId, setSelectedSchoolId] = useState('');
+  const [availableSchools, setAvailableSchools] = useState<School[]>([]);
+  const [isLoadingSchools, setIsLoadingSchools] = useState(false);
+  const [isManualSemis, setIsManualSemis] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && mode === 'signup' && accountIntent === 'sms' && smsRoleIntent === 'teacher') {
+      let isMounted = true;
+      setIsLoadingSchools(true);
+      fetchSchoolsFromFirestore()
+        .then((schools) => {
+          if (!isMounted) return;
+          const activeList = (schools || []).filter((s) => s.status !== 'suspended');
+          const combined = activeList.length > 0 ? activeList : (registeredSchools || []);
+          setAvailableSchools(combined);
+          if (combined.length > 0 && !targetSemisCode) {
+            setSelectedSchoolId(combined[0].id);
+            setTargetSemisCode(combined[0].semisCode);
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setAvailableSchools(registeredSchools || []);
+            if (registeredSchools && registeredSchools.length > 0 && !targetSemisCode) {
+              setSelectedSchoolId(registeredSchools[0].id);
+              setTargetSemisCode(registeredSchools[0].semisCode);
+            }
+          }
+        })
+        .finally(() => {
+          if (isMounted) setIsLoadingSchools(false);
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [isOpen, mode, accountIntent, smsRoleIntent, registeredSchools]);
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -314,24 +353,27 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             ]);
           } else {
             // Teacher Signup
-            const matchedSchool = registeredSchools.find(
-              (s) => s.semisCode.trim() === targetSemisCode.trim()
+            const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
+            const matchedSchool = pool.find(
+              (s) => s.id === selectedSchoolId || s.semisCode.trim() === targetSemisCode.trim()
             );
-            const schoolId = matchedSchool ? matchedSchool.id : `sch_${targetSemisCode.trim()}`;
-            const resolvedSchoolName = matchedSchool ? matchedSchool.name : `Govt. School (SEMIS: ${targetSemisCode.trim()})`;
+            const resolvedSemis = matchedSchool ? matchedSchool.semisCode : targetSemisCode.trim();
+            const schoolId = matchedSchool ? matchedSchool.id : `sch_${resolvedSemis}`;
+            const resolvedSchoolName = matchedSchool ? matchedSchool.name : `Govt. School (SEMIS: ${resolvedSemis})`;
 
             const joinReqId = `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
             const newJoinReq: TeacherJoinRequest = {
               id: joinReqId,
               uid: credential.user.uid,
               fullName: teacherFullName.trim(),
+              fatherName: fatherName.trim(),
               email: validation.sanitizedEmail,
               phone: teacherPhone.trim(),
               cnic: cnic.trim(),
-              designation: `${designation} (S/D/O ${fatherName.trim()})`,
+              designation: designation.trim(),
               schoolId,
               schoolName: resolvedSchoolName,
-              semisCode: targetSemisCode.trim(),
+              semisCode: resolvedSemis,
               requestedAt: new Date().toISOString(),
               status: 'pending',
             };
@@ -340,11 +382,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               uid: credential.user.uid,
               email: validation.sanitizedEmail,
               fullName: teacherFullName.trim(),
+              fatherName: fatherName.trim(),
               role: 'teacher',
               schoolId,
               schoolName: resolvedSchoolName,
+              semisCode: resolvedSemis,
               status: 'pending',
-              designation: `${designation} (S/D/O ${fatherName.trim()})`,
+              designation: designation.trim(),
               cnic: cnic.trim(),
               phone: teacherPhone.trim(),
               assignedClassIds: [],
@@ -355,13 +399,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               submitJoinRequest({
                 uid: credential.user.uid,
                 fullName: teacherFullName.trim(),
+                fatherName: fatherName.trim(),
                 email: validation.sanitizedEmail,
                 phone: teacherPhone.trim(),
                 cnic: cnic.trim(),
-                designation: `${designation} (S/D/O ${fatherName.trim()})`,
+                designation: designation.trim(),
                 schoolId,
                 schoolName: resolvedSchoolName,
-                semisCode: targetSemisCode.trim(),
+                semisCode: resolvedSemis,
               });
             } catch (ctxErr) {
               console.warn('[Context] submitJoinRequest notice:', ctxErr);
@@ -1088,20 +1133,70 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                         <div>
                           <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                            Target School SEMIS Code <span className="text-rose-500">*</span>
+                            Target School to Join <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                            <input
-                              type="text"
-                              value={targetSemisCode}
-                              onChange={(e) => setTargetSemisCode(e.target.value)}
-                              placeholder="e.g., 403020101"
-                              maxLength={10}
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
-                              required
-                            />
+                            <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <select
+                              value={isManualSemis ? 'manual' : selectedSchoolId}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'manual') {
+                                  setIsManualSemis(true);
+                                  setSelectedSchoolId('');
+                                } else {
+                                  setIsManualSemis(false);
+                                  setSelectedSchoolId(val);
+                                  const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
+                                  const found = pool.find((s) => s.id === val);
+                                  if (found) {
+                                    setTargetSemisCode(found.semisCode);
+                                  }
+                                }
+                              }}
+                              className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                              required={!isManualSemis}
+                            >
+                              {isLoadingSchools && (
+                                <option value="">Loading registered schools...</option>
+                              )}
+                              {!isLoadingSchools && (availableSchools.length > 0 || registeredSchools.length > 0) && (
+                                <>
+                                  <option value="">-- Select Your School from Directory --</option>
+                                  {(availableSchools.length > 0 ? availableSchools : registeredSchools).map((s) => (
+                                    <option key={s.id} value={s.id}>
+                                      {s.name} — SEMIS: {s.semisCode} ({s.district})
+                                    </option>
+                                  ))}
+                                </>
+                              )}
+                              <option value="manual">Other School (Enter SEMIS Manually)...</option>
+                            </select>
                           </div>
+
+                          {/* Fallback or Manual SEMIS entry */}
+                          {isManualSemis ? (
+                            <div className="mt-2">
+                              <input
+                                type="text"
+                                value={targetSemisCode}
+                                onChange={(e) => setTargetSemisCode(e.target.value)}
+                                placeholder="Enter 8-9 digit SEMIS Code"
+                                maxLength={10}
+                                className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                                required
+                              />
+                            </div>
+                          ) : (
+                            targetSemisCode && (
+                              <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                                <span>Official SEMIS Code:</span>
+                                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                  {targetSemisCode}
+                                </span>
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
                     </div>

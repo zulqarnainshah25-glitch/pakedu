@@ -928,9 +928,11 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       uid: requestData.uid,
       email: requestData.email,
       fullName: requestData.fullName,
+      fatherName: requestData.fatherName,
       role: 'teacher',
       schoolId: requestData.schoolId,
       schoolName: requestData.schoolName,
+      semisCode: requestData.semisCode,
       status: 'pending',
       designation: requestData.designation,
       cnic: requestData.cnic,
@@ -978,6 +980,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const newTeacher: TeacherInfo = {
       id: target.uid || `t_${Date.now().toString(36)}`,
       name: target.fullName,
+      fatherName: target.fatherName,
       designation: target.designation,
       email: target.email,
       phone: target.phone,
@@ -1018,6 +1021,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               ...prev,
               status: 'active',
               role: 'teacher',
+              fatherName: target.fatherName || prev.fatherName,
+              semisCode: target.semisCode || prev.semisCode,
+              cnic: target.cnic || prev.cnic,
+              phone: target.phone || prev.phone,
               assignedClassIds,
             }
           : null
@@ -1039,12 +1046,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           uid: target.uid,
           email: target.email,
           fullName: target.fullName,
+          fatherName: target.fatherName,
           role: 'teacher',
           schoolId: target.schoolId,
           schoolName: target.schoolName,
+          semisCode: target.semisCode,
           status: 'active',
           designation: target.designation,
           phone: target.phone,
+          cnic: target.cnic,
           assignedClassIds,
           createdAt: new Date().toISOString(),
         }).catch((err) => console.warn('[Firestore] Notice: Teacher profile activate:', err));
@@ -1270,22 +1280,36 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return attendanceRegisters[id];
   };
 
-  // For Demo: Pick a mock teacher as the current teacher when in Teacher View
-  const activeTeacher = useMemo(() => {
-    // If user has a real profile with assigned classes
-    if (!demoMode && currentUserProfile && currentUserProfile.role === 'teacher') {
-      const match = teachers.find((t) => t.email === currentUserProfile.email || t.id === currentUserProfile.uid);
+  // For Demo / Teacher View: Pick or construct active teacher safely
+  const activeTeacher = useMemo<TeacherInfo>(() => {
+    // If user has a real profile
+    if (!demoMode && currentUserProfile) {
+      const match = (teachers || []).find((t) => t.email === currentUserProfile.email || t.id === currentUserProfile.uid);
       if (match) return match;
       return {
-        id: currentUserProfile.uid,
-        name: currentUserProfile.fullName,
+        id: currentUserProfile.uid || 'current_user',
+        name: currentUserProfile.fullName || 'Teacher',
+        fatherName: currentUserProfile.fatherName,
         designation: currentUserProfile.designation || 'Teacher',
-        email: currentUserProfile.email,
-        phone: currentUserProfile.phone,
+        email: currentUserProfile.email || '',
+        phone: currentUserProfile.phone || '',
+        cnic: currentUserProfile.cnic || '',
+        joiningDate: currentUserProfile.joiningDate || new Date().toISOString().split('T')[0],
         assignedClasses: currentUserProfile.assignedClassIds || [],
       };
     }
-    return teachers[1] || teachers[0]; // Ms. Shabana Parveen (Class 9-A)
+    const fallback = (teachers && (teachers[1] || teachers[0])) || null;
+    if (fallback) return fallback;
+    return {
+      id: 'default_teacher',
+      name: 'Teacher',
+      designation: 'Teacher',
+      email: '',
+      phone: '',
+      cnic: '',
+      joiningDate: '2025-01-01',
+      assignedClasses: [],
+    };
   }, [teachers, demoMode, currentUserProfile]);
 
   // Determine effective role: In Demo mode, userRoleState controls it; in Live mode, profile controls it
@@ -1301,23 +1325,28 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Filtered classes by role: Admins see all classes; Teachers only see assigned classes
   const filteredClassesForUser = useMemo(() => {
     if (effectiveRole === 'admin' || effectiveRole === 'principal') {
-      return classes;
+      return classes || [];
     }
-    // Teacher view: filter by teacher assigned classes
+    if (!classes || !Array.isArray(classes)) return [];
+    // Teacher view: filter by teacher assigned classes safely
     return classes.filter(
       (c) =>
-        c.classTeacherId === activeTeacher.id ||
-        activeTeacher.assignedClasses.includes(c.id)
+        Boolean(c) && (
+          (activeTeacher?.id && c.classTeacherId === activeTeacher.id) ||
+          (Array.isArray(activeTeacher?.assignedClasses) && activeTeacher.assignedClasses.includes(c.id)) ||
+          (Array.isArray(currentUserProfile?.assignedClassIds) && currentUserProfile.assignedClassIds.includes(c.id))
+        )
     );
-  }, [classes, effectiveRole, activeTeacher]);
+  }, [classes, effectiveRole, activeTeacher, currentUserProfile]);
 
   // Filtered students by role: Admins see all students; Teachers only see students from their assigned classes
   const filteredStudentsForUser = useMemo(() => {
     if (effectiveRole === 'admin' || effectiveRole === 'principal') {
-      return students;
+      return students || [];
     }
-    const teacherClassIds = new Set(filteredClassesForUser.map((c) => c.id));
-    return students.filter((s) => teacherClassIds.has(s.classId));
+    if (!students || !Array.isArray(students)) return [];
+    const teacherClassIds = new Set((filteredClassesForUser || []).map((c) => c?.id).filter(Boolean));
+    return students.filter((s) => s && teacherClassIds.has(s.classId));
   }, [students, effectiveRole, filteredClassesForUser]);
 
   // Real-time Today's Attendance Analytics

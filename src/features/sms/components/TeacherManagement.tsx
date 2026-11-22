@@ -505,12 +505,17 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                             Pending Approval
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400">
-                          {req.designation} · CNIC: <span className="font-mono">{req.cnic || '—'}</span>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
+                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">{req.designation}</span>
+                          {req.fatherName && (
+                            <span> · S/D/O <strong className="text-slate-800 dark:text-slate-200">{req.fatherName}</strong></span>
+                          )}
+                          <span> · CNIC: <strong className="font-mono text-slate-800 dark:text-slate-200">{req.cnic || '—'}</strong></span>
                         </div>
-                        <div className="text-[10px] text-slate-400 flex items-center gap-3 pt-0.5">
-                          <span>Email: <strong>{req.email}</strong></span>
-                          <span>Phone: <strong>{req.phone}</strong></span>
+                        <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-0.5">
+                          <span>Email: <strong className="text-slate-600 dark:text-slate-300">{req.email}</strong></span>
+                          <span>Phone: <strong className="font-mono text-slate-600 dark:text-slate-300">{req.phone}</strong></span>
+                          {req.semisCode && <span>SEMIS: <strong className="font-mono text-indigo-600 dark:text-indigo-400">{req.semisCode}</strong></span>}
                           <span>Applied: <strong>{new Date(req.requestedAt).toLocaleDateString()}</strong></span>
                         </div>
                       </div>
@@ -571,6 +576,44 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </div>
 
             <div className="space-y-3.5 text-xs">
+              {/* Applicant Full Details Review Card */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 dark:text-white text-xs">
+                    {selectedRequest.fullName}
+                  </span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    {selectedRequest.designation}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Father&apos;s Name</span>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {selectedRequest.fatherName || '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">NADRA CNIC</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {selectedRequest.cnic || '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Official Phone</span>
+                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                      {selectedRequest.phone || '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block">Official Email</span>
+                    <span className="font-mono text-slate-800 dark:text-slate-200 truncate block" title={selectedRequest.email}>
+                      {selectedRequest.email}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
                   Select Teaching Class(es):

@@ -7,9 +7,11 @@ export interface UserProfile {
   uid: string;
   email: string;
   fullName: string;
+  fatherName?: string;
   role: UserRole;
   schoolId?: string;
   schoolName?: string;
+  semisCode?: string;
   status: MembershipStatus;
   designation?: string;
   cnic?: string;
@@ -49,6 +51,7 @@ export interface TeacherJoinRequest {
   id: string;
   uid: string;
   fullName: string;
+  fatherName?: string;
   email: string;
   phone: string;
   cnic?: string;
@@ -86,6 +89,7 @@ export interface School {
 export interface TeacherInfo {
   id: string;
   name: string;
+  fatherName?: string;
   designation: string; // e.g., 'HST (Science)', 'JEST', 'PST', 'Lecturer'
   email: string;
   phone?: string;

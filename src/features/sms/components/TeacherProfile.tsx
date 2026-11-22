@@ -39,12 +39,16 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
   } = useSms();
 
   const isTeacher = userRole === 'teacher';
-  const displayName = currentUserProfile?.fullName || activeTeacher.name;
-  const designation = currentUserProfile?.designation || activeTeacher.designation;
-  const email = currentUserProfile?.email || activeTeacher.email;
-  const phone = currentUserProfile?.phone || activeTeacher.phone || '0300-1122334';
-  const cnic = currentUserProfile?.cnic || activeTeacher.cnic || '41303-1234567-1';
-  const joiningDate = currentUserProfile?.joiningDate || activeTeacher.joiningDate || '2023-08-15';
+  const displayName = currentUserProfile?.fullName || activeTeacher?.name || 'Teacher';
+  const fatherName = currentUserProfile?.fatherName || activeTeacher?.fatherName || '';
+  const designation = currentUserProfile?.designation || activeTeacher?.designation || 'Teacher';
+  const email = currentUserProfile?.email || activeTeacher?.email || '';
+  const phone = currentUserProfile?.phone || activeTeacher?.phone || '0300-1122334';
+  const cnic = currentUserProfile?.cnic || activeTeacher?.cnic || '41303-1234567-1';
+  const joiningDate = currentUserProfile?.joiningDate || activeTeacher?.joiningDate || '2023-08-15';
+  const schoolName = activeSchool?.name || currentUserProfile?.schoolName || 'Govt. Secondary School';
+  const semisCode = activeSchool?.semisCode || currentUserProfile?.semisCode || '403020101';
+  const assignedClassesList = filteredClassesForUser || [];
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -88,7 +92,7 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
-              {displayName.charAt(0)}
+              {displayName ? displayName.charAt(0).toUpperCase() : 'T'}
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -99,15 +103,20 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
                   {designation}
                 </span>
               </div>
+              {fatherName && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  S/D/O {fatherName}
+                </p>
+              )}
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {activeSchool.name} · Department of School Education, Govt. of Sindh
+                {schoolName} · Department of School Education, Govt. of Sindh
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-mono">
-              SEMIS: {activeSchool.semisCode}
+              SEMIS: {semisCode}
             </span>
           </div>
         </div>
@@ -140,28 +149,28 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
           <div>
             <span className="text-[11px] text-slate-400 block">Government Email</span>
             <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
-              {email}
+              {email || '—'}
             </span>
           </div>
 
           <div>
             <span className="text-[11px] text-slate-400 block">Personal Phone</span>
             <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 block">
-              {phone}
+              {phone || '—'}
             </span>
           </div>
 
           <div>
             <span className="text-[11px] text-slate-400 block">CNIC Number</span>
             <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 block">
-              {cnic}
+              {cnic || '—'}
             </span>
           </div>
 
           <div>
             <span className="text-[11px] text-slate-400 block">Appointment Date</span>
             <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 block">
-              {joiningDate}
+              {joiningDate || '—'}
             </span>
           </div>
 
@@ -180,7 +189,7 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
           <div className="flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-              My Assigned Classes &amp; Incharge Registers ({filteredClassesForUser.length})
+              My Assigned Classes &amp; Incharge Registers ({assignedClassesList.length})
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
@@ -188,64 +197,77 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-          {filteredClassesForUser.map((cls) => {
-            const isIncharge = cls.classTeacherId === activeTeacher.id;
+        {assignedClassesList.length === 0 ? (
+          <div className="text-center py-8 px-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+            <GraduationCap className="w-8 h-8 text-slate-400 mx-auto mb-2 opacity-50" />
+            <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              No Class Registers Assigned Yet
+            </p>
+            <p className="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">
+              Your School Administrator or Principal has not yet allocated class registers to your profile under &ldquo;Faculty &amp; Requests&rdquo;.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            {assignedClassesList.map((cls) => {
+              if (!cls) return null;
+              const isIncharge = cls.classTeacherId === (activeTeacher?.id || currentUserProfile?.uid);
 
-            return (
-              <div
-                key={cls.id}
-                className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="font-bold text-sm text-slate-900 dark:text-white block">
-                      {cls.grade} - {cls.section}
-                    </span>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Medium: {cls.medium} · Room: {cls.roomNumber || 'Assigned'}
+              return (
+                <div
+                  key={cls.id || Math.random()}
+                  className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl space-y-3"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="font-bold text-sm text-slate-900 dark:text-white block">
+                        {cls.grade || 'Class'} - {cls.section || 'A'}
+                      </span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Medium: {cls.medium || 'Sindhi'} · Room: {cls.roomNumber || 'Assigned'}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        isIncharge
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                          : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                      }`}
+                    >
+                      {isIncharge ? 'Class Incharge' : 'Subject Teacher'}
                     </span>
                   </div>
 
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      isIncharge
-                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                        : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
-                    }`}
-                  >
-                    {isIncharge ? 'Class Incharge' : 'Subject Teacher'}
-                  </span>
-                </div>
+                  <div className="text-xs text-slate-500 flex items-center justify-between pt-1">
+                    <span>Enrolled: <strong>{cls.totalStudents ?? 0} students</strong></span>
+                    <span>Session: <strong>{cls.academicYear || '2025-2026'}</strong></span>
+                  </div>
 
-                <div className="text-xs text-slate-500 flex items-center justify-between pt-1">
-                  <span>Enrolled: <strong>{cls.totalStudents || 0} students</strong></span>
-                  <span>Session: <strong>{cls.academicYear}</strong></span>
-                </div>
+                  <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToAttendance(cls.id)}
+                      className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <CalendarCheck2 className="w-3.5 h-3.5" />
+                      <span>Roll Call</span>
+                    </button>
 
-                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToAttendance(cls.id)}
-                    className="flex-1 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <CalendarCheck2 className="w-3.5 h-3.5" />
-                    <span>Roll Call</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToStudents(cls.id)}
-                    className="flex-1 py-1.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
-                  >
-                    <Users className="w-3.5 h-3.5" />
-                    <span>Students</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => onNavigateToStudents(cls.id)}
+                      className="flex-1 py-1.5 px-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-semibold transition cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Users className="w-3.5 h-3.5" />
+                      <span>Students</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

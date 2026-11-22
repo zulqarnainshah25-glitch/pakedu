@@ -81,6 +81,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
 
   // Teacher Join Form State
   const [teacherName, setTeacherName] = useState(currentUser?.displayName || '');
+  const [teacherFatherName, setTeacherFatherName] = useState('');
   const [cnic, setCnic] = useState('');
   const [designation, setDesignation] = useState('JEST (Junior Elementary School Teacher)');
   const [targetSemisCode, setTargetSemisCode] = useState(activeSchool?.semisCode || '403020101');
@@ -91,6 +92,16 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
 
   // If user profile status
   const isPending = currentUserProfile?.status === 'pending';
+
+  // Human-readable SEMIS code lookup
+  const matchedPendingSchool = registeredSchools.find((s) => s.id === currentUserProfile?.schoolId);
+  const displaySemisCode =
+    currentUserProfile?.semisCode ||
+    matchedPendingSchool?.semisCode ||
+    (currentUserProfile?.schoolId?.startsWith('sch_')
+      ? currentUserProfile.schoolId.replace(/^sch_/, '')
+      : currentUserProfile?.schoolId) ||
+    '—';
   const isActive = currentUserProfile?.status === 'active' && Boolean(currentUserProfile?.schoolId);
 
   // Handle Register School (Path A)
@@ -177,6 +188,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
     submitJoinRequest({
       uid,
       fullName: teacherName.trim(),
+      fatherName: teacherFatherName.trim() || undefined,
       email,
       phone: teacherPhone.trim(),
       cnic: cnic.trim() || undefined,
@@ -275,6 +287,12 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
                   </span>
                 </div>
                 <div>
+                  <span className="text-slate-500 text-[11px] block">SEMIS Code:</span>
+                  <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                    {displaySemisCode}
+                  </span>
+                </div>
+                <div>
                   <span className="text-slate-500 text-[11px] block">Applicant Administrator:</span>
                   <span className="font-semibold text-slate-900 dark:text-white">
                     {currentUserProfile?.fullName || currentUser.displayName || 'Administrator'}
@@ -336,21 +354,51 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
                 <div>
                   <span className="text-slate-500 text-[11px] block">SEMIS Code:</span>
                   <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
-                    {currentUserProfile?.schoolId || '403020101'}
+                    {displaySemisCode}
                   </span>
                 </div>
+                <div>
+                  <span className="text-slate-500 text-[11px] block">Applicant Name:</span>
+                  <span className="font-semibold text-slate-900 dark:text-white">
+                    {currentUserProfile?.fullName || currentUser.displayName || 'Teacher'}
+                  </span>
+                </div>
+                {currentUserProfile?.fatherName && (
+                  <div>
+                    <span className="text-slate-500 text-[11px] block">Father&apos;s Name:</span>
+                    <span className="font-semibold text-slate-900 dark:text-white">
+                      {currentUserProfile.fatherName}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="text-slate-500 text-[11px] block">Designation:</span>
                   <span className="font-medium text-slate-900 dark:text-white">
                     {currentUserProfile?.designation || 'Faculty Member'}
                   </span>
                 </div>
+                {currentUserProfile?.cnic && (
+                  <div>
+                    <span className="text-slate-500 text-[11px] block">CNIC:</span>
+                    <span className="font-mono font-semibold text-slate-900 dark:text-white">
+                      {currentUserProfile.cnic}
+                    </span>
+                  </div>
+                )}
                 <div>
                   <span className="text-slate-500 text-[11px] block">Applicant Email:</span>
                   <span className="font-mono text-slate-900 dark:text-white">
                     {currentUserProfile?.email || currentUser.email}
                   </span>
                 </div>
+                {currentUserProfile?.phone && (
+                  <div>
+                    <span className="text-slate-500 text-[11px] block">Contact Phone:</span>
+                    <span className="font-mono text-slate-900 dark:text-white">
+                      {currentUserProfile.phone}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -778,6 +826,20 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
                     value={teacherName}
                     onChange={(e) => setTeacherName(e.target.value)}
                     placeholder="e.g., Ms. Shabana Parveen"
+                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+
+                {/* Father's Name */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+                    Father&apos;s Name
+                  </label>
+                  <input
+                    type="text"
+                    value={teacherFatherName}
+                    onChange={(e) => setTeacherFatherName(e.target.value)}
+                    placeholder="e.g., Muhammad Usman"
                     className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
