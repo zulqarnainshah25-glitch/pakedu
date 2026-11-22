@@ -22,6 +22,9 @@ import {
   ArrowRight,
   Building,
   GraduationCap,
+  School as SchoolIcon,
+  MapPin,
+  Phone,
 } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
 import {
@@ -33,6 +36,19 @@ import {
   UNIFIED_FIREBASE_PROJECT_ID,
   ATLIER_CV_LIVE_URL,
 } from '../utils/authAndSso';
+import { useSms } from '../features/sms/context/SmsContext';
+import {
+  saveSchoolToFirestore,
+  saveSchoolRegistrationRequestToFirestore,
+  saveUserProfileToFirestore,
+  saveJoinRequestToFirestore,
+} from '../features/sms/services/smsFirestoreService';
+import {
+  School,
+  SchoolRegistrationRequest,
+  TeacherJoinRequest,
+  UserProfile,
+} from '../features/sms/types';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -53,12 +69,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   logoutNotice = null,
   onSignupSuccess,
 }) => {
+  const { submitSchoolRegistration, submitJoinRequest, registeredSchools } = useSms();
+
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [accountIntent, setAccountIntent] = useState<'general' | 'sms'>('general');
   const [smsRoleIntent, setSmsRoleIntent] = useState<'admin' | 'teacher'>('admin');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Admin Specific Registration Fields
+  const [adminFullName, setAdminFullName] = useState('');
+  const [schoolName, setSchoolName] = useState('');
+  const [semisCode, setSemisCode] = useState('');
+  const [board, setBoard] = useState<'Sindh STBB' | 'Punjab PTB' | 'Federal'>('Sindh STBB');
+  const [district, setDistrict] = useState('Hyderabad');
+  const [taluka, setTaluka] = useState('Latifabad');
+  const [adminPhone, setAdminPhone] = useState('0300-');
+
+  // Teacher Specific Join Fields
+  const [teacherFullName, setTeacherFullName] = useState('');
+  const [fatherName, setFatherName] = useState('');
+  const [cnic, setCnic] = useState('');
+  const [designation, setDesignation] = useState('JEST');
+  const [teacherPhone, setTeacherPhone] = useState('0300-');
+  const [targetSemisCode, setTargetSemisCode] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -86,11 +122,66 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMessage(null);
     setDiagnosis(null);
 
+    let effectiveDisplayName = displayName;
+    if (mode === 'signup') {
+      if (accountIntent === 'general') {
+        if (!displayName.trim()) {
+          setErrorMessage('Full Name is required.');
+          return;
+        }
+        effectiveDisplayName = displayName.trim();
+      } else if (accountIntent === 'sms' && smsRoleIntent === 'admin') {
+        if (!adminFullName.trim()) {
+          setErrorMessage('Admin Full Name is required.');
+          return;
+        }
+        if (!schoolName.trim()) {
+          setErrorMessage('Official School Name is required.');
+          return;
+        }
+        if (!semisCode.trim() || semisCode.trim().length < 5) {
+          setErrorMessage('Please enter a valid SEMIS Code (at least 5–9 digits).');
+          return;
+        }
+        if (!district.trim() || !taluka.trim()) {
+          setErrorMessage('District and Taluka are required.');
+          return;
+        }
+        if (!adminPhone.trim() || adminPhone.trim() === '0300-') {
+          setErrorMessage('Official Phone Number is required.');
+          return;
+        }
+        effectiveDisplayName = adminFullName.trim();
+      } else if (accountIntent === 'sms' && smsRoleIntent === 'teacher') {
+        if (!teacherFullName.trim()) {
+          setErrorMessage('Teacher Full Name is required.');
+          return;
+        }
+        if (!fatherName.trim()) {
+          setErrorMessage("Father's Name is required.");
+          return;
+        }
+        if (!cnic.trim() || cnic.trim().length < 13) {
+          setErrorMessage('Valid CNIC Number is required (e.g., 41303-1234567-1).');
+          return;
+        }
+        if (!teacherPhone.trim() || teacherPhone.trim() === '0300-') {
+          setErrorMessage('Official Phone Number is required.');
+          return;
+        }
+        if (!targetSemisCode.trim() || targetSemisCode.trim().length < 5) {
+          setErrorMessage("Target School's SEMIS Code is required.");
+          return;
+        }
+        effectiveDisplayName = teacherFullName.trim();
+      }
+    }
+
     const validation = validateAuthCredentials({
       mode,
       email,
       password,
-      displayName,
+      displayName: effectiveDisplayName,
     });
 
     if (!validation.valid) {
@@ -123,11 +214,178 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           validation.sanitizedEmail,
           password
         );
-        if (validation.sanitizedDisplayName) {
+        if (effectiveDisplayName) {
           await updateProfile(credential.user, {
-            displayName: validation.sanitizedDisplayName,
+            displayName: effectiveDisplayName,
           });
         }
+
+        // Save data to Firestore and SMS Context
+        if (accountIntent === 'sms') {
+          if (smsRoleIntent === 'admin') {
+            const schoolId = `sch_${semisCode.trim()}`;
+            const newSchool: School = {
+              id: schoolId,
+              name: schoolName.trim(),
+              semisCode: semisCode.trim(),
+              board,
+              district: district.trim(),
+              taluka: taluka.trim(),
+              adminUids: [credential.user.uid],
+              activeAcademicYear: '2025-2026',
+              phone: adminPhone.trim(),
+              email: validation.sanitizedEmail,
+              status: 'pending_approval',
+              primaryAdminType: 'principal',
+              primaryAdminName: adminFullName.trim(),
+              primaryAdminEmail: validation.sanitizedEmail,
+              createdAt: new Date().toISOString(),
+            };
+
+            const requestId = `sch_req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+            const newRequest: SchoolRegistrationRequest = {
+              id: requestId,
+              schoolId: newSchool.id,
+              schoolName: newSchool.name,
+              semisCode: newSchool.semisCode,
+              board: newSchool.board,
+              district: newSchool.district,
+              taluka: newSchool.taluka,
+              activeAcademicYear: newSchool.activeAcademicYear,
+              phone: newSchool.phone,
+              email: newSchool.email,
+              primaryAdminType: 'principal',
+              adminUid: credential.user.uid,
+              adminName: adminFullName.trim(),
+              adminEmail: validation.sanitizedEmail,
+              adminPhone: adminPhone.trim(),
+              adminDesignation: 'Principal / Headmaster',
+              requestedAt: new Date().toISOString(),
+              status: 'pending',
+            };
+
+            const pendingProfile: UserProfile = {
+              uid: credential.user.uid,
+              email: validation.sanitizedEmail,
+              fullName: adminFullName.trim(),
+              role: 'admin',
+              schoolId: newSchool.id,
+              schoolName: newSchool.name,
+              status: 'pending',
+              designation: 'Principal / Headmaster',
+              phone: adminPhone.trim(),
+              assignedClassIds: [],
+              createdAt: new Date().toISOString(),
+            };
+
+            try {
+              submitSchoolRegistration(
+                {
+                  name: schoolName.trim(),
+                  semisCode: semisCode.trim(),
+                  board,
+                  district: district.trim(),
+                  taluka: taluka.trim(),
+                  activeAcademicYear: '2025-2026',
+                  phone: adminPhone.trim(),
+                  email: validation.sanitizedEmail,
+                  primaryAdminType: 'principal',
+                  primaryAdminName: adminFullName.trim(),
+                  primaryAdminEmail: validation.sanitizedEmail,
+                  status: 'pending_approval',
+                },
+                {
+                  uid: credential.user.uid,
+                  email: validation.sanitizedEmail,
+                  fullName: adminFullName.trim(),
+                  phone: adminPhone.trim(),
+                  designation: 'Principal / Headmaster',
+                  primaryAdminType: 'principal',
+                }
+              );
+            } catch (ctxErr) {
+              console.warn('[Context] submitSchoolRegistration notice:', ctxErr);
+            }
+
+            await Promise.allSettled([
+              saveSchoolToFirestore(newSchool),
+              saveSchoolRegistrationRequestToFirestore(newRequest),
+              saveUserProfileToFirestore(pendingProfile),
+            ]);
+          } else {
+            // Teacher Signup
+            const matchedSchool = registeredSchools.find(
+              (s) => s.semisCode.trim() === targetSemisCode.trim()
+            );
+            const schoolId = matchedSchool ? matchedSchool.id : `sch_${targetSemisCode.trim()}`;
+            const resolvedSchoolName = matchedSchool ? matchedSchool.name : `Govt. School (SEMIS: ${targetSemisCode.trim()})`;
+
+            const joinReqId = `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+            const newJoinReq: TeacherJoinRequest = {
+              id: joinReqId,
+              uid: credential.user.uid,
+              fullName: teacherFullName.trim(),
+              email: validation.sanitizedEmail,
+              phone: teacherPhone.trim(),
+              cnic: cnic.trim(),
+              designation: `${designation} (S/D/O ${fatherName.trim()})`,
+              schoolId,
+              schoolName: resolvedSchoolName,
+              semisCode: targetSemisCode.trim(),
+              requestedAt: new Date().toISOString(),
+              status: 'pending',
+            };
+
+            const teacherProfile: UserProfile = {
+              uid: credential.user.uid,
+              email: validation.sanitizedEmail,
+              fullName: teacherFullName.trim(),
+              role: 'teacher',
+              schoolId,
+              schoolName: resolvedSchoolName,
+              status: 'pending',
+              designation: `${designation} (S/D/O ${fatherName.trim()})`,
+              cnic: cnic.trim(),
+              phone: teacherPhone.trim(),
+              assignedClassIds: [],
+              createdAt: new Date().toISOString(),
+            };
+
+            try {
+              submitJoinRequest({
+                uid: credential.user.uid,
+                fullName: teacherFullName.trim(),
+                email: validation.sanitizedEmail,
+                phone: teacherPhone.trim(),
+                cnic: cnic.trim(),
+                designation: `${designation} (S/D/O ${fatherName.trim()})`,
+                schoolId,
+                schoolName: resolvedSchoolName,
+                semisCode: targetSemisCode.trim(),
+              });
+            } catch (ctxErr) {
+              console.warn('[Context] submitJoinRequest notice:', ctxErr);
+            }
+
+            await Promise.allSettled([
+              saveJoinRequestToFirestore(schoolId, newJoinReq),
+              saveUserProfileToFirestore(teacherProfile),
+            ]);
+          }
+        } else {
+          // General User Signup
+          const generalProfile: UserProfile = {
+            uid: credential.user.uid,
+            email: validation.sanitizedEmail,
+            fullName: displayName.trim(),
+            role: 'teacher',
+            status: 'none',
+            assignedClassIds: [],
+            createdAt: new Date().toISOString(),
+          };
+          await saveUserProfileToFirestore(generalProfile).catch(() => {});
+        }
+
         onClose();
         if (onSignupSuccess) {
           onSignupSuccess(accountIntent, accountIntent === 'sms' ? smsRoleIntent : undefined);
@@ -315,7 +573,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Right Authentication Form Panel */}
-        <div className="md:col-span-7 p-6 sm:p-8 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col justify-between">
+        <div className="md:col-span-7 p-6 sm:p-8 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-y-auto max-h-[92vh]">
           <div>
             {/* Logout Notice Banner (Shown when user logs out from Portal or AtlierCV) */}
             {logoutNotice && (
@@ -435,25 +693,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <form onSubmit={handleEmailAuth} className="space-y-3.5 mt-3">
               {mode === 'signup' && (
                 <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                      Full Name (Teacher / Officer Name)
-                    </label>
-                    <div className="relative">
-                      <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
-                        placeholder="e.g., Muhammad Farooq (PST / JEST)"
-                        className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  {/* Clear Choice: General User vs School Management (Admin/Teacher) */}
-                  <div className="space-y-1.5 pt-1">
+                  {/* Step 1: Account Intent Selection (General vs School Management) */}
+                  <div className="space-y-1.5">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                       Are you signing up as a General User or for School Management?
                     </label>
@@ -595,12 +836,287 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       </div>
                     )}
                   </div>
+
+                  {/* Dynamic Fields 1: General User Full Name */}
+                  {accountIntent === 'general' && (
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Full Name (Teacher / Officer Name) <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={displayName}
+                          onChange={(e) => setDisplayName(e.target.value)}
+                          placeholder="e.g., Muhammad Farooq (PST / JEST)"
+                          className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic Fields 2: Admin Registration Fields */}
+                  {accountIntent === 'sms' && smsRoleIntent === 'admin' && (
+                    <div className="space-y-3 pt-2 border-t border-purple-100 dark:border-purple-900/40 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#5b21b6] dark:text-purple-300">
+                        <Building className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400" />
+                        <span>School Institutional Information (اسکول و ایڈمن تفصیلات):</span>
+                      </div>
+
+                      {/* Admin Full Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Admin / Principal Full Name <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={adminFullName}
+                            onChange={(e) => setAdminFullName(e.target.value)}
+                            placeholder="e.g., Muhammad Farooq (Headmaster)"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Official School Name */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Official School Name (سرکاری یا پرائیویٹ اسکول کا نام) <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <SchoolIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={schoolName}
+                            onChange={(e) => setSchoolName(e.target.value)}
+                            placeholder="e.g., Govt. Comprehensive High School Latifabad"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* SEMIS Code & Educational Board */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            SEMIS Code (8–9 digits) <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={semisCode}
+                              onChange={(e) => setSemisCode(e.target.value)}
+                              placeholder="e.g., 403020101"
+                              maxLength={10}
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Educational Board <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={board}
+                            onChange={(e) => setBoard(e.target.value as any)}
+                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                          >
+                            <option value="Sindh STBB">Sindh STBB (Jamshoro)</option>
+                            <option value="Punjab PTB">Punjab PTB (Lahore)</option>
+                            <option value="Federal">Federal (Islamabad)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* District & Taluka */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            District (ضلع) <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={district}
+                              onChange={(e) => setDistrict(e.target.value)}
+                              placeholder="e.g., Hyderabad"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Taluka / Tehsil (تعلقہ) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={taluka}
+                            onChange={(e) => setTaluka(e.target.value)}
+                            placeholder="e.g., Latifabad"
+                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* Official Phone Number */}
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Official Phone / WhatsApp Number <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={adminPhone}
+                            onChange={(e) => setAdminPhone(e.target.value)}
+                            placeholder="0300-1234567"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dynamic Fields 3: Teacher Join Fields */}
+                  {accountIntent === 'sms' && smsRoleIntent === 'teacher' && (
+                    <div className="space-y-3 pt-2 border-t border-purple-100 dark:border-purple-900/40 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                        <GraduationCap className="w-4 h-4 shrink-0" />
+                        <span>Teacher Credentials &amp; Target School (استاد کی تفصیلات):</span>
+                      </div>
+
+                      {/* Teacher Full Name & Father Name */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Teacher Full Name <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={teacherFullName}
+                              onChange={(e) => setTeacherFullName(e.target.value)}
+                              placeholder="e.g., Ms. Shabana Parveen"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Father's Name (والد کا نام) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={fatherName}
+                            onChange={(e) => setFatherName(e.target.value)}
+                            placeholder="e.g., Abdul Sattar"
+                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      {/* CNIC & Designation */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            CNIC Number (شناختی کارڈ) <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={cnic}
+                            onChange={(e) => setCnic(e.target.value)}
+                            placeholder="41303-1234567-1"
+                            maxLength={15}
+                            className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Designation (عہدہ) <span className="text-rose-500">*</span>
+                          </label>
+                          <select
+                            value={designation}
+                            onChange={(e) => setDesignation(e.target.value)}
+                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                          >
+                            <option value="PST">PST (Primary School Teacher)</option>
+                            <option value="JEST">JEST (Junior Elementary School Teacher)</option>
+                            <option value="HST">HST (High School Teacher)</option>
+                            <option value="Subject Specialist">Subject Specialist (SS)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Phone & Target SEMIS */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Official Phone / WhatsApp <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={teacherPhone}
+                              onChange={(e) => setTeacherPhone(e.target.value)}
+                              placeholder="0300-1234567"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              required
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Target School SEMIS Code <span className="text-rose-500">*</span>
+                          </label>
+                          <div className="relative">
+                            <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={targetSemisCode}
+                              onChange={(e) => setTargetSemisCode(e.target.value)}
+                              placeholder="e.g., 403020101"
+                              maxLength={10}
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
+              {/* Email Address */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Email Address
+                  {mode === 'signup' && accountIntent === 'sms'
+                    ? smsRoleIntent === 'admin'
+                      ? 'Admin Official Email (Login ID) *'
+                      : 'Teacher Official Email (Login ID) *'
+                    : 'Email Address *'}
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -615,11 +1131,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
               </div>
 
+              {/* Password */}
               {mode !== 'reset' && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
-                      Password
+                      {mode === 'signup' ? 'Create Password (min. 6 characters) *' : 'Password *'}
                     </label>
                     {mode === 'signin' && (
                       <button
@@ -664,7 +1181,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     : mode === 'signin'
                     ? 'Sign In to Portal & AtlierCV ID'
                     : mode === 'signup'
-                    ? 'Create Unified Account'
+                    ? accountIntent === 'sms'
+                      ? smsRoleIntent === 'admin'
+                        ? 'Submit School Registration & Create Account'
+                        : 'Submit Join Request & Create Account'
+                      : 'Create Unified Account'
                     : 'Send Password Reset Email'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
