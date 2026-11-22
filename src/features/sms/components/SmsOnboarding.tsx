@@ -27,12 +27,14 @@ interface SmsOnboardingProps {
   currentUser: { uid: string; email: string | null; displayName: string | null } | null;
   onOpenAuthModal: () => void;
   onOnboardingComplete: () => void;
+  initialTab?: 'register' | 'join';
 }
 
 export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
   currentUser,
   onOpenAuthModal,
   onOnboardingComplete,
+  initialTab,
 }) => {
   const {
     activeSchool,
@@ -47,7 +49,20 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
     demoMode,
   } = useSms();
 
-  const [activeTab, setActiveTab] = useState<'register' | 'join'>('register');
+  const [activeTab, setActiveTab] = useState<'register' | 'join'>(() => {
+    if (initialTab) return initialTab;
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('pakedu_signup_sms_role');
+      if (stored === 'join' || stored === 'register') return stored;
+    }
+    return 'register';
+  });
+
+  React.useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
 
   // School Registration Form State
   const [schoolName, setSchoolName] = useState('');

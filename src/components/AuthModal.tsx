@@ -21,6 +21,7 @@ import {
   KeyRound,
   ArrowRight,
   Building,
+  GraduationCap,
 } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
 import {
@@ -40,7 +41,7 @@ interface AuthModalProps {
   initialMode?: 'signin' | 'signup';
   isMandatoryGate?: boolean;
   logoutNotice?: string | null;
-  onSignupSuccess?: (intent: 'general' | 'sms') => void;
+  onSignupSuccess?: (intent: 'general' | 'sms', smsRole?: 'admin' | 'teacher') => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -54,6 +55,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [accountIntent, setAccountIntent] = useState<'general' | 'sms'>('general');
+  const [smsRoleIntent, setSmsRoleIntent] = useState<'admin' | 'teacher'>('admin');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -128,7 +130,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         }
         onClose();
         if (onSignupSuccess) {
-          onSignupSuccess(accountIntent);
+          onSignupSuccess(accountIntent, accountIntent === 'sms' ? smsRoleIntent : undefined);
         }
         return;
       } else {
@@ -167,7 +169,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       await signInWithPopup(auth, googleProvider);
       onClose();
       if (mode === 'signup' && onSignupSuccess) {
-        onSignupSuccess(accountIntent);
+        onSignupSuccess(accountIntent, accountIntent === 'sms' ? smsRoleIntent : undefined);
       }
     } catch (err) {
       const diag = diagnoseFirebaseAuthError(
@@ -514,6 +516,84 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </p>
                       </div>
                     </div>
+
+                    {/* Step 2: Conditional Role Selection for School Management */}
+                    {accountIntent === 'sms' && (
+                      <div className="p-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 rounded-xl space-y-2 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-[11px] font-bold text-[#5b21b6] dark:text-purple-300">
+                            Select your School Role (ادارہ جاتی کردار منتخب کریں):
+                          </label>
+                          <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase tracking-wider">
+                            Step 2 of 2
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {/* Option 1: Register New School (Admin/Principal) */}
+                          <div
+                            onClick={() => setSmsRoleIntent('admin')}
+                            className={`p-2.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-2.5 text-left ${
+                              smsRoleIntent === 'admin'
+                                ? 'border-[#5b21b6] bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                                : 'border-purple-200/70 dark:border-purple-900/40 hover:border-purple-300 bg-white/60 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="smsRoleIntent"
+                              value="admin"
+                              checked={smsRoleIntent === 'admin'}
+                              onChange={() => setSmsRoleIntent('admin')}
+                              className="mt-0.5 text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <Building className="w-3.5 h-3.5 text-[#5b21b6] dark:text-purple-400 shrink-0" />
+                                <span className="text-xs font-bold leading-tight truncate">Register a New School</span>
+                              </div>
+                              <span className="block text-[11px] text-[#5b21b6] dark:text-purple-300 font-semibold mt-0.5">
+                                (I am Admin / Principal)
+                              </span>
+                              <span className="block text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                                Submit institution for Super Admin review &amp; setup
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Option 2: Join Existing School (Teacher) */}
+                          <div
+                            onClick={() => setSmsRoleIntent('teacher')}
+                            className={`p-2.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-2.5 text-left ${
+                              smsRoleIntent === 'teacher'
+                                ? 'border-[#5b21b6] bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
+                                : 'border-purple-200/70 dark:border-purple-900/40 hover:border-purple-300 bg-white/60 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name="smsRoleIntent"
+                              value="teacher"
+                              checked={smsRoleIntent === 'teacher'}
+                              onChange={() => setSmsRoleIntent('teacher')}
+                              className="mt-0.5 text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <GraduationCap className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                <span className="text-xs font-bold leading-tight truncate">Join Existing School</span>
+                              </div>
+                              <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
+                                (I am a Teacher)
+                              </span>
+                              <span className="block text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                                Apply to join with SEMIS code &amp; get class roster
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </>
               )}

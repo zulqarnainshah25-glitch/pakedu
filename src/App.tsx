@@ -251,6 +251,7 @@ function AppContent() {
   const [smsFilterClassId, setSmsFilterClassId] = useState<string | undefined>(undefined);
   const [smsAttendanceClassId, setSmsAttendanceClassId] = useState<string | undefined>(undefined);
   const [showPublicTools, setShowPublicTools] = useState(false);
+  const [smsOnboardingTab, setSmsOnboardingTab] = useState<'register' | 'join'>('register');
 
   // Focused Workspace Modes:
   // 1. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
@@ -409,8 +410,13 @@ function AppContent() {
     setAuthModalOpen(true);
   };
 
-  const handleSignupSuccess = (intent: 'general' | 'sms') => {
+  const handleSignupSuccess = (intent: 'general' | 'sms', smsRole?: 'admin' | 'teacher') => {
     if (intent === 'sms') {
+      const targetTab = smsRole === 'teacher' ? 'join' : 'register';
+      setSmsOnboardingTab(targetTab);
+      try {
+        sessionStorage.setItem('pakedu_signup_sms_role', targetTab);
+      } catch {}
       setPendingSmsRedirect(true);
       setActiveTool('sms-onboarding');
       if (typeof window !== 'undefined') {
@@ -1864,6 +1870,7 @@ function AppContent() {
                 currentUser={currentUser}
                 onOpenAuthModal={() => openAuthModal('signin')}
                 onOnboardingComplete={() => selectTool('sms-dashboard')}
+                initialTab={smsOnboardingTab}
               />
             )}
 
