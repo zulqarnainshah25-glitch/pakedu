@@ -9,11 +9,12 @@ import {
 } from '../features/sms/services/smsFirestoreService';
 import {
   determineSmartRoute,
+  hasAdminCapabilities,
   SmartRouteResult,
   ActiveToolId,
 } from '../utils/smartRouting';
 
-export { determineSmartRoute };
+export { determineSmartRoute, hasAdminCapabilities };
 export type { SmartRouteResult, ActiveToolId };
 
 export interface AuthContextType {
@@ -80,6 +81,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 2. Fetch schools for verification
       const schools = await fetchSchoolsFromFirestore().catch(() => []);
+
+      // If user has admin/principal capabilities, normalize profile to active admin
+      if (hasAdminCapabilities(user, profile, schools) && user.email?.trim().toLowerCase() !== 'owner@pakedu.com') {
+        profile.role = 'admin';
+        profile.status = 'active';
+        if (!profile.schoolId && schools.length > 0) {
+          const uEmail = (user.email || profile.email || '').trim().toLowerCase();
+          const matchedSchool = schools.find((s) => {
+            const adminUids = s.adminUids || [];
+            const primaryEmail = (s.primaryAdminEmail || '').trim().toLowerCase();
+            const schoolEmail = (s.email || '').trim().toLowerCase();
+            return (
+              adminUids.includes(user.uid) ||
+              (uEmail && primaryEmail === uEmail) ||
+              (uEmail && schoolEmail === uEmail)
+            );
+          });
+          if (matchedSchool) {
+            profile.schoolId = matchedSchool.id;
+            profile.semisCode = matchedSchool.semisCode;
+            profile.schoolName = matchedSchool.name;
+          }
+        }
+        // Persist normalized admin status so subsequent calls are instantaneous
+        saveUserProfileToFirestore(profile).catch((err) =>
+          console.warn('[AuthContext] Admin profile sync notice:', err)
+        );
+      }
 
       // 3. Calculate smart route
       const route = determineSmartRoute(user, profile, schools);

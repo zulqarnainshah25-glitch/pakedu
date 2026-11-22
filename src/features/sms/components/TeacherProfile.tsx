@@ -38,17 +38,17 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
     canAdmitStudents,
   } = useSms();
 
-  const isTeacher = userRole === 'teacher';
-  const displayName = currentUserProfile?.fullName || activeTeacher?.name || 'Teacher';
+  const isAdmin = userRole === 'admin' || userRole === 'principal';
+  const displayName = currentUserProfile?.fullName || activeTeacher?.name || (isAdmin ? 'School Administrator' : 'Teacher');
   const fatherName = currentUserProfile?.fatherName || activeTeacher?.fatherName || '';
-  const designation = currentUserProfile?.designation || activeTeacher?.designation || 'Teacher';
+  const designation = currentUserProfile?.designation || activeTeacher?.designation || (isAdmin ? 'Principal / Headmaster' : 'Teacher');
   const email = currentUserProfile?.email || activeTeacher?.email || '';
   const phone = currentUserProfile?.phone || activeTeacher?.phone || '0300-1122334';
   const cnic = currentUserProfile?.cnic || activeTeacher?.cnic || '41303-1234567-1';
   const joiningDate = currentUserProfile?.joiningDate || activeTeacher?.joiningDate || '2023-08-15';
   const schoolName = activeSchool?.name || currentUserProfile?.schoolName || 'Govt. Secondary School';
   const semisCode = activeSchool?.semisCode || currentUserProfile?.semisCode || '403020101';
-  const assignedClassesList = filteredClassesForUser || [];
+  const assignedClassesList = isAdmin ? (classes || []) : (filteredClassesForUser || []);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -67,12 +67,14 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Teacher Profile &amp; Teaching Portfolio (پروفائل)
+                  {isAdmin
+                    ? 'School Admin & Institutional Profile (اسکول و انتظامی پروفائل)'
+                    : 'Teacher Profile & Teaching Portfolio (پروفائل)'}
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
-                  Verified Faculty
+                  {isAdmin ? 'Verified Administrator' : 'Verified Faculty'}
                 </span>
-                {canAdmitStudents && (
+                {!isAdmin && canAdmitStudents && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
                     <Award className="w-3 h-3 text-amber-600" />
                     Admission Incharge
@@ -80,7 +82,9 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Institutional credentials and allocated teaching responsibilities
+                {isAdmin
+                  ? 'Official institutional credentials, administrative authority, and school registration details'
+                  : 'Institutional credentials and allocated teaching responsibilities'}
               </p>
             </div>
           </div>
@@ -92,7 +96,7 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-2xl shadow-xs shrink-0">
-              {displayName ? displayName.charAt(0).toUpperCase() : 'T'}
+              {displayName ? displayName.charAt(0).toUpperCase() : (isAdmin ? 'A' : 'T')}
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-2">
@@ -122,7 +126,21 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
         </div>
 
         {/* Institutional Authority Badge */}
-        {canAdmitStudents ? (
+        {isAdmin ? (
+          <div className="p-3.5 bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800/80 rounded-xl text-xs flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-bold text-indigo-950 dark:text-indigo-200">
+                School Principal / Head Administrator (پرنسپل / ہیڈ ماسٹر)
+              </div>
+              <div className="text-[11px] text-indigo-800/90 dark:text-indigo-300/80 mt-0.5">
+                Full institutional administrative control over faculty approvals, SIS student admissions, class section management, and official school records.
+              </div>
+            </div>
+          </div>
+        ) : canAdmitStudents ? (
           <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 rounded-xl text-xs flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300 flex items-center justify-center shrink-0">
               <Award className="w-5 h-5" />
@@ -177,7 +195,11 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
           <div>
             <span className="text-[11px] text-slate-400 block">Institutional Role</span>
             <span className="font-semibold text-indigo-600 dark:text-indigo-400 block">
-              {canAdmitStudents ? 'Admission Incharge' : 'Class Teacher'}
+              {isAdmin
+                ? 'Head Administrator'
+                : canAdmitStudents
+                ? 'Admission Incharge'
+                : 'Class Teacher'}
             </span>
           </div>
         </div>
@@ -189,11 +211,15 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
           <div className="flex items-center gap-2">
             <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <h2 className="text-sm font-bold text-slate-900 dark:text-white">
-              My Assigned Classes &amp; Incharge Registers ({assignedClassesList.length})
+              {isAdmin
+                ? `School Class Sections & Registers (${assignedClassesList.length})`
+                : `My Assigned Classes & Incharge Registers (${assignedClassesList.length})`}
             </h2>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Class sections where you are officially designated as the Class Teacher or Subject Incharge.
+            {isAdmin
+              ? 'Institutional class sections registered under this school administration.'
+              : 'Class sections where you are officially designated as the Class Teacher or Subject Incharge.'}
           </p>
         </div>
 

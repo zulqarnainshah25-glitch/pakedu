@@ -21,6 +21,7 @@ export interface UserProfile {
   joiningDate?: string;
   isSuperAdmin?: boolean;
   isAdmissionIncharge?: boolean;
+  primaryAdminType?: PrimaryAdminType;
 }
 
 export interface SchoolRegistrationRequest {

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { motion } from 'motion/react';
 import {
@@ -55,6 +55,7 @@ import {
 } from './utils/authAndSso';
 import { SmsProvider, useSms } from './features/sms/context/SmsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { hasAdminCapabilities } from './utils/smartRouting';
 import { ClassesManagement } from './features/sms/components/ClassesManagement';
 import { SmsDashboard } from './features/sms/components/SmsDashboard';
 import { StudentDirectory } from './features/sms/components/StudentDirectory';
@@ -223,6 +224,7 @@ function AppContent() {
     setDemoMode,
     pendingJoinRequests,
     activeSchool,
+    registeredSchools,
     isSuperAdmin,
     isImpersonating,
     exitImpersonation,
@@ -263,21 +265,41 @@ function AppContent() {
   // 1. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
   // 2. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
   // 3. Demo Mode: All tools visible for evaluation & sandbox testing
+  const isAdminUser = useMemo(() => {
+    return hasAdminCapabilities(currentUser, currentUserProfile, registeredSchools);
+  }, [currentUser, currentUserProfile, registeredSchools]);
+
+  // Focused Workspace Modes:
+  // 1. Affiliated User: Real Auth mode, verified with active status & schoolId, or admin/super-admin privileges
   const isAffiliatedUser =
     !demoMode &&
-    currentUserProfile?.status === 'active' &&
-    Boolean(currentUserProfile?.schoolId);
+    (isSuperAdmin ||
+      isImpersonating ||
+      isAdminUser ||
+      (currentUserProfile?.status === 'active' && Boolean(currentUserProfile?.schoolId)));
 
   const isUnaffiliatedUser =
     !demoMode &&
-    (!currentUser || currentUserProfile?.status !== 'active' || !currentUserProfile?.schoolId);
+    !isSuperAdmin &&
+    !isImpersonating &&
+    !isAdminUser &&
+    currentUser?.email?.toLowerCase().trim() !== 'owner@pakedu.com' &&
+    (!currentUser ||
+      currentUserProfile?.status !== 'active' ||
+      !currentUserProfile?.schoolId);
 
   // When an affiliated user enters the portal, ensure they land on the focused SMS dashboard unless they toggle public tools
   useEffect(() => {
-    if (isAffiliatedUser && !showPublicTools && !activeTool.startsWith('sms-')) {
+    if (
+      isAffiliatedUser &&
+      !showPublicTools &&
+      !activeTool.startsWith('sms-') &&
+      !isImpersonating &&
+      activeTool !== 'super-admin'
+    ) {
       setActiveTool('sms-dashboard');
     }
-  }, [isAffiliatedUser, showPublicTools, activeTool]);
+  }, [isAffiliatedUser, showPublicTools, activeTool, isImpersonating]);
 
   // When an unaffiliated user attempts to access an SMS internal sub-tool, guide them to the onboarding screen
   useEffect(() => {
@@ -346,9 +368,22 @@ function AppContent() {
   }, [performUnifiedLogout]);
 
   // Automatic Smart Login Routing System & Session Persistence
+  const hasInitialRoutedRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!authLoading && currentUser && smartRoute) {
       setLogoutNotice(null);
+
+      // Super Admin Impersonation: do not override active tool
+      if (isImpersonating) {
+        return;
+      }
+
+      // Check if initial routing for this user session has already occurred
+      if (hasInitialRoutedRef.current === currentUser.uid) {
+        return;
+      }
+      hasInitialRoutedRef.current = currentUser.uid;
 
       // Condition A: Super Admin
       if (smartRoute.targetTool === 'super-admin') {
@@ -386,8 +421,10 @@ function AppContent() {
       // Condition C, D, or E: Route directly to smartRoute.targetTool
       setUserRole(smartRoute.role);
       setActiveTool(smartRoute.targetTool);
+    } else if (!currentUser) {
+      hasInitialRoutedRef.current = null;
     }
-  }, [authLoading, currentUser, smartRoute, setUserRole]);
+  }, [authLoading, currentUser, smartRoute, isImpersonating, setUserRole]);
 
   const handleDemoSessionSuccess = (session: DemoUserSession) => {
     setDemoSession(session);
@@ -465,12 +502,23 @@ function AppContent() {
         return;
       }
       if (tool === 'super-admin') {
-        if (currentUser.email !== 'owner@pakedu.com' && userRole !== 'super-admin') {
+        const canSuperAdmin =
+          currentUser.email?.toLowerCase().trim() === 'owner@pakedu.com' ||
+          userRole === 'super-admin' ||
+          Boolean(currentUserProfile?.isSuperAdmin);
+        if (!canSuperAdmin) {
           setActiveTool('sms-onboarding');
           return;
         }
       } else if (tool !== 'sms-onboarding') {
-        if (!currentUserProfile || currentUserProfile.status !== 'active') {
+        const canAccessSms =
+          isSuperAdmin ||
+          isImpersonating ||
+          isAdminUser ||
+          currentUser.email?.toLowerCase().trim() === 'owner@pakedu.com' ||
+          currentUserProfile?.status === 'active';
+
+        if (!canAccessSms) {
           setActiveTool('sms-onboarding');
           setMobileMenuOpen(false);
           if (typeof window !== 'undefined') {

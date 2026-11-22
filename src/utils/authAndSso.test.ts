@@ -23,7 +23,7 @@ import {
   UNIFIED_FIREBASE_PROJECT_ID,
 } from './authAndSso';
 import { calculateSindhSalary2026 } from '../data/salaryScale2026';
-import { determineSmartRoute } from './smartRouting';
+import { determineSmartRoute, hasAdminCapabilities } from './smartRouting';
 import { School, UserProfile } from '../features/sms/types';
 import {
   getClassesForSection,
@@ -696,7 +696,61 @@ function runAllUnitTests() {
     assert.equal(generalUserWithoutProfile.targetTool, 'dashboard');
     assert.equal(generalUserWithoutProfile.role, 'teacher');
 
-    console.log('✅ PASS: Automatic Smart Login Routing System Tests (All 4 Account Types + Pending)');
+    // Case F: User with Admin / Principal capabilities (Waleed Shah, Principal role, Designation)
+    // 1. Waleed Shah specifically must route to School Admin Dashboard
+    const waleedShahUser = { email: 'waleedshah1@gmail.com', uid: 'uid_waleed_shah' };
+    const waleedShahProfile: UserProfile = {
+      uid: 'uid_waleed_shah',
+      email: 'waleedshah1@gmail.com',
+      fullName: 'Waleed Shah',
+      role: 'principal',
+      designation: 'Principal',
+      status: 'active',
+      assignedClassIds: [],
+    };
+    assert.equal(hasAdminCapabilities(waleedShahUser, waleedShahProfile, schoolDirectory), true);
+
+    const waleedShahRoute = determineSmartRoute(waleedShahUser, waleedShahProfile, schoolDirectory);
+    assert.equal(waleedShahRoute.targetTool, 'sms-dashboard');
+    assert.equal(waleedShahRoute.role, 'admin');
+
+    // 2. Generic Principal with designation 'Headmaster' or role 'principal'
+    const principalProfile: UserProfile = {
+      uid: 'uid_principal_2',
+      email: 'headmaster@school.edu.pk',
+      fullName: 'Ghulam Rasool',
+      role: 'principal',
+      designation: 'Headmaster (BPS-18)',
+      status: 'active',
+      assignedClassIds: [],
+    };
+    assert.equal(hasAdminCapabilities(null, principalProfile, schoolDirectory), true);
+    const principalRoute = determineSmartRoute({ email: principalProfile.email, uid: principalProfile.uid }, principalProfile, schoolDirectory);
+    assert.equal(principalRoute.targetTool, 'sms-dashboard');
+    assert.equal(principalRoute.role, 'admin');
+
+    // 3. User affiliated as school administrator in school.adminUids
+    const schoolAdminUser = { email: 'inst.admin@district.gov.pk', uid: 'uid_inst_admin' };
+    const schoolWithAdmin: School = {
+      ...mockActiveSchool,
+      adminUids: ['uid_inst_admin'],
+    };
+    assert.equal(hasAdminCapabilities(schoolAdminUser, null, [schoolWithAdmin]), true);
+    const instAdminRoute = determineSmartRoute(schoolAdminUser, null, [schoolWithAdmin]);
+    assert.equal(instAdminRoute.targetTool, 'sms-dashboard');
+    assert.equal(instAdminRoute.role, 'admin');
+
+    // 4. Regular teacher must NOT have admin capabilities
+    assert.equal(hasAdminCapabilities({ email: 'teacher@school.edu' }, {
+      uid: 't_1',
+      email: 'teacher@school.edu',
+      fullName: 'Regular Teacher',
+      role: 'teacher',
+      status: 'active',
+      assignedClassIds: [],
+    }, schoolDirectory), false);
+
+    console.log('✅ PASS: Automatic Smart Login Routing System Tests (All 4 Account Types + Pending + Admin Capabilities)');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
