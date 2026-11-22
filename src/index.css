@@ -42,6 +42,13 @@ body.dark-mode {
 }
 
 @layer base {
+  html {
+    max-width: 100vw;
+    width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
+  }
+
   body {
     font-family: 'Inter', 'Poppins', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     background-color: var(--bg);
@@ -49,13 +56,36 @@ body.dark-mode {
     line-height: 1.6;
     transition: background-color 0.25s ease, color 0.25s ease;
     -webkit-font-smoothing: antialiased;
+    max-width: 100vw;
+    width: 100%;
+    overflow-x: hidden;
+    position: relative;
+    box-sizing: border-box;
   }
 
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  /* Prevent code blocks & pre tags from widening parent containers */
   code,
   pre,
   .font-mono {
     font-family: 'JetBrains Mono', monospace;
     font-variant-numeric: tabular-nums;
+    word-break: break-word;
+  }
+
+  /* Responsive media defaults */
+  img, svg, video, canvas {
+    max-width: 100%;
+    height: auto;
   }
 }
 

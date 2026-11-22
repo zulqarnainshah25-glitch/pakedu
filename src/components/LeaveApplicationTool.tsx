@@ -441,7 +441,8 @@ export const LeaveApplicationTool: React.FC = () => {
           <h2 className="text-xs font-bold uppercase tracking-wider bg-[#00563B] text-white px-3 py-1.5 rounded-t">
             1. Employee &amp; Institution Particulars
           </h2>
-          <table className="w-full border-collapse border border-slate-300 text-xs">
+          <div className="overflow-x-auto w-full">
+            <table className="w-full border-collapse border border-slate-300 text-xs">
             <tbody>
               <tr className="border-b border-slate-300">
                 <td className="py-2 px-3 bg-slate-50 font-semibold text-slate-600 w-1/6 border-r border-slate-300">
@@ -515,6 +516,7 @@ export const LeaveApplicationTool: React.FC = () => {
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
 
         {/* Section 2: Checklist of All 38 Leave Types ([☑] Selected, [☐] Others) */}
@@ -555,34 +557,36 @@ export const LeaveApplicationTool: React.FC = () => {
           <h2 className="text-xs font-bold uppercase tracking-wider bg-[#00563B] text-white px-3 py-1.5 rounded-t">
             3. Applied Leave Period &amp; Previous Leave Balance Record
           </h2>
-          <table className="w-full border-collapse border border-slate-300 text-xs text-center">
-            <thead>
-              <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-semibold">
-                <th className="py-2 px-2 border-r border-slate-300">From Date</th>
-                <th className="py-2 px-2 border-r border-slate-300">To Date</th>
-                <th className="py-2 px-2 border-r border-slate-300">Applied Total Days</th>
-                <th className="py-2 px-2 border-r border-slate-300">Total Leave Allowed</th>
-                <th className="py-2 px-2 border-r border-slate-300">Already Availed</th>
-                <th className="py-2 px-2 border-r border-slate-300">Previous Balance</th>
-                <th className="py-2 px-2">Remaining Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="font-mono tabular-nums font-bold text-slate-900">
-                <td className="py-2.5 px-2 border-r border-slate-300">{fromDate}</td>
-                <td className="py-2.5 px-2 border-r border-slate-300">{toDate}</td>
-                <td className="py-2.5 px-2 border-r border-slate-300 bg-emerald-50 text-[#00563B] text-sm">
-                  {totalLeaveDays} Day{totalLeaveDays === 1 ? '' : 's'}
-                </td>
-                <td className="py-2.5 px-2 border-r border-slate-300">{totalAllowed} Days</td>
-                <td className="py-2.5 px-2 border-r border-slate-300">{alreadyAvailed} Days</td>
-                <td className="py-2.5 px-2 border-r border-slate-300 text-blue-800">
-                  {leaveBalance} Days
-                </td>
-                <td className="py-2.5 px-2 text-[#00563B]">{remainingAfterCurrent} Days</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="overflow-x-auto w-full">
+            <table className="w-full border-collapse border border-slate-300 text-xs text-center">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300 text-slate-700 font-semibold">
+                  <th className="py-2 px-2 border-r border-slate-300">From Date</th>
+                  <th className="py-2 px-2 border-r border-slate-300">To Date</th>
+                  <th className="py-2 px-2 border-r border-slate-300">Applied Total Days</th>
+                  <th className="py-2 px-2 border-r border-slate-300">Total Leave Allowed</th>
+                  <th className="py-2 px-2 border-r border-slate-300">Already Availed</th>
+                  <th className="py-2 px-2 border-r border-slate-300">Previous Balance</th>
+                  <th className="py-2 px-2">Remaining Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="font-mono tabular-nums font-bold text-slate-900">
+                  <td className="py-2.5 px-2 border-r border-slate-300">{fromDate}</td>
+                  <td className="py-2.5 px-2 border-r border-slate-300">{toDate}</td>
+                  <td className="py-2.5 px-2 border-r border-slate-300 bg-emerald-50 text-[#00563B] text-sm">
+                    {totalLeaveDays} Day{totalLeaveDays === 1 ? '' : 's'}
+                  </td>
+                  <td className="py-2.5 px-2 border-r border-slate-300">{totalAllowed} Days</td>
+                  <td className="py-2.5 px-2 border-r border-slate-300">{alreadyAvailed} Days</td>
+                  <td className="py-2.5 px-2 border-r border-slate-300 text-blue-800">
+                    {leaveBalance} Days
+                  </td>
+                  <td className="py-2.5 px-2 text-[#00563B]">{remainingAfterCurrent} Days</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {/* Section 4: Solemn Affirmation Box */}

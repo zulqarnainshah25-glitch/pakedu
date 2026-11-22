@@ -247,7 +247,8 @@ export const SalaryCalculatorTool: React.FC = () => {
                 BPS-{String(selectedBps).padStart(2, '0')} · Stage {selectedStage}
               </span>
             </div>
-            <table className="w-full text-left border-collapse text-xs sm:text-sm">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
                   <th className="py-2.5 px-4 font-semibold">Head of Account / Allowance</th>
@@ -367,6 +368,7 @@ export const SalaryCalculatorTool: React.FC = () => {
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Deductions & Net Increase Breakdown (1 column wide) */}
@@ -377,7 +379,8 @@ export const SalaryCalculatorTool: React.FC = () => {
                   Part II: Monthly Deductions
                 </h3>
               </div>
-              <table className="w-full text-left border-collapse text-xs sm:text-sm">
+              <div className="overflow-x-auto w-full">
+                <table className="w-full text-left border-collapse text-xs sm:text-sm">
                 <tbody className="divide-y divide-slate-200">
                   <tr>
                     <td className="py-2.5 px-4 text-slate-700">GP Fund Subscription</td>
@@ -416,6 +419,7 @@ export const SalaryCalculatorTool: React.FC = () => {
                   </tr>
                 </tbody>
               </table>
+              </div>
             </div>
 
             {/* 2026 Monthly Net Increase Breakdown Card */}

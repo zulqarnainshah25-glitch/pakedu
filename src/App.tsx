@@ -409,6 +409,19 @@ function AppContent() {
     setAuthModalOpen(true);
   };
 
+  const handleSignupSuccess = (intent: 'general' | 'sms') => {
+    if (intent === 'sms') {
+      setPendingSmsRedirect(true);
+      setActiveTool('sms-onboarding');
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    } else {
+      setPendingSmsRedirect(false);
+      setActiveTool('dashboard');
+    }
+  };
+
   const selectTool = (tool: ActiveToolId) => {
     // SMS & Super Admin Access Protection:
     if (!demoMode && (tool.startsWith('sms-') || tool === 'super-admin')) {
@@ -478,6 +491,7 @@ function AppContent() {
         logoutNotice={logoutNotice}
         onClose={() => {}}
         onDemoSessionSuccess={handleDemoSessionSuccess}
+        onSignupSuccess={handleSignupSuccess}
         initialMode={authModalMode}
       />
     );
@@ -493,7 +507,7 @@ function AppContent() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col lg:flex-row transition-colors ${
+      className={`min-h-screen flex flex-col lg:flex-row transition-colors w-full max-w-full overflow-x-hidden ${
         darkMode ? 'bg-[#0b0f19] text-[#f8fafc]' : 'bg-[#f8fafc] text-[#0f172a]'
       }`}
     >
@@ -505,6 +519,7 @@ function AppContent() {
         isOpen={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         onDemoSessionSuccess={handleDemoSessionSuccess}
+        onSignupSuccess={handleSignupSuccess}
         initialMode={authModalMode}
       />
 
@@ -656,55 +671,31 @@ function AppContent() {
 
             {/* ======================================================= */}
             {/* SECTION: SCHOOL MANAGEMENT SYSTEM (SMS)                */}
+            {/* Strictly visible ONLY to verified Admins/Teachers     */}
+            {/* or when Demo Mode is explicitly ON, or Super Admin    */}
             {/* ======================================================= */}
-            <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
-              <span>{isAffiliatedUser ? 'School Operations' : 'School Management (SMS)'}</span>
-              {demoMode ? (
-                <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider ${
-                  userRole === 'admin'
-                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                }`}>
-                  {userRole === 'admin' ? '👑 Admin (Demo)' : '🧑‍🏫 Teacher (Demo)'}
-                </span>
-              ) : isAffiliatedUser ? (
-                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  Verified
-                </span>
-              ) : (
-                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
-                  Public
-                </span>
-              )}
-            </div>
-
-            {/* If UNAFFILIATED: ONLY render "Join / Register School" */}
-            {isUnaffiliatedUser ? (
-              <button
-                type="button"
-                onClick={() => selectTool('sms-onboarding')}
-                className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                  activeTool === 'sms-onboarding'
-                    ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
-                }`}
-              >
-                <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-indigo-400' : 'text-slate-500'}`} />
-                <div className="truncate flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="block truncate font-medium text-slate-200">Join / Register School</span>
-                    <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
-                      Setup
-                    </span>
-                  </div>
-                  <span className="text-[11px] block truncate text-slate-500">
-                    Connect as Admin or Teacher
-                  </span>
-                </div>
-              </button>
-            ) : (
-              /* If AFFILIATED or DEMO MODE: render full SMS tools suite */
+            {(isAffiliatedUser || demoMode || isSuperAdmin) && (
               <>
+                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
+                  <span>{isAffiliatedUser ? 'School Operations' : 'School Management (SMS)'}</span>
+                  {demoMode ? (
+                    <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider ${
+                      userRole === 'admin'
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                    }`}>
+                      {userRole === 'admin' ? '👑 Admin (Demo)' : '🧑‍🏫 Teacher (Demo)'}
+                    </span>
+                  ) : isAffiliatedUser ? (
+                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      Verified
+                    </span>
+                  ) : (
+                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                      Super Admin
+                    </span>
+                  )}
+                </div>
                 {/* SMS Command Center */}
                 <button
                   type="button"
@@ -857,8 +848,8 @@ function AppContent() {
                   </div>
                 </button>
 
-                {/* School Onboarding / Switch School (in Demo Mode) */}
-                {demoMode && (
+                {/* School Onboarding / Switch School */}
+                {(demoMode || isAffiliatedUser) && (
                   <button
                     type="button"
                     onClick={() => selectTool('sms-onboarding')}
@@ -870,7 +861,7 @@ function AppContent() {
                   >
                     <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-indigo-400' : 'text-slate-500'}`} />
                     <div className="truncate flex-1">
-                      <span className="block truncate">Join / Register School</span>
+                      <span className="block truncate">{isAffiliatedUser ? 'Switch / Add School' : 'Join / Register School'}</span>
                       <span className="text-[11px] block truncate text-slate-500">
                         Affiliation &amp; Verification
                       </span>
@@ -1089,7 +1080,7 @@ function AppContent() {
       {/* =================================================================== */}
       {/* MAIN WORKSPACE VIEWPORT                                             */}
       {/* =================================================================== */}
-      <div className="app-main-wrapper flex-1 flex flex-col min-w-0">
+      <div className="app-main-wrapper flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden">
         {/* Impersonation Mode Banner */}
         {isImpersonating && (
           <div className="no-print bg-amber-400 text-slate-950 px-4 sm:px-6 py-2.5 text-xs font-semibold flex items-center justify-between shadow-xs">
@@ -1113,37 +1104,37 @@ function AppContent() {
         )}
 
         {/* Top Navbar */}
-        <header className="app-topbar allforu-glass no-print px-4 sm:px-6 py-3 flex items-center justify-between gap-3 sticky top-0 z-20">
-          <div className="flex items-center gap-3 shrink-0">
+        <header className="app-topbar allforu-glass no-print px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3 sticky top-0 z-20 w-full max-w-full">
+          <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 rounded-lg cursor-pointer"
+              className="lg:hidden p-1.5 -ml-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 rounded-lg cursor-pointer shrink-0"
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
             </button>
 
             {/* Breadcrumb Navigation */}
-            <div className="flex items-center gap-2 text-xs sm:text-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm min-w-0 truncate">
               <button
                 type="button"
                 onClick={() => selectTool(isAffiliatedUser && !showPublicTools ? 'sms-dashboard' : 'dashboard')}
-                className="font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer"
+                className="font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
               >
                 PakEdu
               </button>
-              <span className="text-slate-400">/</span>
-              <span className="font-semibold text-slate-900 dark:text-white">
+              <span className="text-slate-400 shrink-0">/</span>
+              <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[200px]">
                 {currentToolMeta.title}
               </span>
             </div>
 
             {/* If Affiliated: Show Connected School Badge in Header */}
             {isAffiliatedUser && (
-              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs">
+              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs shrink-0">
                 <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[200px]" title={activeSchool?.name || currentUserProfile?.schoolName}>
+                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px]" title={activeSchool?.name || currentUserProfile?.schoolName}>
                   {activeSchool?.name || currentUserProfile?.schoolName || 'Govt. High School'}
                 </span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-200/70 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300">
@@ -1327,14 +1318,14 @@ function AppContent() {
           </nav>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
             {/* Quick RBAC Role Switcher: DEMO ONLY vs LIVE AUTH */}
             {demoMode ? (
-              <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 p-1 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800 shadow-2xs">
+              <div className="flex items-center gap-0.5 sm:gap-1 bg-amber-50 dark:bg-amber-950/40 p-1 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800 shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setDemoMode(false)}
-                  className="px-2 py-0.5 rounded-lg text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition cursor-pointer"
+                  className="px-1.5 sm:px-2 py-0.5 rounded-lg text-[9px] sm:text-[10px] font-bold text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/60 transition cursor-pointer"
                   title="Click to disable Demo Mode and enable Real Firebase Authentication"
                 >
                   🧪 Demo ON
@@ -1343,7 +1334,7 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => setUserRole('admin')}
-                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[10px] ${
+                  className={`px-1.5 sm:px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[9px] sm:text-[10px] ${
                     userRole === 'admin'
                       ? 'bg-indigo-600 text-white shadow-xs font-bold'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1355,7 +1346,7 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => setUserRole('teacher')}
-                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[10px] ${
+                  className={`px-1.5 sm:px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[9px] sm:text-[10px] ${
                     userRole === 'teacher'
                       ? 'bg-emerald-600 text-white shadow-xs font-bold'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1364,14 +1355,14 @@ function AppContent() {
                 >
                   <span>🧑‍🏫 Teacher</span>
                 </button>
-                <div className="w-[1px] h-3 bg-amber-200 dark:bg-amber-800" />
+                <div className="hidden sm:block w-[1px] h-3 bg-amber-200 dark:bg-amber-800" />
                 <button
                   type="button"
                   onClick={() => {
                     setUserRole('super-admin');
                     selectTool('super-admin');
                   }}
-                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[10px] ${
+                  className={`hidden sm:flex px-2 py-0.5 rounded-lg transition-all cursor-pointer items-center gap-1 text-[10px] ${
                     userRole === 'super-admin'
                       ? 'bg-rose-600 text-white shadow-xs font-bold'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1417,7 +1408,7 @@ function AppContent() {
             <button
               type="button"
               onClick={toggleDarkMode}
-              className="p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               aria-label="Toggle Dark Mode"
               title="Toggle Light / Dark Theme"
             >
@@ -1440,7 +1431,7 @@ function AppContent() {
             <button
               type="button"
               onClick={triggerPrintDocument}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-full transition-colors whitespace-nowrap cursor-pointer shadow-xs"
+              className="hidden xs:inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-full transition-colors whitespace-nowrap cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Print / PDF</span>
@@ -1449,7 +1440,7 @@ function AppContent() {
         </header>
 
         {/* Main Content Container */}
-        <main className="app-content-container flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <main className="app-content-container flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 min-w-0 overflow-x-hidden">
           {/* Animated Updates Ticker */}
           <div className="no-print flex items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs overflow-hidden">
             <div className="bg-slate-900 dark:bg-slate-800 text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 z-10">

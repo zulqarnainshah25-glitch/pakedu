@@ -810,7 +810,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               </span>
             </div>
 
-            <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-72 overflow-y-auto overflow-x-auto border border-slate-200 rounded-lg w-full">
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="bg-slate-100 sticky top-0 border-b border-slate-200 text-slate-700">
                   <tr>

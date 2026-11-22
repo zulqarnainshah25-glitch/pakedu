@@ -118,13 +118,13 @@ const SMS_JOIN_REQUESTS_STORAGE_KEY = 'pakedu_sms_join_requests_v1';
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
 export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Demo Mode: allows instant testing without requiring Firebase login
+  // Demo Mode: Strictly OFF by default in production; only enabled if explicitly saved as 'true'
   const [demoMode, setDemoModeState] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY);
-      return saved !== null ? saved === 'true' : true; // Default true for development preview
+      return saved === 'true'; // Strictly false unless explicitly toggled ON by user
     } catch {
-      return true;
+      return false;
     }
   });
 
@@ -201,12 +201,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const isSuperAdmin = useMemo(() => {
     return (
-      userRole === 'super-admin' ||
+      (demoMode && userRole === 'super-admin') ||
       currentUserProfile?.role === 'super-admin' ||
       currentUserProfile?.email === 'owner@pakedu.com' ||
       Boolean(currentUserProfile?.isSuperAdmin)
     );
-  }, [userRole, currentUserProfile]);
+  }, [demoMode, userRole, currentUserProfile]);
 
   const toggleSchoolStatus = (schoolId: string, reason?: string) => {
     setRegisteredSchools((prev) =>
@@ -674,7 +674,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (currentUserProfile && currentUserProfile.status === 'active') {
       return currentUserProfile.role;
     }
-    return userRole;
+    // Default unprivileged role when not affiliated with an active school in live mode
+    return 'teacher';
   }, [demoMode, userRole, currentUserProfile]);
 
   // Filtered classes by role: Admins see all classes; Teachers only see assigned classes

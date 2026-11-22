@@ -629,7 +629,8 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 Part I: Qualifying Service &amp; Pension Formula Breakdown
               </h3>
             </div>
-            <table className="w-full text-left border-collapse text-xs">
+            <div className="overflow-x-auto w-full">
+              <table className="w-full text-left border-collapse text-xs">
               <tbody className="divide-y divide-slate-200">
                 <tr>
                   <td className="py-2.5 px-4 text-slate-600">Current Spell Duration</td>
@@ -704,6 +705,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 </tr>
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Part II: Time Scale Higher Grade Tracker */}

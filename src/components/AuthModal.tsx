@@ -20,6 +20,7 @@ import {
   ExternalLink,
   KeyRound,
   ArrowRight,
+  Building,
 } from 'lucide-react';
 import { auth, googleProvider } from '../firebase';
 import {
@@ -39,6 +40,7 @@ interface AuthModalProps {
   initialMode?: 'signin' | 'signup';
   isMandatoryGate?: boolean;
   logoutNotice?: string | null;
+  onSignupSuccess?: (intent: 'general' | 'sms') => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
@@ -48,8 +50,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   initialMode = 'signin',
   isMandatoryGate = false,
   logoutNotice = null,
+  onSignupSuccess,
 }) => {
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
+  const [accountIntent, setAccountIntent] = useState<'general' | 'sms'>('general');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -122,6 +126,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             displayName: validation.sanitizedDisplayName,
           });
         }
+        onClose();
+        if (onSignupSuccess) {
+          onSignupSuccess(accountIntent);
+        }
+        return;
       } else {
         await signInWithEmailAndPassword(auth, validation.sanitizedEmail, password);
       }
@@ -157,6 +166,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       await signInWithPopup(auth, googleProvider);
       onClose();
+      if (mode === 'signup' && onSignupSuccess) {
+        onSignupSuccess(accountIntent);
+      }
     } catch (err) {
       const diag = diagnoseFirebaseAuthError(
         err,
@@ -194,6 +206,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       createdAt: new Date().toISOString(),
     });
     onClose();
+    if (mode === 'signup' && onSignupSuccess) {
+      onSignupSuccess(accountIntent);
+    }
   };
 
   return (
@@ -417,22 +432,90 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             {/* Email / Password Form */}
             <form onSubmit={handleEmailAuth} className="space-y-3.5 mt-3">
               {mode === 'signup' && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Full Name (Teacher / Officer Name)
-                  </label>
-                  <div className="relative">
-                    <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      placeholder="e.g., Muhammad Farooq (PST / JEST)"
-                      className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
-                      required
-                    />
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Full Name (Teacher / Officer Name)
+                    </label>
+                    <div className="relative">
+                      <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        placeholder="e.g., Muhammad Farooq (PST / JEST)"
+                        className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                        required
+                      />
+                    </div>
                   </div>
-                </div>
+
+                  {/* Clear Choice: General User vs School Management (Admin/Teacher) */}
+                  <div className="space-y-1.5 pt-1">
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      Are you signing up as a General User or for School Management?
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {/* Option 1: General User (AI Tools Only) */}
+                      <div
+                        onClick={() => setAccountIntent('general')}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left ${
+                          accountIntent === 'general'
+                            ? 'border-[#5b21b6] bg-purple-50/70 dark:bg-purple-950/40 text-slate-900 dark:text-white shadow-xs'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1 rounded-md ${accountIntent === 'general' ? 'bg-[#5b21b6] text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                              <Sparkles className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-xs font-bold leading-tight">General User</span>
+                          </div>
+                          <input
+                            type="radio"
+                            name="accountIntent"
+                            checked={accountIntent === 'general'}
+                            onChange={() => setAccountIntent('general')}
+                            className="text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-[11px] mt-1.5 text-slate-500 dark:text-slate-400 leading-snug">
+                          AI Tools only (Lesson Plans, Papers, Salary &amp; Service Book, CV Studio)
+                        </p>
+                      </div>
+
+                      {/* Option 2: School Management (Admin/Teacher) */}
+                      <div
+                        onClick={() => setAccountIntent('sms')}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left ${
+                          accountIntent === 'sms'
+                            ? 'border-[#5b21b6] bg-purple-50/70 dark:bg-purple-950/40 text-slate-900 dark:text-white shadow-xs'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1 rounded-md ${accountIntent === 'sms' ? 'bg-[#5b21b6] text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                              <Building className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-xs font-bold leading-tight">School Management</span>
+                          </div>
+                          <input
+                            type="radio"
+                            name="accountIntent"
+                            checked={accountIntent === 'sms'}
+                            onChange={() => setAccountIntent('sms')}
+                            className="text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-[11px] mt-1.5 text-slate-500 dark:text-slate-400 leading-snug">
+                          Admin / Teacher (Register or Join School, SIS, Classes, Attendance)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
 
               <div>
