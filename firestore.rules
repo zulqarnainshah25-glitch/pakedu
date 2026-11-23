@@ -110,6 +110,27 @@ service cloud.firestore {
         data.records is map;
     }
 
+    function isValidFeeStructure(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'classId', 'grade', 'monthlyTuitionFee']) &&
+        data.keys().hasOnly(['id', 'schoolId', 'classId', 'grade', 'monthlyTuitionFee', 'admissionFee', 'examFee', 'customCharges', 'academicYear', 'updatedAt']) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.classId is string && isValidId(data.classId) &&
+        data.monthlyTuitionFee is number;
+    }
+
+    function isValidFeePayment(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'studentId', 'month', 'netAmount', 'paidAmount', 'status']) &&
+        data.keys().hasOnly(['id', 'schoolId', 'studentId', 'studentName', 'grNumber', 'classId', 'grade', 'section', 'month', 'monthLabel', 'academicYear', 'baseAmount', 'customChargesAmount', 'discount', 'netAmount', 'paidAmount', 'status', 'paymentDate', 'paymentMethod', 'receiptNumber', 'notes', 'recordedByUid', 'recordedByName', 'createdAt', 'updatedAt']) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.studentId is string && isValidId(data.studentId) &&
+        data.month is string &&
+        data.netAmount is number &&
+        data.paidAmount is number &&
+        (data.status == 'paid' || data.status == 'unpaid' || data.status == 'partial');
+    }
+
     // =========================================================================
     // Validation Blueprint for SyllabusLessonPlan
     // =========================================================================
@@ -282,6 +303,25 @@ service cloud.firestore {
 
         // School Admin and Super Admin can review/update/delete
         allow update, delete: if isSchoolAdmin(schoolId) && isValidId(id);
+      }
+
+      // --- Subcollection: Fee Structures (/schools/{schoolId}/feeStructures/{classId}) ---
+      match /feeStructures/{classId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isSchoolAdmin(schoolId) && isValidId(classId) && isValidFeeStructure(incoming());
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Fee Payments (/schools/{schoolId}/feePayments/{paymentId}) ---
+      match /feePayments/{paymentId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isValidId(paymentId) && isValidFeePayment(incoming()) && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('isAdmissionIncharge', false) == true
+          )
+        );
+        allow delete: if isSchoolAdmin(schoolId);
       }
     }
 

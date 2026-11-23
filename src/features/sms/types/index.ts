@@ -156,3 +156,57 @@ export interface DailyClassAttendance {
     percentage: number;
   };
 }
+
+// =============================================================================
+// Fee Management (Financials)
+// =============================================================================
+export interface CustomFeeCharge {
+  id: string;
+  title: string;
+  amount: number;
+}
+
+export interface ClassFeeStructure {
+  id: string;                 // typically matching classId
+  schoolId: string;
+  classId: string;
+  grade: string;              // e.g. "Class 9"
+  monthlyTuitionFee: number;
+  admissionFee: number;
+  examFee: number;
+  customCharges: CustomFeeCharge[];
+  academicYear: string;
+  updatedAt?: any;
+}
+
+export type PaymentStatus = 'paid' | 'unpaid' | 'partial';
+export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'EasyPaisa' | 'JazzCash' | 'Cheque';
+
+export interface FeePayment {
+  id: string;
+  schoolId: string;
+  studentId: string;
+  studentName: string;
+  grNumber: string;
+  classId: string;
+  grade: string;
+  section?: string;
+  month: string;              // e.g. "2026-11" (YYYY-MM format for sorting & uniqueness)
+  monthLabel: string;         // e.g. "November 2026"
+  academicYear: string;
+  baseAmount: number;
+  customChargesAmount: number;
+  discount: number;           // Concession / Scholarship
+  netAmount: number;
+  paidAmount: number;
+  status: PaymentStatus;
+  paymentDate?: string;
+  paymentMethod?: PaymentMethod;
+  receiptNumber?: string;     // e.g. "RCPT-2026-001"
+  notes?: string;
+  recordedByUid?: string;
+  recordedByName?: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+

@@ -12,6 +12,8 @@ import {
   SchoolRegistrationRequest,
   SchoolStatus,
   PrimaryAdminType,
+  ClassFeeStructure,
+  FeePayment,
 } from '../types';
 import {
   INITIAL_MOCK_SCHOOL,
@@ -22,6 +24,8 @@ import {
   INITIAL_MOCK_ATTENDANCE,
   INITIAL_MOCK_JOIN_REQUESTS,
   INITIAL_MOCK_SCHOOL_REG_REQUESTS,
+  INITIAL_MOCK_FEE_STRUCTURES,
+  INITIAL_MOCK_FEE_PAYMENTS,
 } from '../data/mockSmsData';
 import {
   FirestoreSyncError,
@@ -42,6 +46,11 @@ import {
   fetchSchoolRegistrationRequestsFromFirestore,
   saveTeacherToFirestore,
   fetchTeachersFromFirestore,
+  saveFeeStructureToFirestore,
+  fetchFeeStructuresFromFirestore,
+  deleteFeeStructureFromFirestore,
+  saveFeePaymentToFirestore,
+  fetchFeePaymentsFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -178,6 +187,17 @@ interface SmsContextType {
   getAttendance: (date: string, classId: string) => DailyClassAttendance | undefined;
   todayAttendanceStats: TodayAttendanceStats;
 
+  // Fee Management (Financials)
+  feeStructures: ClassFeeStructure[];
+  feePayments: FeePayment[];
+  saveClassFeeStructure: (structure: Omit<ClassFeeStructure, 'schoolId'>) => Promise<boolean>;
+  deleteClassFeeStructure: (classId: string) => Promise<boolean>;
+  recordFeePayment: (payment: Omit<FeePayment, 'schoolId'>) => Promise<boolean>;
+  getFeeStructureForClass: (classId: string) => ClassFeeStructure | undefined;
+  getStudentFeeStatus: (studentId: string, month: string) => FeePayment | undefined;
+  canManageFeeStructure: boolean;
+  canCollectFee: boolean;
+
   // Stats
   stats: {
     totalStudents: number;
@@ -197,6 +217,8 @@ const SMS_SCHOOLS_STORAGE_KEY = 'pakedu_sms_registered_schools_v1';
 const SMS_JOIN_REQUESTS_STORAGE_KEY = 'pakedu_sms_join_requests_v1';
 const SMS_SCHOOL_REG_REQUESTS_STORAGE_KEY = 'pakedu_sms_school_reg_requests_v1';
 const SMS_TEACHERS_STORAGE_KEY = 'pakedu_sms_teachers_v1';
+const SMS_FEE_STRUCTURES_STORAGE_KEY = 'pakedu_sms_fee_structures_v1';
+const SMS_FEE_PAYMENTS_STORAGE_KEY = 'pakedu_sms_fee_payments_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -556,6 +578,42 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [feeStructures, setFeeStructures] = useState<ClassFeeStructure[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_FEE_STRUCTURES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_FEE_STRUCTURES;
+          return parsed.filter((f: ClassFeeStructure) => !f.id.startsWith('cls_9') && !f.id.startsWith('cls_10'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_FEE_STRUCTURES : [];
+    } catch (e) {
+      console.warn('Failed to parse saved fee structures:', e);
+      return [];
+    }
+  });
+
+  const [feePayments, setFeePayments] = useState<FeePayment[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_FEE_PAYMENTS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_FEE_PAYMENTS;
+          return parsed.filter((p: FeePayment) => !p.id.startsWith('pay_00'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_FEE_PAYMENTS : [];
+    } catch (e) {
+      console.warn('Failed to parse saved fee payments:', e);
+      return [];
+    }
+  });
+
   const setDemoMode = (enabled: boolean) => {
     if (!import.meta.env.DEV) {
       setDemoModeState(false);
@@ -579,6 +637,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAttendanceRegisters(INITIAL_MOCK_ATTENDANCE);
       setJoinRequests(INITIAL_MOCK_JOIN_REQUESTS);
       setSchoolRegistrationRequests(INITIAL_MOCK_SCHOOL_REG_REQUESTS);
+      setFeeStructures(INITIAL_MOCK_FEE_STRUCTURES);
+      setFeePayments(INITIAL_MOCK_FEE_PAYMENTS);
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -607,6 +667,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsedTeachers: TeacherInfo[] = savedTeachers ? JSON.parse(savedTeachers) : [];
         setTeachers(parsedTeachers.filter((t) => !t.id.startsWith('t_00')));
 
+        const savedFees = localStorage.getItem(SMS_FEE_STRUCTURES_STORAGE_KEY);
+        const parsedFees = savedFees ? JSON.parse(savedFees) : [];
+        setFeeStructures(parsedFees.filter((f: ClassFeeStructure) => !f.id.startsWith('cls_9') && !f.id.startsWith('cls_10')));
+
+        const savedPayments = localStorage.getItem(SMS_FEE_PAYMENTS_STORAGE_KEY);
+        const parsedPayments = savedPayments ? JSON.parse(savedPayments) : [];
+        setFeePayments(parsedPayments.filter((p: FeePayment) => !p.id.startsWith('pay_00')));
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -616,6 +684,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTeachers([]);
         setJoinRequests([]);
         setSchoolRegistrationRequests([]);
+        setFeeStructures([]);
+        setFeePayments([]);
         setAttendanceRegisters({});
       }
     }
@@ -656,6 +726,30 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ignore storage errors
     }
   }, [attendanceRegisters]);
+
+  // Save fee structures to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMS_FEE_STRUCTURES_STORAGE_KEY,
+        JSON.stringify(feeStructures)
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [feeStructures]);
+
+  // Save fee payments to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMS_FEE_PAYMENTS_STORAGE_KEY,
+        JSON.stringify(feePayments)
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [feePayments]);
 
   const setUserRole = (role: UserRole) => {
     setUserRoleState(role);
@@ -747,6 +841,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Join requests fetch error:', err));
+
+    // 6. Sync fee structures for active school
+    fetchFeeStructuresFromFirestore(activeSchool.id)
+      .then((remoteStructures) => {
+        if (remoteStructures && remoteStructures.length > 0) {
+          setFeeStructures(remoteStructures);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Fee structures fetch error:', err));
+
+    // 7. Sync fee payments for active school
+    fetchFeePaymentsFromFirestore(activeSchool.id)
+      .then((remotePayments) => {
+        if (remotePayments && remotePayments.length > 0) {
+          setFeePayments(remotePayments);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Fee payments fetch error:', err));
   }, [demoMode, activeSchool.id]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
@@ -1515,6 +1627,89 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   }, [effectiveRole, teachers, currentUserProfile]);
 
+  // Fee Management Methods & Permissions
+  const saveClassFeeStructure = async (
+    structure: Omit<ClassFeeStructure, 'schoolId'>
+  ): Promise<boolean> => {
+    const fullStructure: ClassFeeStructure = {
+      ...structure,
+      schoolId: activeSchool.id || 'default_school',
+      updatedAt: new Date().toISOString(),
+    };
+
+    setFeeStructures((prev) => {
+      const index = prev.findIndex((f) => f.classId === structure.classId);
+      if (index >= 0) {
+        const copy = [...prev];
+        copy[index] = fullStructure;
+        return copy;
+      }
+      return [...prev, fullStructure];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveFeeStructure', () =>
+        saveFeeStructureToFirestore(activeSchool.id, fullStructure)
+      );
+    }
+    return true;
+  };
+
+  const deleteClassFeeStructure = async (classId: string): Promise<boolean> => {
+    setFeeStructures((prev) => prev.filter((f) => f.classId !== classId && f.id !== classId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync('deleteFeeStructure', () =>
+        deleteFeeStructureFromFirestore(activeSchool.id, classId)
+      );
+    }
+    return true;
+  };
+
+  const recordFeePayment = async (
+    payment: Omit<FeePayment, 'schoolId'>
+  ): Promise<boolean> => {
+    const fullPayment: FeePayment = {
+      ...payment,
+      schoolId: activeSchool.id || 'default_school',
+      updatedAt: new Date().toISOString(),
+    };
+
+    setFeePayments((prev) => {
+      const index = prev.findIndex(
+        (p) => p.id === payment.id || (p.studentId === payment.studentId && p.month === payment.month)
+      );
+      if (index >= 0) {
+        const copy = [...prev];
+        copy[index] = fullPayment;
+        return copy;
+      }
+      return [fullPayment, ...prev];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveFeePayment', () =>
+        saveFeePaymentToFirestore(activeSchool.id, fullPayment)
+      );
+    }
+    return true;
+  };
+
+  const getFeeStructureForClass = (classId: string): ClassFeeStructure | undefined => {
+    return feeStructures.find((f) => f.classId === classId);
+  };
+
+  const getStudentFeeStatus = (studentId: string, month: string): FeePayment | undefined => {
+    return feePayments.find((p) => p.studentId === studentId && p.month === month);
+  };
+
+  const canManageFeeStructure = useMemo(() => {
+    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
+  }, [effectiveRole, isSuperAdmin]);
+
+  const canCollectFee = useMemo(() => {
+    return canManageFeeStructure || canAdmitStudents;
+  }, [canManageFeeStructure, canAdmitStudents]);
+
   return (
     <SmsContext.Provider
       value={{
@@ -1562,6 +1757,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateTeacherProfile,
         toggleAdmissionIncharge,
         canAdmitStudents,
+        feeStructures,
+        feePayments,
+        saveClassFeeStructure,
+        deleteClassFeeStructure,
+        recordFeePayment,
+        getFeeStructureForClass,
+        getStudentFeeStatus,
+        canManageFeeStructure,
+        canCollectFee,
         attendanceRegisters,
         saveAttendance,
         getAttendance,

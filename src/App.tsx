@@ -32,6 +32,7 @@ import {
   CalendarCheck2,
   Building,
   ShieldAlert,
+  Receipt,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { LessonPlanTool } from './components/LessonPlanTool';
@@ -64,6 +65,7 @@ import { SmsOnboarding } from './features/sms/components/SmsOnboarding';
 import { TeacherManagement } from './features/sms/components/TeacherManagement';
 import { TeacherProfile } from './features/sms/components/TeacherProfile';
 import { SuperAdminDashboard } from './features/sms/components/SuperAdminDashboard';
+import { FeeManagement } from './features/sms/components/FeeManagement';
 
 export type ActiveToolId =
   | 'dashboard'
@@ -74,6 +76,7 @@ export type ActiveToolId =
   | 'sms-onboarding'
   | 'sms-staff'
   | 'sms-profile'
+  | 'sms-fees'
   | 'super-admin'
   | 'lesson-plan'
   | 'salary-calculator'
@@ -156,6 +159,14 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     iconBg: 'bg-emerald-50 dark:bg-emerald-950/60',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
   },
+  'sms-fees': {
+    title: 'Fee Management & Accounts',
+    subtitle: 'Dynamic class fee structures, monthly fee collection, printable vouchers, and defaulters',
+    badge: 'Accounts · Phase 5',
+    icon: <Receipt className="w-5 h-5" />,
+    iconBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
   'super-admin': {
     title: 'Portal Super Admin Console',
     subtitle: 'Centralized Platform Fleet Oversight · Multi-Tenant School Directory & Governance',
@@ -228,6 +239,7 @@ function AppContent() {
     isSuperAdmin,
     isImpersonating,
     exitImpersonation,
+    canCollectFee,
   } = useSms();
   const {
     currentUser,
@@ -912,6 +924,36 @@ function AppContent() {
                   </button>
                 )}
 
+                {/* Fee Management (Admin & Admission Incharge) */}
+                {canCollectFee && (
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-fees')}
+                    className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                      activeTool === 'sms-fees'
+                        ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                    }`}
+                  >
+                    <Receipt className={`w-4 h-4 shrink-0 ${activeTool === 'sms-fees' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <div className="truncate flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="block truncate">Fee Management</span>
+                        <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
+                          userRole === 'admin'
+                            ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        }`}>
+                          {userRole === 'admin' ? 'Accounts' : 'Incharge'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] block truncate text-slate-500">
+                        Structure, Vouchers &amp; Defaulters
+                      </span>
+                    </div>
+                  </button>
+                )}
+
                 {/* Teacher Profile & Portfolio / My Profile */}
                 <button
                   type="button"
@@ -1318,6 +1360,19 @@ function AppContent() {
                     }`}
                   >
                     Faculty
+                  </button>
+                )}
+                {canCollectFee && (
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-fees')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'sms-fees'
+                        ? 'bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold'
+                        : 'hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Fees &amp; Accounts
                   </button>
                 )}
                 <button
@@ -1958,6 +2013,11 @@ function AppContent() {
                   selectTool('sms-students');
                 }}
               />
+            )}
+
+            {/* Fee Management & Financials Module */}
+            {activeTool === 'sms-fees' && (
+              <FeeManagement onBack={() => selectTool('sms-dashboard')} />
             )}
 
             {/* SUPER ADMIN CONSOLE VIEW */}

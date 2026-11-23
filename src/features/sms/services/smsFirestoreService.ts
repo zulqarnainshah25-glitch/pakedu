@@ -17,6 +17,8 @@ import {
   TeacherJoinRequest,
   SchoolRegistrationRequest,
   TeacherInfo,
+  ClassFeeStructure,
+  FeePayment,
 } from '../types';
 
 /**
@@ -446,5 +448,111 @@ export async function fetchTeachersFromFirestore(
     return teachers;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchTeachers', `schools/${schoolId}/teachers`);
+  }
+}
+
+// 9. Fee Structures Management (schools/{schoolId}/feeStructures/{classId})
+export async function saveFeeStructureToFirestore(
+  schoolId: string,
+  feeStructure: ClassFeeStructure
+): Promise<boolean> {
+  if (!schoolId || !feeStructure.classId) {
+    throw new FirestoreSyncError('School ID and Class ID are required', 'invalid-argument', 'saveFeeStructure');
+  }
+  try {
+    const docId = feeStructure.id || feeStructure.classId;
+    const ref = doc(db, 'schools', schoolId, 'feeStructures', docId);
+    await setDoc(
+      ref,
+      {
+        ...feeStructure,
+        id: docId,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveFeeStructure', `schools/${schoolId}/feeStructures/${feeStructure.classId}`);
+  }
+}
+
+export async function fetchFeeStructuresFromFirestore(
+  schoolId: string
+): Promise<ClassFeeStructure[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'feeStructures');
+    const snapshot = await getDocs(col);
+    const feeStructures: ClassFeeStructure[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        feeStructures.push(normalizeTimestamps(d.data() as ClassFeeStructure));
+      }
+    });
+    return feeStructures;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchFeeStructures', `schools/${schoolId}/feeStructures`);
+  }
+}
+
+export async function deleteFeeStructureFromFirestore(
+  schoolId: string,
+  classId: string
+): Promise<boolean> {
+  if (!schoolId || !classId) {
+    throw new FirestoreSyncError('School ID and Class ID are required', 'invalid-argument', 'deleteFeeStructure');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'feeStructures', classId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteFeeStructure', `schools/${schoolId}/feeStructures/${classId}`);
+  }
+}
+
+// 10. Fee Payments Management (schools/{schoolId}/feePayments/{paymentId})
+export async function saveFeePaymentToFirestore(
+  schoolId: string,
+  payment: FeePayment
+): Promise<boolean> {
+  if (!schoolId || !payment.id) {
+    throw new FirestoreSyncError('School ID and Payment ID are required', 'invalid-argument', 'saveFeePayment');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'feePayments', payment.id);
+    await setDoc(
+      ref,
+      {
+        ...payment,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveFeePayment', `schools/${schoolId}/feePayments/${payment.id}`);
+  }
+}
+
+export async function fetchFeePaymentsFromFirestore(
+  schoolId: string
+): Promise<FeePayment[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'feePayments');
+    const snapshot = await getDocs(col);
+    const payments: FeePayment[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        payments.push(normalizeTimestamps(d.data() as FeePayment));
+      }
+    });
+    return payments;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchFeePayments', `schools/${schoolId}/feePayments`);
   }
 }
