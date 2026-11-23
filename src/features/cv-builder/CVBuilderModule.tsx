@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { User } from 'firebase/auth';
+import { auth } from '../../firebase';
 import {
   ensureUserProfile,
   fetchUserCVs,
@@ -338,9 +339,14 @@ export const CVBuilderModule: React.FC<CVBuilderModuleProps> = ({
     const timeoutId = window.setTimeout(() => controller.abort(), 8000);
 
     try {
+      const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : '';
       const response = await fetch('/api/build-cv', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
         body: JSON.stringify({ cv: formOnlyCV }),
         signal: controller.signal
       });

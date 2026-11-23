@@ -159,7 +159,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
     );
 
     setSuccessToast(
-      `School registration for "${schoolName}" submitted! Application forwarded to Super Admin (owner@pakedu.com) for verification.`
+      `School registration for "${schoolName}" submitted! Application forwarded to Portal Super Admin for verification.`
     );
   };
 
@@ -273,7 +273,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
                   School Registration Under Review
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Your registration application for <strong className="text-slate-800 dark:text-slate-200">{currentUserProfile?.schoolName}</strong> has been submitted to the Portal Super Admin (<span className="font-mono text-indigo-600 dark:text-indigo-400">owner@pakedu.com</span>). Once reviewed and approved, your School Administrator role and command center will activate automatically.
+                  Your registration application for <strong className="text-slate-800 dark:text-slate-200">{currentUserProfile?.schoolName}</strong> has been submitted to the Portal Super Admin. Once reviewed and approved, your School Administrator role and command center will activate automatically.
                 </p>
               </div>
             </div>
@@ -499,7 +499,7 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
                   </span>
                 </div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                  Register a new school establishment. Application goes to Super Admin (owner@pakedu.com) for review &amp; clearance.
+                  Register a new school establishment. Application goes to Portal Super Admin for review &amp; clearance.
                 </p>
               </div>
             </div>

@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { AlertCircle, RefreshCw, X, WifiOff } from 'lucide-react';
 import {
   UserRole,
   School,
@@ -23,6 +24,7 @@ import {
   INITIAL_MOCK_SCHOOL_REG_REQUESTS,
 } from '../data/mockSmsData';
 import {
+  FirestoreSyncError,
   saveSchoolToFirestore,
   fetchSchoolsFromFirestore,
   saveUserProfileToFirestore,
@@ -42,6 +44,14 @@ import {
   fetchTeachersFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
+
+export interface SyncErrorInfo {
+  id: string;
+  message: string;
+  reason: string;
+  operation: string;
+  retry: () => Promise<void>;
+}
 
 export const EMPTY_DEFAULT_SCHOOL: School = {
   id: '',
@@ -71,6 +81,12 @@ export interface TodayAttendanceStats {
 }
 
 interface SmsContextType {
+  // Cloud Sync & Resilience Status
+  syncError: SyncErrorInfo | null;
+  clearSyncError: () => void;
+  isPendingSync: boolean;
+  isOnline: boolean;
+
   // Roles & Persona
   userRole: UserRole;
   setUserRole: (role: UserRole) => void;
@@ -185,11 +201,17 @@ const SMS_TEACHERS_STORAGE_KEY = 'pakedu_sms_teachers_v1';
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
 export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Demo Mode: Strictly OFF by default in production; only enabled if explicitly saved as 'true'
+  // Demo Mode: Strictly disabled in production builds (gated behind import.meta.env.DEV)
   const [demoMode, setDemoModeState] = useState<boolean>(() => {
+    if (!import.meta.env.DEV) {
+      try {
+        localStorage.removeItem(SMS_DEMO_MODE_STORAGE_KEY);
+      } catch {}
+      return false;
+    }
     try {
       const saved = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY);
-      return saved === 'true'; // Strictly false unless explicitly toggled ON by user
+      return saved === 'true'; // Strictly false unless explicitly toggled ON in development
     } catch {
       return false;
     }
@@ -279,25 +301,88 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [impersonationOriginalRole, setImpersonationOriginalRole] = useState<UserRole | null>(null);
 
   const isSuperAdmin = useMemo(() => {
-    if (currentUserProfile?.email === 'owner@pakedu.com' || Boolean(currentUserProfile?.isSuperAdmin)) {
+    return Boolean(currentUserProfile?.isSuperAdmin) || currentUserProfile?.role === 'super-admin';
+  }, [currentUserProfile]);
+
+  // Cloud Sync Resilience & Error Diagnostics State
+  const [syncError, setSyncError] = useState<SyncErrorInfo | null>(null);
+  const [isPendingSync, setIsPendingSync] = useState(false);
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    return typeof navigator !== 'undefined' ? navigator.onLine : true;
+  });
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setIsPendingSync(false);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  const clearSyncError = () => setSyncError(null);
+
+  const performSync = async (operation: string, syncFn: () => Promise<any>): Promise<boolean> => {
+    if (demoMode) return true;
+    try {
+      await syncFn();
+      setSyncError(null);
+      setIsPendingSync(false);
       return true;
+    } catch (err: any) {
+      console.error(`[SmsContext] Sync error during ${operation}:`, err);
+      const isOfflineError =
+        err?.isOffline ||
+        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        err?.code === 'unavailable' ||
+        err?.code === 'offline';
+
+      if (isOfflineError) {
+        setIsPendingSync(true);
+      } else {
+        const errorReason =
+          err?.code === 'permission-denied'
+            ? 'Permission denied by institutional security policy'
+            : err?.message || 'Institutional cloud write failed';
+
+        setSyncError({
+          id: `${operation}_${Date.now()}`,
+          message: `Cloud sync failed: ${errorReason}. Your change is NOT saved.`,
+          reason: errorReason,
+          operation,
+          retry: async () => {
+            setSyncError(null);
+            await performSync(operation, syncFn);
+          },
+        });
+      }
+      return false;
     }
-    if (demoMode && userRole === 'super-admin') {
-      return true;
-    }
-    return false;
-  }, [demoMode, userRole, currentUserProfile]);
+  };
 
   const toggleSchoolStatus = (schoolId: string, reason?: string) => {
     setRegisteredSchools((prev) =>
       prev.map((s) => {
         if (s.id === schoolId) {
           const nextStatus: SchoolStatus = s.status === 'suspended' ? 'active' : 'suspended';
-          return {
+          const updated = {
             ...s,
             status: nextStatus,
             suspendedReason: nextStatus === 'suspended' ? reason || 'Administrative Policy Review' : undefined,
           };
+          if (!demoMode) {
+            performSync('toggleSchoolStatus', () => saveSchoolToFirestore(updated));
+          }
+          return updated;
         }
         return s;
       })
@@ -472,6 +557,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const setDemoMode = (enabled: boolean) => {
+    if (!import.meta.env.DEV) {
+      setDemoModeState(false);
+      try {
+        localStorage.removeItem(SMS_DEMO_MODE_STORAGE_KEY);
+      } catch {}
+      return;
+    }
     setDemoModeState(enabled);
     try {
       localStorage.setItem(SMS_DEMO_MODE_STORAGE_KEY, String(enabled));
@@ -721,11 +813,11 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setUserRole(registeringRole);
 
     if (!demoMode) {
-      saveSchoolToFirestore(newSchool).catch((err) =>
-        console.warn('[Firestore] Notice: School save:', err)
-      );
-      saveUserProfileToFirestore(newProfile).catch((err) =>
-        console.warn('[Firestore] Notice: Profile save:', err)
+      performSync('registerNewSchool', () =>
+        Promise.all([
+          saveSchoolToFirestore(newSchool),
+          saveUserProfileToFirestore(newProfile),
+        ])
       );
     }
 
@@ -813,14 +905,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUserProfile(pendingProfile);
 
     if (!demoMode) {
-      saveSchoolToFirestore(newSchool).catch((err) =>
-        console.warn('[Firestore] Notice: School save:', err)
-      );
-      saveSchoolRegistrationRequestToFirestore(newRequest).catch((err) =>
-        console.warn('[Firestore] Notice: School request save:', err)
-      );
-      saveUserProfileToFirestore(pendingProfile).catch((err) =>
-        console.warn('[Firestore] Notice: Profile save:', err)
+      performSync('submitSchoolRegistration', () =>
+        Promise.all([
+          saveSchoolToFirestore(newSchool),
+          saveSchoolRegistrationRequestToFirestore(newRequest),
+          saveUserProfileToFirestore(pendingProfile),
+        ])
       );
     }
 
@@ -836,7 +926,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...target,
       status: 'approved',
       reviewedAt: new Date().toISOString(),
-      reviewedBy: 'Super Admin (owner@pakedu.com)',
+      reviewedBy: 'Portal Super Admin',
     };
 
     setSchoolRegistrationRequests((prev) =>
@@ -861,30 +951,28 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!demoMode) {
-      saveSchoolRegistrationRequestToFirestore(updatedRequest).catch((err) =>
-        console.warn('[Firestore] Notice: Request update:', err)
-      );
-      const targetSchool = registeredSchools.find((s) => s.id === target.schoolId);
-      if (targetSchool) {
-        saveSchoolToFirestore({ ...targetSchool, status: 'active' }).catch((err) =>
-          console.warn('[Firestore] Notice: School activate:', err)
-        );
-      }
-      if (target.adminUid) {
-        saveUserProfileToFirestore({
-          uid: target.adminUid,
-          email: target.adminEmail,
-          fullName: target.adminName,
-          role: 'admin',
-          schoolId: target.schoolId,
-          schoolName: target.schoolName,
-          status: 'active',
-          designation: target.adminDesignation,
-          phone: target.adminPhone,
-          assignedClassIds: [],
-          createdAt: target.requestedAt,
-        }).catch((err) => console.warn('[Firestore] Notice: Admin activate:', err));
-      }
+      performSync('approveSchoolRegistration', () => {
+        const targetSchool = registeredSchools.find((s) => s.id === target.schoolId);
+        return Promise.all([
+          saveSchoolRegistrationRequestToFirestore(updatedRequest),
+          targetSchool ? saveSchoolToFirestore({ ...targetSchool, status: 'active' }) : Promise.resolve(true),
+          target.adminUid
+            ? saveUserProfileToFirestore({
+                uid: target.adminUid,
+                email: target.adminEmail,
+                fullName: target.adminName,
+                role: 'admin',
+                schoolId: target.schoolId,
+                schoolName: target.schoolName,
+                status: 'active',
+                designation: target.adminDesignation,
+                phone: target.adminPhone,
+                assignedClassIds: [],
+                createdAt: target.requestedAt,
+              })
+            : Promise.resolve(true),
+        ]);
+      });
     }
   };
 
@@ -897,7 +985,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       ...target,
       status: 'rejected',
       reviewedAt: new Date().toISOString(),
-      reviewedBy: 'Super Admin (owner@pakedu.com)',
+      reviewedBy: 'Portal Super Admin',
       rejectionReason: reason || 'Administrative Policy Review / Non-Compliant Details',
     };
 
@@ -919,8 +1007,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!demoMode) {
-      saveSchoolRegistrationRequestToFirestore(updatedRequest).catch((err) =>
-        console.warn('[Firestore] Notice: Request update:', err)
+      performSync('rejectSchoolRegistration', () =>
+        saveSchoolRegistrationRequestToFirestore(updatedRequest)
       );
     }
   };
@@ -960,11 +1048,11 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUserProfile(updatedProfile);
 
     if (!demoMode) {
-      saveJoinRequestToFirestore(requestData.schoolId, newReq).catch((err) =>
-        console.warn('[Firestore] Notice: Join request save:', err)
-      );
-      saveUserProfileToFirestore(updatedProfile).catch((err) =>
-        console.warn('[Firestore] Notice: Profile save:', err)
+      performSync('submitJoinRequest', () =>
+        Promise.all([
+          saveJoinRequestToFirestore(requestData.schoolId, newReq),
+          saveUserProfileToFirestore(updatedProfile),
+        ])
       );
     }
   };
@@ -1009,12 +1097,6 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setTeachers((prev) => [newTeacher, ...prev]);
 
-    if (!demoMode && target.schoolId) {
-      saveTeacherToFirestore(target.schoolId, newTeacher).catch((err) =>
-        console.warn('[Firestore] Notice: Teacher save:', err)
-      );
-    }
-
     // 3. Assign as class teacher if specified
     if (assignAsClassTeacherFor) {
       setClasses((prev) =>
@@ -1050,31 +1132,35 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 5. Cloud Firestore persistence
     if (!demoMode && target.schoolId) {
-      saveJoinRequestToFirestore(target.schoolId, {
-        ...target,
-        status: 'approved',
-        reviewedAt: new Date().toISOString(),
-        assignedClassIds,
-      }).catch((err) => console.warn('[Firestore] Notice: Request update:', err));
-
-      if (target.uid) {
-        saveUserProfileToFirestore({
-          uid: target.uid,
-          email: target.email,
-          fullName: target.fullName,
-          fatherName: target.fatherName,
-          role: 'teacher',
-          schoolId: target.schoolId,
-          schoolName: target.schoolName,
-          semisCode: target.semisCode,
-          status: 'active',
-          designation: target.designation,
-          phone: target.phone,
-          cnic: target.cnic,
-          assignedClassIds,
-          createdAt: new Date().toISOString(),
-        }).catch((err) => console.warn('[Firestore] Notice: Teacher profile activate:', err));
-      }
+      performSync('approveJoinRequest', () =>
+        Promise.all([
+          saveTeacherToFirestore(target.schoolId, newTeacher),
+          saveJoinRequestToFirestore(target.schoolId, {
+            ...target,
+            status: 'approved',
+            reviewedAt: new Date().toISOString(),
+            assignedClassIds,
+          }),
+          target.uid
+            ? saveUserProfileToFirestore({
+                uid: target.uid,
+                email: target.email,
+                fullName: target.fullName,
+                fatherName: target.fatherName,
+                role: 'teacher',
+                schoolId: target.schoolId,
+                schoolName: target.schoolName,
+                semisCode: target.semisCode,
+                status: 'active',
+                designation: target.designation,
+                phone: target.phone,
+                cnic: target.cnic,
+                assignedClassIds,
+                createdAt: target.requestedAt,
+              })
+            : Promise.resolve(true),
+        ])
+      );
     }
   };
 
@@ -1096,6 +1182,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ) {
       setCurrentUserProfile((prev) =>
         prev ? { ...prev, status: 'rejected' } : null
+      );
+    }
+
+    if (!demoMode && target?.schoolId) {
+      performSync('rejectJoinRequest', () =>
+        saveJoinRequestToFirestore(target.schoolId, {
+          ...target,
+          status: 'rejected',
+          reviewedAt: new Date().toISOString(),
+        })
       );
     }
   };
@@ -1139,8 +1235,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!demoMode && activeSchool.id) {
       const existing = teachers.find((t) => t.id === teacherId);
       if (existing) {
-        saveTeacherToFirestore(activeSchool.id, { ...existing, ...updates }).catch((err) =>
-          console.warn('[Firestore] Notice: Teacher profile save:', err)
+        performSync('updateTeacherProfile', () =>
+          saveTeacherToFirestore(activeSchool.id, { ...existing, ...updates })
         );
       }
     }
@@ -1164,9 +1260,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClasses((prev) => [newClass, ...prev]);
 
     if (!demoMode && activeSchool.id) {
-      saveClassToFirestore(activeSchool.id, newClass).catch((err) =>
-        console.warn('[Firestore] Notice: Class save:', err)
-      );
+      performSync('addClass', () => saveClassToFirestore(activeSchool.id, newClass));
     }
   };
 
@@ -1176,9 +1270,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (c.id === id) {
           const merged = { ...c, ...updated };
           if (!demoMode && activeSchool.id) {
-            saveClassToFirestore(activeSchool.id, merged).catch((err) =>
-              console.warn('[Firestore] Notice: Class update:', err)
-            );
+            performSync('updateClass', () => saveClassToFirestore(activeSchool.id, merged));
           }
           return merged;
         }
@@ -1190,9 +1282,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteClass = (id: string) => {
     setClasses((prev) => prev.filter((c) => c.id !== id));
     if (!demoMode && activeSchool.id) {
-      deleteClassFromFirestore(activeSchool.id, id).catch((err) =>
-        console.warn('[Firestore] Notice: Class delete:', err)
-      );
+      performSync('deleteClass', () => deleteClassFromFirestore(activeSchool.id, id));
     }
   };
 
@@ -1214,9 +1304,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (!demoMode && activeSchool.id) {
-      saveStudentToFirestore(activeSchool.id, newStudent).catch((err) =>
-        console.warn('[Firestore] Notice: Student save:', err)
-      );
+      performSync('addStudent', () => saveStudentToFirestore(activeSchool.id, newStudent));
     }
   };
 
@@ -1249,9 +1337,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!demoMode && activeSchool.id) {
-      saveStudentToFirestore(activeSchool.id, updatedStudent).catch((err) =>
-        console.warn('[Firestore] Notice: Student update:', err)
-      );
+      performSync('updateStudent', () => saveStudentToFirestore(activeSchool.id, updatedStudent));
     }
   };
 
@@ -1271,9 +1357,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (!demoMode && activeSchool.id) {
-      deleteStudentFromFirestore(activeSchool.id, id).catch((err) =>
-        console.warn('[Firestore] Notice: Student delete:', err)
-      );
+      performSync('deleteStudent', () => deleteStudentFromFirestore(activeSchool.id, id));
     }
   };
 
@@ -1285,9 +1369,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }));
 
     if (!demoMode && activeSchool.id) {
-      saveAttendanceToFirestore(activeSchool.id, attendance).catch((err) =>
-        console.warn('[Firestore] Notice: Attendance save:', err)
-      );
+      performSync('saveAttendance', () => saveAttendanceToFirestore(activeSchool.id, attendance));
     }
   };
 
@@ -1436,6 +1518,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   return (
     <SmsContext.Provider
       value={{
+        syncError,
+        clearSyncError,
+        isPendingSync,
+        isOnline,
         userRole: effectiveRole,
         setUserRole,
         demoMode,
@@ -1483,6 +1569,50 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stats,
       }}
     >
+      {/* Cloud Sync Failure Toast Banner with Retry */}
+      {syncError && (
+        <div
+          role="alert"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] max-w-2xl w-[94%] bg-red-600 text-white px-5 py-3.5 rounded-xl shadow-2xl border border-red-500/50 flex items-center justify-between gap-4 text-sm font-medium animate-in fade-in slide-in-from-top-2 duration-200"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <AlertCircle className="w-5 h-5 shrink-0 text-red-200" />
+            <div className="truncate">
+              <span className="font-bold">Cloud sync failed: </span>
+              <span className="text-red-100">{syncError.reason}. </span>
+              <span className="font-bold underline decoration-red-300">Your change is NOT saved.</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => syncError.retry()}
+              className="px-3.5 py-1.5 bg-white text-red-700 hover:bg-red-50 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Retry
+            </button>
+            <button
+              onClick={() => setSyncError(null)}
+              className="p-1 hover:bg-red-700 rounded-md transition text-red-200 hover:text-white cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Sync / Offline Indicator */}
+      {isPendingSync && !syncError && (
+        <div
+          className="fixed bottom-4 right-4 z-[9999] bg-amber-600 text-white px-4 py-2 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold border border-amber-500 animate-in fade-in"
+          title="You are offline. Changes are saved locally and will sync to the cloud automatically once reconnected."
+        >
+          <WifiOff className="w-4 h-4 text-amber-200 animate-pulse" />
+          <span>Pending sync (Offline queue active)</span>
+        </div>
+      )}
+
       {children}
     </SmsContext.Provider>
   );

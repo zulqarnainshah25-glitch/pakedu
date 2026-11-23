@@ -2,12 +2,16 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Pillar 1 & Phase 4.1: Global Safety Net (Default-Deny Catch-All)
+    // =========================================================================
+    // Global Safety Net (Default-Deny Catch-All)
+    // =========================================================================
     match /{document=**} {
       allow read, write: if false;
     }
 
-    // Phase 3: Reusable Hardened Global Helpers
+    // =========================================================================
+    // Core Identity, Validation & Role-Based Access Control (RBAC) Helpers
+    // =========================================================================
     function isValidId(id) {
       return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -28,67 +32,103 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
-    // Pillar 2: Validation Blueprint for SyllabusLessonPlan
+    function hasUserDoc() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Super Admin: Prefer custom claim request.auth.token.superAdmin == true (NOT an email check)
+    // with active user doc role 'super-admin' as fallback
+    function isSuperAdmin() {
+      return isSignedIn() && (
+        request.auth.token.get('superAdmin', false) == true ||
+        (hasUserDoc() && userDoc().get('role', '') == 'super-admin' && userDoc().get('status', '') == 'active')
+      );
+    }
+
+    // School Member: User has an active status and belongs to the specified schoolId (or super-admin)
+    function isSchoolMember(schoolId) {
+      return isSuperAdmin() || (
+        hasUserDoc() &&
+        userDoc().get('status', '') == 'active' &&
+        userDoc().get('schoolId', '') == schoolId
+      );
+    }
+
+    // School Admin: User is an active member with role 'admin' or 'principal' (or super-admin)
+    function isSchoolAdmin(schoolId) {
+      return isSuperAdmin() || (
+        isSchoolMember(schoolId) &&
+        (userDoc().get('role', '') == 'admin' || userDoc().get('role', '') == 'principal')
+      );
+    }
+
+    // Verified Faculty Author: Teacher or Admin with status 'active'
+    function canAuthorSyllabus() {
+      return isSuperAdmin() || (
+        hasUserDoc() &&
+        userDoc().get('status', '') == 'active' &&
+        (userDoc().get('role', '') in ['teacher', 'admin', 'principal'])
+      );
+    }
+
+    // =========================================================================
+    // Validation Schemas for School Management System (SMS) Documents
+    // =========================================================================
+    function isValidClassSection(data) {
+      return data.keys().hasAll(['id', 'grade', 'section', 'medium', 'academicYear']) &&
+        data.keys().hasOnly(['id', 'grade', 'section', 'medium', 'academicYear', 'classTeacherId', 'classTeacherName', 'roomNumber', 'totalStudents', 'createdAt', 'updatedAt']) &&
+        data.id is string && isValidId(data.id) &&
+        data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 50 &&
+        data.section is string && data.section.size() >= 1 && data.section.size() <= 50 &&
+        data.medium is string && (data.medium == 'English' || data.medium == 'Urdu' || data.medium == 'Sindhi') &&
+        data.academicYear is string && data.academicYear.size() >= 1 && data.academicYear.size() <= 30;
+    }
+
+    function isValidStudent(data) {
+      return data.keys().hasAll(['id', 'grNumber', 'name', 'fatherName', 'gender', 'currentClassId', 'status']) &&
+        data.keys().hasOnly(['id', 'grNumber', 'name', 'fatherName', 'gender', 'dob', 'admissionDate', 'currentClassId', 'currentGrade', 'currentSection', 'bFormOrCnic', 'guardianPhone', 'address', 'status', 'createdAt', 'updatedAt']) &&
+        data.id is string && isValidId(data.id) &&
+        data.grNumber is string && data.grNumber.size() >= 1 && data.grNumber.size() <= 50 &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.fatherName is string && data.fatherName.size() >= 1 && data.fatherName.size() <= 120 &&
+        data.gender is string && (data.gender == 'Male' || data.gender == 'Female' || data.gender == 'Other') &&
+        data.currentClassId is string && isValidId(data.currentClassId) &&
+        data.status is string && (data.status == 'Active' || data.status == 'Struck Off' || data.status == 'SLC Issued' || data.status == 'Passed Out');
+    }
+
+    function isValidAttendance(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'classId', 'date', 'records']) &&
+        data.keys().hasOnly(['id', 'schoolId', 'classId', 'date', 'records', 'conductedBy', 'conductedByUid', 'markedAt', 'notes', 'updatedAt']) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.classId is string && isValidId(data.classId) &&
+        data.date is string && data.date.size() >= 8 && data.date.size() <= 20 &&
+        data.records is map;
+    }
+
+    // =========================================================================
+    // Validation Blueprint for SyllabusLessonPlan
+    // =========================================================================
     function isValidSyllabusLessonPlan(data) {
       return data.keys().hasAll([
-        'board',
-        'section',
-        'className',
-        'subject',
-        'chapter',
-        'topic',
-        'duration',
-        'planType',
-        'slos',
-        'previousKnowledge',
-        'teachingAids',
-        'introduction',
-        'procedure',
-        'teacherActivities',
-        'studentActivities',
-        'assessment',
-        'homework',
-        'vocabulary',
-        'lifeSkills',
-        'teacherReflection',
-        'questions',
-        'exercise',
-        'worksheetPrompt',
-        'bloomAssessment',
-        'visibility',
-        'authorId',
-        'createdAt',
-        'updatedAt'
+        'board', 'section', 'className', 'subject', 'chapter', 'topic', 'duration',
+        'planType', 'slos', 'previousKnowledge', 'teachingAids', 'introduction',
+        'procedure', 'teacherActivities', 'studentActivities', 'assessment',
+        'homework', 'vocabulary', 'lifeSkills', 'teacherReflection', 'questions',
+        'exercise', 'worksheetPrompt', 'bloomAssessment', 'visibility', 'authorId',
+        'createdAt', 'updatedAt'
       ]) &&
       data.keys().hasOnly([
-        'board',
-        'section',
-        'className',
-        'subject',
-        'chapter',
-        'topic',
-        'duration',
-        'planType',
-        'slos',
-        'previousKnowledge',
-        'teachingAids',
-        'introduction',
-        'procedure',
-        'teacherActivities',
-        'studentActivities',
-        'assessment',
-        'homework',
-        'vocabulary',
-        'lifeSkills',
-        'teacherReflection',
-        'questions',
-        'exercise',
-        'worksheetPrompt',
-        'bloomAssessment',
-        'visibility',
-        'authorId',
-        'createdAt',
-        'updatedAt'
+        'board', 'section', 'className', 'subject', 'chapter', 'topic', 'duration',
+        'planType', 'slos', 'previousKnowledge', 'teachingAids', 'introduction',
+        'procedure', 'teacherActivities', 'studentActivities', 'assessment',
+        'homework', 'vocabulary', 'lifeSkills', 'teacherReflection', 'questions',
+        'exercise', 'worksheetPrompt', 'bloomAssessment', 'visibility', 'authorId',
+        'createdAt', 'updatedAt'
       ]) &&
       data.board is string && data.board.size() >= 1 && data.board.size() <= 50 &&
       (data.board == 'Sindh STBB' || data.board == 'Punjab PTB') &&
@@ -117,96 +157,234 @@ service cloud.firestore {
       data.exercise is string && data.exercise.size() >= 1 && data.exercise.size() <= 4000 &&
       data.worksheetPrompt is string && data.worksheetPrompt.size() >= 1 && data.worksheetPrompt.size() <= 4000 &&
       data.bloomAssessment is string && data.bloomAssessment.size() >= 1 && data.bloomAssessment.size() <= 4000 &&
-      data.visibility is string && data.visibility.size() >= 1 && data.visibility.size() <= 20 &&
-      data.visibility == 'public' &&
-      data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
-      data.authorId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.visibility is string && data.visibility == 'public' &&
+      data.authorId is string && isValidId(data.authorId) &&
       data.authorId == request.auth.uid &&
       data.createdAt is timestamp &&
       data.updatedAt is timestamp;
     }
 
-    // Collection: /syllabus_data/{lessonId}
-    match /syllabus_data/{lessonId} {
-      // Single-document read: validate ID and enforce public visibility
-      allow get: if isValidId(lessonId) && existing().visibility == 'public';
+    // =========================================================================
+    // 1. Users Collection (/users/{uid})
+    // =========================================================================
+    match /users/{uid} {
+      // User can read their own profile; Super Admin can read all
+      allow get: if isSuperAdmin() || (isSignedIn() && request.auth.uid == uid);
+      allow list: if isSuperAdmin();
 
-      // List query enforcer: explicitly evaluate resource.data without get()/exists()
+      // User can create own doc only with role 'teacher', status 'none' or 'pending'
+      // Never role/isSuperAdmin/status 'active' self-assigned
+      allow create: if isSuperAdmin() || (
+        isSignedIn() &&
+        request.auth.uid == uid &&
+        isValidId(uid) &&
+        incoming().get('role', '') == 'teacher' &&
+        (incoming().get('status', '') in ['none', 'pending']) &&
+        (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false)
+      );
+
+      // User can update own doc but CANNOT change role, isSuperAdmin, status -> 'active', schoolId
+      // Super Admin can read/write all
+      allow update: if isSuperAdmin() || (
+        isSignedIn() &&
+        request.auth.uid == uid &&
+        isValidId(uid) &&
+        incoming().get('role', '') == existing().get('role', '') &&
+        incoming().get('schoolId', '') == existing().get('schoolId', '') &&
+        (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == existing().get('isSuperAdmin', false)) &&
+        (
+          incoming().get('status', '') == existing().get('status', '') ||
+          (existing().get('status', '') == 'none' && incoming().get('status', '') == 'pending')
+        )
+      );
+
+      allow delete: if isSuperAdmin();
+    }
+
+    // =========================================================================
+    // 2. Schools Collection (/schools/{schoolId})
+    // =========================================================================
+    match /schools/{schoolId} {
+      // Read only for members of that school and super-admin
+      allow get, list: if isSchoolMember(schoolId) || isSuperAdmin();
+
+      // Create by Super Admin only
+      allow create: if isSuperAdmin() && isValidId(schoolId);
+
+      // Update by Super Admin only (or school admin for limited fields)
+      allow update: if isValidId(schoolId) && (
+        isSuperAdmin() || (
+          isSchoolAdmin(schoolId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'name',
+            'phone',
+            'email',
+            'address',
+            'activeAcademicYear',
+            'updatedAt'
+          ])
+        )
+      );
+
+      // No delete allowed on school records
+      allow delete: if false;
+
+      // --- Subcollection: Classes (/schools/{schoolId}/classes/{classId}) ---
+      match /classes/{classId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isSchoolAdmin(schoolId) && isValidId(classId) && isValidClassSection(incoming());
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Students (/schools/{schoolId}/students/{studentId}) ---
+      match /students/{studentId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isSchoolAdmin(schoolId) && isValidId(studentId) && isValidStudent(incoming());
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Daily Attendance (/schools/{schoolId}/attendance/{attendanceId}) ---
+      match /attendance/{attendanceId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isValidId(attendanceId) && isValidAttendance(incoming()) && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('role', '') == 'teacher' &&
+            ('assignedClassIds' in userDoc()) &&
+            incoming().classId in userDoc().assignedClassIds
+          )
+        );
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Teachers (/schools/{schoolId}/teachers/{teacherId}) ---
+      match /teachers/{teacherId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update, delete: if isSchoolAdmin(schoolId) && isValidId(teacherId);
+      }
+
+      // --- Subcollection: Join Requests (/schools/{schoolId}/joinRequests/{id}) ---
+      match /joinRequests/{id} {
+        // School Admin & Super Admin can read; user can read own request
+        allow get, list: if isSchoolAdmin(schoolId) || (
+          isSignedIn() && (
+            resource.data.get('uid', '') == request.auth.uid ||
+            resource.data.get('userId', '') == request.auth.uid
+          )
+        );
+
+        // User can create a request only for themself (userId == request.auth.uid, status 'pending')
+        allow create: if isSignedIn() &&
+          isValidId(id) &&
+          (incoming().get('uid', '') == request.auth.uid || incoming().get('userId', '') == request.auth.uid) &&
+          incoming().get('status', '') == 'pending' &&
+          incoming().get('schoolId', '') == schoolId;
+
+        // School Admin and Super Admin can review/update/delete
+        allow update, delete: if isSchoolAdmin(schoolId) && isValidId(id);
+      }
+    }
+
+    // =========================================================================
+    // 3. School Registration Requests (/schoolRegistrationRequests/{id})
+    // =========================================================================
+    match /schoolRegistrationRequests/{id} {
+      // Authenticated user can create their own request (status 'pending')
+      allow create: if isSignedIn() &&
+        isValidId(id) &&
+        (
+          incoming().get('adminUid', '') == request.auth.uid ||
+          incoming().get('uid', '') == request.auth.uid ||
+          incoming().get('userId', '') == request.auth.uid
+        ) &&
+        incoming().get('status', '') == 'pending';
+
+      // Super Admin can read all; creator can read their own request
+      allow get, list: if isSuperAdmin() || (
+        isSignedIn() && (
+          resource.data.get('adminUid', '') == request.auth.uid ||
+          resource.data.get('uid', '') == request.auth.uid ||
+          resource.data.get('userId', '') == request.auth.uid
+        )
+      );
+
+      // Only Super Admin can review/update or delete school registration requests
+      allow update, delete: if isSuperAdmin();
+    }
+
+    // =========================================================================
+    // 4. Syllabus Data Collection (/syllabus_data/{lessonId})
+    // =========================================================================
+    match /syllabus_data/{lessonId} {
+      // Single-document read & list: validate ID and enforce public visibility
+      allow get: if isValidId(lessonId) && existing().visibility == 'public';
       allow list: if existing().visibility == 'public';
 
-      // Create: require verified user, valid ID, schema blueprint, and server timestamps
+      // Create: verified user + active teacher/admin role + schema validation + server timestamps
       allow create: if isVerifiedUser() &&
+        canAuthorSyllabus() &&
         isValidId(lessonId) &&
         isValidSyllabusLessonPlan(incoming()) &&
         incoming().createdAt == request.time &&
         incoming().updatedAt == request.time;
 
-      // Update: require verified user, valid ID, schema blueprint wrapping the block, ownership, immutable fields, and action-based affectedKeys
+      // Update: verified user + active teacher/admin role + author ownership + immutability
       allow update: if isVerifiedUser() &&
+        canAuthorSyllabus() &&
         isValidId(lessonId) &&
         isValidSyllabusLessonPlan(incoming()) &&
         existing().authorId == request.auth.uid &&
         incoming().authorId == existing().authorId &&
         incoming().createdAt == existing().createdAt &&
         incoming().updatedAt == request.time &&
-        (
-          // Action: Update lesson plan content
-          incoming().diff(existing()).affectedKeys().hasOnly([
-            'duration',
-            'planType',
-            'slos',
-            'previousKnowledge',
-            'teachingAids',
-            'introduction',
-            'procedure',
-            'teacherActivities',
-            'studentActivities',
-            'assessment',
-            'homework',
-            'vocabulary',
-            'lifeSkills',
-            'teacherReflection',
-            'questions',
-            'exercise',
-            'worksheetPrompt',
-            'bloomAssessment',
-            'updatedAt'
-          ])
-        );
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'duration', 'planType', 'slos', 'previousKnowledge', 'teachingAids',
+          'introduction', 'procedure', 'teacherActivities', 'studentActivities',
+          'assessment', 'homework', 'vocabulary', 'lifeSkills', 'teacherReflection',
+          'questions', 'exercise', 'worksheetPrompt', 'bloomAssessment', 'updatedAt'
+        ]);
 
-      // Delete: only the verified author can delete their syllabus entry
-      allow delete: if isVerifiedUser() &&
+      // Delete: Super Admin or verified author with active status
+      allow delete: if isSuperAdmin() || (
+        isVerifiedUser() &&
+        canAuthorSyllabus() &&
         isValidId(lessonId) &&
-        existing().authorId == request.auth.uid;
+        existing().authorId == request.auth.uid
+      );
     }
 
     // =========================================================================
-    // Multi-Tenant School Management System (SMS) Collections
+    // 5. CV Studio & Supporting Collections (CVs, Templates, Settings, Payments)
     // =========================================================================
-    match /schools/{schoolId} {
-      // Any authenticated user can read school directory metadata
-      allow get, list: if isSignedIn();
-      // Only verified administrators can create or update school metadata
-      allow create, update: if isVerifiedUser() && isValidId(schoolId);
-      allow delete: if false;
+    match /cvs/{cvId} {
+      allow read, write: if isSuperAdmin() || (
+        isSignedIn() && isValidId(cvId) && (
+          (resource == null && incoming().userId == request.auth.uid) ||
+          (resource != null && existing().userId == request.auth.uid)
+        )
+      );
+    }
 
-      // Subcollection: /schools/{schoolId}/classes/{classId}
-      match /classes/{classId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if isVerifiedUser() && isValidId(classId);
-      }
+    match /templates/{templateId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
 
-      // Subcollection: /schools/{schoolId}/students/{studentId}
-      match /students/{studentId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if isVerifiedUser() && isValidId(studentId);
-      }
+    match /settings/{settingId} {
+      allow read: if isSignedIn();
+      allow write: if isSuperAdmin();
+    }
 
-      // Subcollection: /schools/{schoolId}/attendance/{attendanceId}
-      match /attendance/{attendanceId} {
-        allow get, list: if isSignedIn();
-        allow create, update, delete: if isVerifiedUser() && isValidId(attendanceId);
-      }
+    match /payment_requests/{id} {
+      allow create: if isSignedIn() && isValidId(id);
+      allow read: if isSuperAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow update, delete: if isSuperAdmin();
+    }
+
+    match /payment_proofs/{id} {
+      allow create: if isSignedIn() && isValidId(id);
+      allow read: if isSuperAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow update, delete: if isSuperAdmin();
     }
   }
 }

@@ -679,9 +679,9 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-slate-400 leading-relaxed">
           <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 space-y-1.5">
-            <p className="font-semibold text-slate-200">1. Root Account Email</p>
+            <p className="font-semibold text-slate-200">1. Cryptographic Claims Governance</p>
             <p>
-              The designated root email for Super Admin privileges is <code className="text-pink-400 font-bold">owner@pakedu.com</code>. Once created in Firebase Auth, logging in with this email automatically unlocks this Super Admin Command Center.
+              Super Administrator privileges are strictly governed via verified Firebase custom claims (<code className="text-pink-400 font-bold">superAdmin: true</code>) provisioned server-side using the admin CLI script. No hardcoded emails are trusted.
             </p>
           </div>
           <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800/80 space-y-1.5">

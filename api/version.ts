@@ -3,9 +3,11 @@ import {
   PORTAL_LAST_UPDATED,
   PORTAL_VERSION,
 } from '../src/utils/appVersion';
+import { setCorsAndSecurityHeaders } from './_security';
 
-export default function handler(_req: any, res: any) {
-  res.setHeader('Cache-Control', 'no-store');
+export default function handler(req: any, res: any) {
+  if (setCorsAndSecurityHeaders(req, res)) return;
+
   return res.status(200).json({
     appName: PORTAL_APP_NAME,
     version: PORTAL_VERSION,

@@ -237,9 +237,7 @@ function runAllUnitTests() {
     const parsedIncoming = parseIncomingSsoSessionFromSearch(
       '?sso_email=ZulqarnainShah25%40gmail.com&sso_name=Zulqarnain+Shah&sso_uid=uid_786'
     );
-    assert.equal(parsedIncoming?.email, 'zulqarnainshah25@gmail.com');
-    assert.equal(parsedIncoming?.displayName, 'Zulqarnain Shah');
-    assert.equal(parsedIncoming?.uid, 'uid_786');
+    assert.equal(parsedIncoming, null, 'Unauthenticated ?sso_email query param must return null');
     console.log('✅ PASS: Mandatory Login Gate & Bi-Directional Cross-Platform Logout/SSO Tests');
   }
 
@@ -514,7 +512,8 @@ function runAllUnitTests() {
     assert.equal(gitignore.includes('.env'), true, '.gitignore must protect .env files from Git commits');
     assert.equal(envExample.includes('GEMINI_API_KEY='), true);
     assert.equal(dotEnv.includes('GEMINI_API_KEY='), true);
-    assert.equal(dotEnv.includes('VITE_GEMINI_API_KEY='), true);
+    assert.equal(envExample.includes('VITE_GEMINI_API_KEY'), false, '.env.example must NOT expose client VITE_GEMINI_API_KEY');
+    assert.equal(dotEnv.includes('VITE_GEMINI_API_KEY'), false, '.env must NOT contain client VITE_GEMINI_API_KEY');
     assert.equal(
       /AIza[0-9A-Za-z_-]{20,}/.test(envExample),
       false,
@@ -559,14 +558,25 @@ function runAllUnitTests() {
 
     const schoolDirectory = [mockActiveSchool, mockSuspendedSchool];
 
-    // Case A: Super Admin Account
-    const superAdminByEmail = determineSmartRoute(
-      { email: 'owner@pakedu.com', uid: 'super_uid_1' },
+    // Case A: Super Admin Account via Verified Custom Claims
+    const superAdminByClaim = determineSmartRoute(
+      { email: 'superadmin@domain.com', uid: 'super_uid_1' },
       null,
-      schoolDirectory
+      schoolDirectory,
+      { superAdmin: true }
     );
-    assert.equal(superAdminByEmail.targetTool, 'super-admin');
-    assert.equal(superAdminByEmail.role, 'super-admin');
+    assert.equal(superAdminByClaim.targetTool, 'super-admin');
+    assert.equal(superAdminByClaim.role, 'super-admin');
+
+    // Case A2: Plain email (even owner@pakedu.com) without claims or profile must NOT get Super Admin
+    const unverifiedEmailRoute = determineSmartRoute(
+      { email: 'owner@pakedu.com', uid: 'attacker_uid' },
+      null,
+      schoolDirectory,
+      null
+    );
+    assert.equal(unverifiedEmailRoute.targetTool, 'dashboard');
+    assert.equal(unverifiedEmailRoute.role, 'teacher');
 
     const superAdminByProfile = determineSmartRoute(
       { email: 'delegate@pakedu.com', uid: 'super_uid_2' },
@@ -750,7 +760,50 @@ function runAllUnitTests() {
       assignedClassIds: [],
     }, schoolDirectory), false);
 
+    // 5. Custom claims superAdmin gives admin capabilities; plain email does not
+    assert.equal(hasAdminCapabilities({ email: 'any.super@domain.com' }, null, null, { superAdmin: true }), true);
+    assert.equal(hasAdminCapabilities({ email: 'owner@pakedu.com' }, null, null, null), false);
+
     console.log('✅ PASS: Automatic Smart Login Routing System Tests (All 4 Account Types + Pending + Admin Capabilities)');
+  }
+
+  // 14. Serverless Security & Vercel Headers Security Audit Tests
+  {
+    const vercelConfig = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), 'vercel.json'), 'utf-8')
+    );
+    assert.ok(vercelConfig.headers, 'vercel.json must define security headers');
+    const globalHeaderRule = vercelConfig.headers.find((h: any) => h.source === '/(.*)');
+    assert.ok(globalHeaderRule, 'vercel.json must have global /(.*) header rule');
+
+    const headersMap = new Map<string, string>();
+    for (const hdr of globalHeaderRule.headers) {
+      headersMap.set(hdr.key, hdr.value);
+    }
+
+    assert.equal(headersMap.get('X-Content-Type-Options'), 'nosniff');
+    assert.equal(headersMap.get('X-Frame-Options'), 'DENY');
+    assert.equal(headersMap.get('Referrer-Policy'), 'strict-origin-when-cross-origin');
+    assert.ok(headersMap.get('Permissions-Policy')?.includes('camera=()'));
+    assert.ok(headersMap.get('Content-Security-Policy')?.includes("default-src 'self'"));
+    assert.ok(headersMap.get('Content-Security-Policy')?.includes('https://apis.google.com'));
+
+    const apiHeaderRule = vercelConfig.headers.find((h: any) => h.source === '/api/(.*)');
+    assert.ok(apiHeaderRule, 'vercel.json must have /api/(.*) CORS header rule');
+    const apiHeadersMap = new Map<string, string>();
+    for (const hdr of apiHeaderRule.headers) {
+      apiHeadersMap.set(hdr.key, hdr.value);
+    }
+    assert.equal(apiHeadersMap.get('Access-Control-Allow-Origin'), 'https://pakedu.vercel.app');
+
+    // 15. Verify api/_security.ts uses zero-secret jose JWT verification without firebase-admin
+    const securityCode = fs.readFileSync(path.resolve(process.cwd(), 'api/_security.ts'), 'utf-8');
+    assert.equal(securityCode.includes('firebase-admin'), false, 'api/_security.ts must NOT use firebase-admin SDK');
+    assert.equal(securityCode.includes("from 'jose'"), true, 'api/_security.ts must import from jose');
+    assert.equal(securityCode.includes('verifyFirebaseToken'), true, 'api/_security.ts must export verifyFirebaseToken');
+    assert.equal(securityCode.includes('securetoken@system.gserviceaccount.com'), true, 'Must use Google public certificates');
+
+    console.log('✅ PASS: Serverless Security & Vercel Headers Security Audit Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

@@ -398,47 +398,23 @@ export function shouldTriggerSsoLogoutFromSearch(search: unknown): boolean {
 }
 
 /**
- * Parses incoming SSO session parameters if a user returns from AtlierCV with ?sso_email=...
+ * SECURITY (Phase 2):
+ * Unauthenticated query parameters (?sso_email=...) previously allowed establishing
+ * an unverified mock session without password or cryptographic verification.
+ * This flow is strictly disabled to prevent arbitrary identity spoofing.
+ *
+ * TODO: When AtlierCV enables cross-origin token exchanges, implement a cryptographically
+ * signed JWT or Firebase Custom Token verified server-side via /api/sso.
  */
-export function parseIncomingSsoSessionFromSearch(search: unknown): DemoUserSession | null {
-  if (typeof search !== 'string' || !search.trim()) {
-    return null;
-  }
-  if (shouldTriggerSsoLogoutFromSearch(search)) {
-    return null;
-  }
-  try {
-    const params = new URLSearchParams(search.startsWith('?') ? search : `?${search}`);
-    const rawEmail = params.get('sso_email');
-    if (!rawEmail) return null;
-
-    const cleanEmail = sanitizeTextInput(rawEmail.toLowerCase(), 120);
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(cleanEmail)) return null;
-
-    const cleanName =
-      sanitizeTextInput(params.get('sso_name') || '', 80) ||
-      cleanEmail.split('@')[0].replace(/[._-]/g, ' ') ||
-      'Sindh SELD Educator';
-    const cleanUid =
-      sanitizeTextInput(params.get('sso_uid') || '', 64) ||
-      `sso_${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
-
-    return {
-      uid: cleanUid,
-      email: cleanEmail,
-      displayName: cleanName,
-      isDemoFallback: true,
-      createdAt: new Date().toISOString(),
-    };
-  } catch {
-    return null;
-  }
+export function parseIncomingSsoSessionFromSearch(_search: unknown): DemoUserSession | null {
+  // Always return null to reject unauthenticated client-side SSO spoofing
+  return null;
 }
 
 /**
  * Enforces the Mandatory Login Gate on Portal Open.
- * Portal access is strictly blocked unless a verified Firebase user or explicit Teacher Session exists.
+ * Portal access is strictly blocked unless a verified Firebase user exists.
+ * Demo/mock sessions are strictly gated to development environments.
  */
 export function isPortalAccessAllowed(params: {
   currentUser: { uid?: string | null; email?: string | null } | null | undefined;
@@ -453,7 +429,9 @@ export function isPortalAccessAllowed(params: {
   const hasFirebaseUser = Boolean(
     params.currentUser && (params.currentUser.uid || params.currentUser.email)
   );
-  const hasDemoSession = Boolean(
+  // Demo sessions are strictly ignored in production builds
+  const isDev = typeof import.meta !== 'undefined' && Boolean(import.meta.env?.DEV);
+  const hasDemoSession = isDev && Boolean(
     params.demoSession && params.demoSession.uid && params.demoSession.email
   );
   const allowed = !isInitializing && (hasFirebaseUser || hasDemoSession);

@@ -48,28 +48,13 @@ export function getEffectiveGeminiApiKey(candidateKey?: unknown): string {
   if (typeof candidateKey === 'string' && !isPlaceholderApiKey(candidateKey)) {
     return candidateKey.trim();
   }
-  // 1. Server-side environment variables (Node.js & Vercel Functions)
+  // Server-side environment variables only (Node.js & Vercel Functions)
   const nodeKey =
     typeof process !== 'undefined' && process.env
-      ? process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || ''
+      ? process.env.GEMINI_API_KEY || ''
       : '';
   if (!isPlaceholderApiKey(nodeKey)) {
     return nodeKey.trim();
-  }
-
-  // 2. Client-side environment variables (Vite & Capacitor Android build)
-  try {
-    const viteKey =
-      typeof import.meta !== 'undefined' && import.meta.env
-        ? (import.meta.env.VITE_GEMINI_API_KEY as string) ||
-          (import.meta.env.GEMINI_API_KEY as string) ||
-          ''
-        : '';
-    if (!isPlaceholderApiKey(viteKey)) {
-      return viteKey.trim();
-    }
-  } catch {
-    // Ignore environments where import.meta is unavailable
   }
 
   return DEFAULT_GEMINI_API_KEY;
@@ -97,7 +82,7 @@ function resolveAllowedModel(raw: string | undefined, fallback: string): string 
 export function parseServerEnv(
   env: Record<string, string | undefined>
 ): ParsedServerEnv {
-  const rawApiKey = (env.GEMINI_API_KEY || env.VITE_GEMINI_API_KEY || '').trim();
+  const rawApiKey = (env.GEMINI_API_KEY || '').trim();
   const effectiveApiKey = getEffectiveGeminiApiKey(rawApiKey);
   const hasValidGeminiApiKey = !isPlaceholderApiKey(effectiveApiKey);
 

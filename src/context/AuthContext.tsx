@@ -54,26 +54,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     setCurrentUser(user);
     try {
+      // Read Firebase token claims (superAdmin custom claim)
+      const tokenResult = await user.getIdTokenResult();
+      const isSuperAdminClaim = Boolean(tokenResult.claims.superAdmin);
+
       // 1. Fetch live profile from Firestore
       let profile = await fetchUserProfileFromFirestore(user.uid);
 
       if (!profile) {
-        const isSuper = user.email?.trim().toLowerCase() === 'owner@pakedu.com';
         profile = {
           uid: user.uid,
           email: user.email || '',
-          fullName: user.displayName || (isSuper ? 'Super Admin' : 'Educator'),
-          role: isSuper ? 'super-admin' : 'teacher',
-          status: isSuper ? 'active' : 'none',
+          fullName: user.displayName || (isSuperAdminClaim ? 'Portal Super Admin' : 'Educator'),
+          role: isSuperAdminClaim ? 'super-admin' : 'teacher',
+          status: isSuperAdminClaim ? 'active' : 'none',
           assignedClassIds: [],
-          isSuperAdmin: isSuper,
+          isSuperAdmin: isSuperAdminClaim,
           createdAt: new Date().toISOString(),
         };
         // Save to Firestore so it persists
         saveUserProfileToFirestore(profile).catch((err) =>
           console.warn('[AuthContext] Default profile save notice:', err)
         );
-      } else if (user.email?.trim().toLowerCase() === 'owner@pakedu.com') {
+      } else if (isSuperAdminClaim) {
         profile.role = 'super-admin';
         profile.isSuperAdmin = true;
         profile.status = 'active';
@@ -83,7 +86,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const schools = await fetchSchoolsFromFirestore().catch(() => []);
 
       // If user has admin/principal capabilities, normalize profile to active admin
-      if (hasAdminCapabilities(user, profile, schools) && user.email?.trim().toLowerCase() !== 'owner@pakedu.com') {
+      if (
+        hasAdminCapabilities(user, profile, schools, tokenResult.claims) &&
+        !isSuperAdminClaim &&
+        profile.role !== 'super-admin'
+      ) {
         profile.role = 'admin';
         profile.status = 'active';
         if (!profile.schoolId && schools.length > 0) {
@@ -110,8 +117,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         );
       }
 
-      // 3. Calculate smart route
-      const route = determineSmartRoute(user, profile, schools);
+      // 3. Calculate smart route based on Firestore profile + verified claims
+      const route = determineSmartRoute(user, profile, schools, tokenResult.claims);
 
       setCurrentUserProfile(profile);
       setSmartRoute(route);
@@ -124,15 +131,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.warn('[AuthContext] Error in profile routing:', err);
-      const isSuper = user.email?.trim().toLowerCase() === 'owner@pakedu.com';
       const fallbackProfile: UserProfile = {
         uid: user.uid,
         email: user.email || '',
         fullName: user.displayName || 'Educator',
-        role: isSuper ? 'super-admin' : 'teacher',
-        status: isSuper ? 'active' : 'none',
+        role: 'teacher',
+        status: 'none',
         assignedClassIds: [],
-        isSuperAdmin: isSuper,
+        isSuperAdmin: false,
       };
       const fallbackRoute = determineSmartRoute(user, fallbackProfile, []);
       setCurrentUserProfile(fallbackProfile);

@@ -26,24 +26,25 @@ export interface SmartRouteResult {
 /**
  * Checks whether a given user or profile possesses administrative or principal capabilities.
  * Covers:
- * - Super Admin (owner@pakedu.com or isSuperAdmin)
+ * - Super Admin (verified custom claim superAdmin: true or profile isSuperAdmin / role)
  * - Explicit 'admin' or 'principal' roles
  * - Designation matching Principal / Headmaster / Headmistress / Administrator / Admin
  * - Primary admin types
- * - Membership in school admin lists (adminUids, primaryAdminEmail, contactEmail)
+ * - Membership in school admin lists (adminUids, primaryAdminEmail, email)
  * - Known institutional admin accounts (e.g. waleedshah1@gmail.com)
  */
 export function hasAdminCapabilities(
   user?: { email?: string | null; uid?: string } | null,
   profile?: UserProfile | null,
-  schools?: School[] | null
+  schools?: School[] | null,
+  claims?: { superAdmin?: boolean; [key: string]: unknown } | null
 ): boolean {
   if (!user && !profile) return false;
   const email = (user?.email || profile?.email || '').trim().toLowerCase();
   const uid = user?.uid || profile?.uid || '';
 
-  // 1. Super Admin
-  if (email === 'owner@pakedu.com' || Boolean(profile?.isSuperAdmin) || profile?.role === 'super-admin') {
+  // 1. Super Admin (strictly via verified custom claim or profile role/flag; NO email check)
+  if (Boolean(claims?.superAdmin) || Boolean(profile?.isSuperAdmin) || profile?.role === 'super-admin') {
     return true;
   }
 
@@ -89,7 +90,7 @@ export function hasAdminCapabilities(
 /**
  * Pure evaluation function for Automatic Smart Login Routing.
  *
- * Condition A: Super Admin (email === 'owner@pakedu.com' or isSuperAdmin) -> /super-admin
+ * Condition A: Super Admin (custom claim superAdmin or verified profile isSuperAdmin) -> /super-admin
  * Condition B: Pending Approval (status === 'pending' without admin capabilities) -> /sms-onboarding
  * Condition C: Verified School Admin / Principal (hasAdminCapabilities) -> /sms-dashboard (role: admin)
  * Condition D: Verified Teacher (role === 'teacher' & active school affiliation) -> /sms-dashboard (role: teacher)
@@ -98,7 +99,8 @@ export function hasAdminCapabilities(
 export function determineSmartRoute(
   user: { email?: string | null; uid?: string } | null | undefined,
   profile: UserProfile | null | undefined,
-  schools?: School[] | null
+  schools?: School[] | null,
+  claims?: { superAdmin?: boolean; [key: string]: unknown } | null
 ): SmartRouteResult {
   if (!user && !profile) {
     return {
@@ -108,16 +110,13 @@ export function determineSmartRoute(
     };
   }
 
-  const userEmail = (user?.email || profile?.email || '').trim().toLowerCase();
-  const isSuperAdminEmail = userEmail === 'owner@pakedu.com';
-  const hasSuperAdminFlag = Boolean(profile?.isSuperAdmin) || profile?.role === 'super-admin';
-
-  // Condition A (Super Admin)
-  if (isSuperAdminEmail || hasSuperAdminFlag) {
+  // Condition A (Super Admin) - Strictly via verified custom claim or profile role/flag (NO email check)
+  const hasSuperAdminFlag = Boolean(claims?.superAdmin) || Boolean(profile?.isSuperAdmin) || profile?.role === 'super-admin';
+  if (hasSuperAdminFlag) {
     return {
       targetTool: 'super-admin',
       role: 'super-admin',
-      reason: 'Condition A: Super Admin dashboard.',
+      reason: 'Condition A: Super Admin dashboard via verified administrative credentials.',
     };
   }
 
@@ -144,7 +143,7 @@ export function determineSmartRoute(
 
   // Condition C (Verified School Admin & Principal with Admin Capabilities)
   // Ensures every user with admin capabilities logs into the School Admin Dashboard
-  const isAdminCapable = hasAdminCapabilities(user, profile, schools);
+  const isAdminCapable = hasAdminCapabilities(user, profile, schools, claims);
   if (isAdminCapable) {
     if (!isSchoolActive) {
       return {

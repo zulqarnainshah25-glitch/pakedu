@@ -22,7 +22,88 @@ import {
 } from '../utils/questionPaperLogic';
 import { triggerPrintDocument } from '../utils/printDocument';
 import { parseJsonResponseText } from '../utils/apiResponse';
-import { generateQuestionPaperWithGemini } from '../utils/geminiCore';
+import { auth } from '../firebase';
+
+function buildOfflineTemplateQuestionPaper(request: {
+  className: string;
+  subject: string;
+  difficulty: QuestionPaperDifficulty;
+  totalMarks: number;
+  timeAllowed: string;
+  language: QuestionPaperLanguage;
+  syllabusCovered: string;
+}): GeneratedQuestionPaper {
+  const distribution = computeBalancedMarksDistribution(request.totalMarks);
+  const isUrdu = request.language === 'Urdu';
+  const isSindhi = request.language === 'Sindhi';
+
+  const sectionATitle = isUrdu
+    ? 'حصہ اول: کثیر الانتخابی سوالات (MCQs)'
+    : isSindhi
+    ? 'حصو پهريون: گهڻ-چونڊ سوال (MCQs)'
+    : 'Section A: Multiple Choice Questions (MCQs)';
+  const sectionBTitle = isUrdu
+    ? 'حصہ دوم: مختصر سوالات'
+    : isSindhi
+    ? 'حصو ٻيو: مختصر سوال'
+    : 'Section B: Short Answer Questions';
+  const sectionCTitle = isUrdu
+    ? 'حصہ سوم: تفصیلی سوالات'
+    : isSindhi
+    ? 'حصو ٽيون: تفصيلي سوال'
+    : 'Section C: Descriptive / Long Questions';
+
+  const mcqs = Array.from({ length: Math.max(1, distribution.mcqCount) }, (_, i) => ({
+    question: isUrdu
+      ? `${request.subject} (${request.className}) سے متعلق معروضی سوال نمبر ${i + 1}۔`
+      : isSindhi
+      ? `${request.subject} (${request.className}) بابت معروضي سوال نمبر ${i + 1}۔`
+      : `Select the correct answer regarding key concepts of ${request.subject} (Q${i + 1}).`,
+    options: ['(A) Option A', '(B) Option B', '(C) Option C', '(D) Option D'],
+    correctAnswer: '(A) Option A',
+  }));
+
+  const shortQuestions = Array.from(
+    { length: Math.max(1, distribution.shortQuestionsTotalInPaper) },
+    (_, i) => ({
+      question: isUrdu
+        ? `${request.subject} کے تحت مختصر وضاحت کریں (سوال نمبر ${i + 1})۔`
+        : isSindhi
+        ? `${request.subject} هيٺ مختصر وضاحت ڪريو (سوال نمبر ${i + 1})۔`
+        : `Briefly explain the principle and significance of ${request.subject} (Q${i + 1}).`,
+      marks: distribution.shortMarksEach,
+    })
+  );
+
+  const longQuestions = Array.from(
+    { length: Math.max(1, distribution.longQuestionsTotalInPaper) },
+    (_, i) => ({
+      question: isUrdu
+        ? `تفصیلی جواب تحریر کریں: ${request.syllabusCovered || request.subject} پر تفصیلی نوٹ لکھیں۔`
+        : isSindhi
+        ? `تفصيلي جواب لکو: ${request.syllabusCovered || request.subject} تي تفصيلي نوٽ لکو.`
+        : `Write a comprehensive, detailed analytical response on ${request.syllabusCovered || request.subject}.`,
+      marks: distribution.longMarksEach,
+    })
+  );
+
+  return {
+    paperTitle: `${request.className} Examination — ${request.subject}`,
+    instructions: 'All sections are compulsory. Maintain neat handwriting and clean presentation.',
+    sectionATitle,
+    mcqs,
+    sectionAMarks: distribution.mcqTotalMarks,
+    sectionBTitle,
+    sectionBNote: `Attempt any ${distribution.shortQuestionsRequired} out of ${distribution.shortQuestionsTotalInPaper} questions. Each question carries ${distribution.shortMarksEach} marks.`,
+    shortQuestions,
+    sectionBMarks: distribution.shortTotalMarks,
+    sectionCTitle,
+    sectionCNote: `Attempt any ${distribution.longQuestionsRequired} out of ${distribution.longQuestionsTotalInPaper} questions. Each question carries ${distribution.longMarksEach} marks.`,
+    longQuestions,
+    sectionCMarks: distribution.longTotalMarks,
+    totalMarks: distribution.totalMarks,
+  };
+}
 
 const PAPER_CLASSES = [
   'Class 1',
@@ -146,11 +227,13 @@ export const QuestionPaperTool: React.FC = () => {
           await new Promise((resolve) => setTimeout(resolve, 900));
         }
 
+        const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : '';
         const response = await fetch('/api/generate-question-paper', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
           },
           body: JSON.stringify(validation.sanitized),
         });
@@ -187,19 +270,13 @@ export const QuestionPaperTool: React.FC = () => {
           `Failed to generate Question Paper (HTTP ${response.status}).`;
       }
 
-      // If backend was unreachable or returned an error, run direct Gemini fallback
-      try {
-        const directPaper = await generateQuestionPaperWithGemini(validation.sanitized);
-        setGeneratedPaper(directPaper);
-        setStatusNotice(
-          `AI Question Paper generated cleanly via Gemini AI in ${validation.sanitized.language} (${validation.sanitized.totalMarks} Marks · ${validation.sanitized.difficulty} Difficulty).`
-        );
-        return;
-      } catch (directAiErr) {
-        console.error('Direct Gemini generation failed:', directAiErr);
-      }
-
-      throw new Error(lastErrorMessage);
+      // If backend was unreachable or returned an error, fallback to institutional template
+      const fallbackPaper = buildOfflineTemplateQuestionPaper(validation.sanitized);
+      setGeneratedPaper(fallbackPaper);
+      setStatusNotice(
+        `Generated from institutional examination template (${validation.sanitized.language} · ${validation.sanitized.totalMarks} Marks · Server AI offline).`
+      );
+      return;
     } catch (err) {
       setErrorMsg(
         err instanceof Error

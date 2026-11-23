@@ -43,7 +43,6 @@ import {
 } from '../data/syllabusPresets';
 import { loadGoogleSheetSyllabusData } from '../data/googleSheetLoader';
 import { triggerPrintDocument } from '../utils/printDocument';
-import { generateLessonPlanWithGemini } from '../utils/geminiCore';
 
 interface LessonPlanToolProps {
   currentUser: User | null;
@@ -54,6 +53,37 @@ type OutputViewMode = 'lesson-plan' | 'flashcards' | 'worksheet' | 'assessment';
 
 function hasRtlScript(text: string): boolean {
   return /[\u0600-\u06FF\u0750-\u077F]/.test(text);
+}
+
+function buildLocalOfflineTemplatePlan(params: {
+  board: string;
+  section: string;
+  className: string;
+  subject: string;
+  chapter: string;
+  topic: string;
+  duration: string;
+  planType: string;
+}): LessonPlanContent {
+  const { board, className, subject, chapter, topic, duration, planType } = params;
+  return {
+    slos: `1. Understand the core principles of ${topic} (${subject}, ${className}).\n2. Demonstrate practical comprehension through guided classroom exercises.\n3. Apply ${board} curriculum standards to address real-world conceptual challenges.`,
+    previousKnowledge: `Students possess baseline familiarity with ${subject} concepts covered in preceding units and grades.`,
+    teachingAids: `Textbook (${board}), Whiteboard, Markers, Concept Flashcards, Audio/Visual presentation.`,
+    introduction: `The teacher introduces ${topic} by connecting it to everyday situations and asks open-ended questions to stimulate class discussion.`,
+    procedure: `1. Warm-up and review of prior knowledge (5 mins).\n2. Direct instruction: Teacher explains key principles of ${topic} (15 mins).\n3. Guided student interaction and peer discussion (10 mins).\n4. Formative comprehension check and recap (10 mins).`,
+    teacherActivities: `Presents lesson objectives, writes key definitions on the board, facilitates class discussion, and guides individual practice.`,
+    studentActivities: `Listen attentively, take structured notes, participate in guided textbook problem-solving, and complete peer-discussion exercises.`,
+    assessment: `Formative evaluation through oral questioning, spot checks on understanding, and short exercise drills on ${topic}.`,
+    homework: `Complete review questions and exercises for ${topic} from the textbook (${board}) in notebooks.`,
+    vocabulary: `Key Terminology: Concept, Principle, Application, Analysis, Synthesis, ${topic}.`,
+    lifeSkills: `Critical Thinking, Communication, Creative Problem Solving, and Analytical Reasoning.`,
+    teacherReflection: `Learning outcomes were achieved within the allotted ${duration}. Additional reinforcement will be provided during future review sessions.`,
+    questions: `1. Define the fundamental concept of ${topic}.\n2. How is this concept applied in practical scenarios?\n3. Summarize the key takeaway in your own words.`,
+    exercise: `Textbook exercise for ${topic}: Answer questions 1 to 4 and complete the conceptual matching table.`,
+    worksheetPrompt: `Create a concept map linking ${topic} to its main applications and sub-themes.`,
+    bloomAssessment: `Knowledge: Define terms.\nComprehension: Explain mechanisms.\nApplication: Solve review exercise.\nAnalysis: Contrast with related concepts.`,
+  };
 }
 
 export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
@@ -550,15 +580,17 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
         return;
       }
 
-      // Step 3: If not in Firestore or Google Sheet, generate dynamically via Gemini AI
+      // Step 3: If not in Firestore or Google Sheet, generate dynamically via Backend AI (/api/generate-lesson-plan)
       let generatedPlan: LessonPlanContent | null = null;
 
       try {
+        const idToken = currentUser ? await currentUser.getIdToken() : '';
         const response = await fetch('/api/generate-lesson-plan', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
           },
           body: JSON.stringify({
             board,
@@ -584,35 +616,28 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
         if (response.ok && result?.plan) {
           generatedPlan = result.plan;
+        } else {
+          console.warn('Backend endpoint returned error or empty response:', result?.error || response.status);
         }
       } catch (backendFetchErr) {
-        console.warn('Backend endpoint fetch error, trying client Gemini fallback:', backendFetchErr);
+        console.warn('Backend endpoint fetch error, using local template fallback:', backendFetchErr);
       }
 
-      // If backend was unreachable or returned an error, run direct Gemini fallback
+      // If backend was unreachable or returned an error, fallback to safe local/offline template (No client-side API key)
       if (!generatedPlan) {
-        try {
-          const directAiPlan = await generateLessonPlanWithGemini({
-            board,
-            section,
-            className,
-            subject: cleanSubject,
-            chapter: cleanChapter,
-            topic: cleanTopic,
-            duration,
-            planType,
-          });
-          generatedPlan = directAiPlan;
-        } catch (directAiErr) {
-          console.error('Direct Gemini generation failed:', directAiErr);
-        }
-      }
-
-      if (!generatedPlan) {
+        generatedPlan = buildLocalOfflineTemplatePlan({
+          board,
+          section,
+          className,
+          subject: cleanSubject,
+          chapter: cleanChapter,
+          topic: cleanTopic,
+          duration,
+          planType,
+        });
         setStatusBanner(
-          `Unable to generate Lesson Plan via AI. Please check your internet connection or verify the topic details and try again.`
+          'Generated from institutional offline curriculum template (Server AI unavailable).'
         );
-        return;
       }
 
       const finalizedPlan: LessonPlanContent = {

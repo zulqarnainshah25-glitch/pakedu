@@ -5,6 +5,7 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import {
@@ -20,22 +21,109 @@ import {
 
 /**
  * Multi-Tenant School Management Firestore Persistence Service
- * Safely handles cloud persistence with fallback resilience for offline usage.
+ * Safely handles cloud persistence with typed error diagnostics,
+ * server timestamps, and offline resilience via IndexedDB persistent cache.
  */
+
+export type FirestoreServiceErrorCode =
+  | 'permission-denied'
+  | 'offline'
+  | 'unavailable'
+  | 'unauthenticated'
+  | 'not-found'
+  | 'invalid-argument'
+  | 'unknown';
+
+export class FirestoreSyncError extends Error {
+  readonly code: FirestoreServiceErrorCode;
+  readonly isOffline: boolean;
+  readonly isPermissionDenied: boolean;
+  readonly operation: string;
+  readonly path?: string;
+  readonly originalError?: unknown;
+
+  constructor(
+    message: string,
+    code: FirestoreServiceErrorCode,
+    operation: string,
+    options?: { path?: string; originalError?: unknown }
+  ) {
+    super(message);
+    this.name = 'FirestoreSyncError';
+    this.code = code;
+    this.operation = operation;
+    this.path = options?.path;
+    this.originalError = options?.originalError;
+    this.isOffline =
+      code === 'offline' ||
+      code === 'unavailable' ||
+      (typeof navigator !== 'undefined' && !navigator.onLine);
+    this.isPermissionDenied = code === 'permission-denied';
+  }
+}
+
+export function classifyFirestoreError(err: unknown, operation: string, path?: string): FirestoreSyncError {
+  const isBrowserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const rawCode = (err as any)?.code || '';
+  const rawMessage = (err as any)?.message || String(err);
+
+  let code: FirestoreServiceErrorCode = 'unknown';
+
+  if (isBrowserOffline || rawCode === 'unavailable' || rawMessage.toLowerCase().includes('offline')) {
+    code = 'offline';
+  } else if (
+    rawCode === 'permission-denied' ||
+    rawMessage.toLowerCase().includes('permission-denied') ||
+    rawMessage.toLowerCase().includes('insufficient permissions')
+  ) {
+    code = 'permission-denied';
+  } else if (rawCode === 'unauthenticated' || rawMessage.toLowerCase().includes('unauthenticated')) {
+    code = 'unauthenticated';
+  } else if (rawCode === 'not-found' || rawMessage.toLowerCase().includes('not-found')) {
+    code = 'not-found';
+  } else if (rawCode === 'invalid-argument') {
+    code = 'invalid-argument';
+  }
+
+  const reason =
+    code === 'permission-denied'
+      ? 'Permission denied by institutional security policy'
+      : code === 'offline'
+      ? 'Network connection offline (queued locally)'
+      : rawMessage;
+
+  return new FirestoreSyncError(reason, code, operation, { path, originalError: err });
+}
+
+function normalizeTimestamps<T extends Record<string, any>>(data: T): T {
+  const result: any = { ...data };
+  if (result.updatedAt && typeof result.updatedAt.toDate === 'function') {
+    result.updatedAt = result.updatedAt.toDate().toISOString();
+  }
+  if (result.createdAt && typeof result.createdAt.toDate === 'function') {
+    result.createdAt = result.createdAt.toDate().toISOString();
+  }
+  return result;
+}
 
 // 1. School Document Management
 export async function saveSchoolToFirestore(school: School): Promise<boolean> {
-  if (!school.id) return false;
+  if (!school.id) {
+    throw new FirestoreSyncError('Cannot save school without a valid ID', 'invalid-argument', 'saveSchool');
+  }
   try {
     const schoolRef = doc(db, 'schools', school.id);
-    await setDoc(schoolRef, {
-      ...school,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      schoolRef,
+      {
+        ...school,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: School saved locally (Cloud sync skipped):', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveSchool', `schools/${school.id}`);
   }
 }
 
@@ -46,29 +134,33 @@ export async function fetchSchoolsFromFirestore(): Promise<School[]> {
     const schools: School[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        schools.push(d.data() as School);
+        schools.push(normalizeTimestamps(d.data() as School));
       }
     });
     return schools;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading schools from local cache:', err);
-    return [];
+    throw classifyFirestoreError(err, 'fetchSchools', 'schools');
   }
 }
 
 // 2. User Profile Management
 export async function saveUserProfileToFirestore(profile: UserProfile): Promise<boolean> {
-  if (!profile.uid) return false;
+  if (!profile.uid) {
+    throw new FirestoreSyncError('Cannot save user profile without a valid UID', 'invalid-argument', 'saveUserProfile');
+  }
   try {
     const userRef = doc(db, 'users', profile.uid);
-    await setDoc(userRef, {
-      ...profile,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      userRef,
+      {
+        ...profile,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: User profile saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveUserProfile', `users/${profile.uid}`);
   }
 }
 
@@ -78,40 +170,45 @@ export async function fetchUserProfileFromFirestore(uid: string): Promise<UserPr
     const userRef = doc(db, 'users', uid);
     const snap = await getDoc(userRef);
     if (snap.exists()) {
-      return snap.data() as UserProfile;
+      return normalizeTimestamps(snap.data() as UserProfile);
     }
     return null;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading user profile from local cache:', err);
-    return null;
+    throw classifyFirestoreError(err, 'fetchUserProfile', `users/${uid}`);
   }
 }
 
 // 3. Classes & Sections Management
 export async function saveClassToFirestore(schoolId: string, classData: ClassSection): Promise<boolean> {
-  if (!schoolId || !classData.id) return false;
+  if (!schoolId || !classData.id) {
+    throw new FirestoreSyncError('School ID and Class ID are required', 'invalid-argument', 'saveClass');
+  }
   try {
     const classRef = doc(db, 'schools', schoolId, 'classes', classData.id);
-    await setDoc(classRef, {
-      ...classData,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      classRef,
+      {
+        ...classData,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Class saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveClass', `schools/${schoolId}/classes/${classData.id}`);
   }
 }
 
 export async function deleteClassFromFirestore(schoolId: string, classId: string): Promise<boolean> {
-  if (!schoolId || !classId) return false;
+  if (!schoolId || !classId) {
+    throw new FirestoreSyncError('School ID and Class ID are required to delete', 'invalid-argument', 'deleteClass');
+  }
   try {
     const classRef = doc(db, 'schools', schoolId, 'classes', classId);
     await deleteDoc(classRef);
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Class deleted locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'deleteClass', `schools/${schoolId}/classes/${classId}`);
   }
 }
 
@@ -123,41 +220,46 @@ export async function fetchClassesFromFirestore(schoolId: string): Promise<Class
     const classes: ClassSection[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        classes.push(d.data() as ClassSection);
+        classes.push(normalizeTimestamps(d.data() as ClassSection));
       }
     });
     return classes;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading classes from local cache:', err);
-    return [];
+    throw classifyFirestoreError(err, 'fetchClasses', `schools/${schoolId}/classes`);
   }
 }
 
 // 4. Students (SIS) Management
 export async function saveStudentToFirestore(schoolId: string, student: Student): Promise<boolean> {
-  if (!schoolId || !student.id) return false;
+  if (!schoolId || !student.id) {
+    throw new FirestoreSyncError('School ID and Student ID are required', 'invalid-argument', 'saveStudent');
+  }
   try {
     const studentRef = doc(db, 'schools', schoolId, 'students', student.id);
-    await setDoc(studentRef, {
-      ...student,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      studentRef,
+      {
+        ...student,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Student saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveStudent', `schools/${schoolId}/students/${student.id}`);
   }
 }
 
 export async function deleteStudentFromFirestore(schoolId: string, studentId: string): Promise<boolean> {
-  if (!schoolId || !studentId) return false;
+  if (!schoolId || !studentId) {
+    throw new FirestoreSyncError('School ID and Student ID are required to delete', 'invalid-argument', 'deleteStudent');
+  }
   try {
     const studentRef = doc(db, 'schools', schoolId, 'students', studentId);
     await deleteDoc(studentRef);
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Student deleted locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'deleteStudent', `schools/${schoolId}/students/${studentId}`);
   }
 }
 
@@ -169,13 +271,12 @@ export async function fetchStudentsFromFirestore(schoolId: string): Promise<Stud
     const students: Student[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        students.push(d.data() as Student);
+        students.push(normalizeTimestamps(d.data() as Student));
       }
     });
     return students;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading students from local cache:', err);
-    return [];
+    throw classifyFirestoreError(err, 'fetchStudents', `schools/${schoolId}/students`);
   }
 }
 
@@ -184,17 +285,22 @@ export async function saveAttendanceToFirestore(
   schoolId: string,
   attendance: DailyClassAttendance
 ): Promise<boolean> {
-  if (!schoolId || !attendance.id) return false;
+  if (!schoolId || !attendance.id) {
+    throw new FirestoreSyncError('School ID and Attendance ID are required', 'invalid-argument', 'saveAttendance');
+  }
   try {
     const attRef = doc(db, 'schools', schoolId, 'attendance', attendance.id);
-    await setDoc(attRef, {
-      ...attendance,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      attRef,
+      {
+        ...attendance,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Attendance saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveAttendance', `schools/${schoolId}/attendance/${attendance.id}`);
   }
 }
 
@@ -208,14 +314,13 @@ export async function fetchAttendanceFromFirestore(
     const registers: Record<string, DailyClassAttendance> = {};
     snapshot.forEach((d) => {
       if (d.exists()) {
-        const item = d.data() as DailyClassAttendance;
+        const item = normalizeTimestamps(d.data() as DailyClassAttendance);
         registers[item.id] = item;
       }
     });
     return registers;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading attendance from local cache:', err);
-    return {};
+    throw classifyFirestoreError(err, 'fetchAttendance', `schools/${schoolId}/attendance`);
   }
 }
 
@@ -224,17 +329,22 @@ export async function saveJoinRequestToFirestore(
   schoolId: string,
   request: TeacherJoinRequest
 ): Promise<boolean> {
-  if (!schoolId || !request.id) return false;
+  if (!schoolId || !request.id) {
+    throw new FirestoreSyncError('School ID and Request ID are required', 'invalid-argument', 'saveJoinRequest');
+  }
   try {
     const reqRef = doc(db, 'schools', schoolId, 'joinRequests', request.id);
-    await setDoc(reqRef, {
-      ...request,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      reqRef,
+      {
+        ...request,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Join request saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveJoinRequest', `schools/${schoolId}/joinRequests/${request.id}`);
   }
 }
 
@@ -248,13 +358,12 @@ export async function fetchJoinRequestsFromFirestore(
     const requests: TeacherJoinRequest[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        requests.push(d.data() as TeacherJoinRequest);
+        requests.push(normalizeTimestamps(d.data() as TeacherJoinRequest));
       }
     });
     return requests;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading join requests from local cache:', err);
-    return [];
+    throw classifyFirestoreError(err, 'fetchJoinRequests', `schools/${schoolId}/joinRequests`);
   }
 }
 
@@ -262,17 +371,22 @@ export async function fetchJoinRequestsFromFirestore(
 export async function saveSchoolRegistrationRequestToFirestore(
   request: SchoolRegistrationRequest
 ): Promise<boolean> {
-  if (!request.id) return false;
+  if (!request.id) {
+    throw new FirestoreSyncError('Request ID is required', 'invalid-argument', 'saveSchoolRegistrationRequest');
+  }
   try {
     const reqRef = doc(db, 'schoolRegistrationRequests', request.id);
-    await setDoc(reqRef, {
-      ...request,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      reqRef,
+      {
+        ...request,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: School registration request saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveSchoolRegistrationRequest', `schoolRegistrationRequests/${request.id}`);
   }
 }
 
@@ -283,13 +397,12 @@ export async function fetchSchoolRegistrationRequestsFromFirestore(): Promise<Sc
     const requests: SchoolRegistrationRequest[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        requests.push(d.data() as SchoolRegistrationRequest);
+        requests.push(normalizeTimestamps(d.data() as SchoolRegistrationRequest));
       }
     });
     return requests;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading school registration requests from local cache:', err);
-    return [];
+    throw classifyFirestoreError(err, 'fetchSchoolRegistrationRequests', 'schoolRegistrationRequests');
   }
 }
 
@@ -298,17 +411,22 @@ export async function saveTeacherToFirestore(
   schoolId: string,
   teacher: TeacherInfo
 ): Promise<boolean> {
-  if (!schoolId || !teacher.id) return false;
+  if (!schoolId || !teacher.id) {
+    throw new FirestoreSyncError('School ID and Teacher ID are required', 'invalid-argument', 'saveTeacher');
+  }
   try {
     const teacherRef = doc(db, 'schools', schoolId, 'teachers', teacher.id);
-    await setDoc(teacherRef, {
-      ...teacher,
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      teacherRef,
+      {
+        ...teacher,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
     return true;
   } catch (err) {
-    console.warn('[Firestore] Notice: Teacher profile saved locally:', err);
-    return false;
+    throw classifyFirestoreError(err, 'saveTeacher', `schools/${schoolId}/teachers/${teacher.id}`);
   }
 }
 
@@ -322,12 +440,11 @@ export async function fetchTeachersFromFirestore(
     const teachers: TeacherInfo[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        teachers.push(d.data() as TeacherInfo);
+        teachers.push(normalizeTimestamps(d.data() as TeacherInfo));
       }
     });
     return teachers;
   } catch (err) {
-    console.warn('[Firestore] Notice: Loading teachers from local cache:', err);
-    return [];
+    throw classifyFirestoreError(err, 'fetchTeachers', `schools/${schoolId}/teachers`);
   }
 }

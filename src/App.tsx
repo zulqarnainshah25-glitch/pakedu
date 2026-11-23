@@ -241,6 +241,14 @@ function AppContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pendingSmsRedirect, setPendingSmsRedirect] = useState(false);
   const [demoSession, setDemoSession] = useState<DemoUserSession | null>(() => {
+    // Demo session is strictly disabled in production builds (gated behind DEV)
+    if (!import.meta.env.DEV) {
+      try {
+        localStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
+        sessionStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
+      } catch {}
+      return null;
+    }
     try {
       const savedLocal = localStorage.getItem(DEMO_SESSION_STORAGE_KEY);
       if (savedLocal) return JSON.parse(savedLocal) as DemoUserSession;
@@ -283,7 +291,6 @@ function AppContent() {
     !isSuperAdmin &&
     !isImpersonating &&
     !isAdminUser &&
-    currentUser?.email?.toLowerCase().trim() !== 'owner@pakedu.com' &&
     (!currentUser ||
       currentUserProfile?.status !== 'active' ||
       !currentUserProfile?.schoolId);
@@ -341,7 +348,7 @@ function AppContent() {
     );
   }, [signOutUser]);
 
-  // Listen to SSO query parameters
+  // Listen to SSO query parameters (logout trigger only; unverified ?sso_email is disabled)
   useEffect(() => {
     const searchStr = typeof window !== 'undefined' ? window.location.search : '';
     const triggeredByAtlierLogout = shouldTriggerSsoLogoutFromSearch(searchStr);
@@ -352,18 +359,6 @@ function AppContent() {
       performUnifiedLogout(
         'Aap successfully Logout ho chuke hain. Dobara access ke liye Sign In karein.'
       );
-      return;
-    }
-
-    const incomingSso = parseIncomingSsoSessionFromSearch(searchStr);
-    if (incomingSso) {
-      setDemoSession(incomingSso);
-      try {
-        localStorage.setItem(DEMO_SESSION_STORAGE_KEY, JSON.stringify(incomingSso));
-        sessionStorage.setItem(DEMO_SESSION_STORAGE_KEY, JSON.stringify(incomingSso));
-      } catch {
-        // Ignore storage errors
-      }
     }
   }, [performUnifiedLogout]);
 
@@ -427,6 +422,8 @@ function AppContent() {
   }, [authLoading, currentUser, smartRoute, isImpersonating, setUserRole]);
 
   const handleDemoSessionSuccess = (session: DemoUserSession) => {
+    // Demo sessions are strictly restricted to local development environments
+    if (!import.meta.env.DEV) return;
     setDemoSession(session);
     setLogoutNotice(null);
     try {
@@ -435,17 +432,10 @@ function AppContent() {
     } catch {
       // Ignore storage errors
     }
-    if (session.email === 'owner@pakedu.com') {
-      setUserRole('super-admin');
-      setActiveTool('super-admin');
-    } else if (pendingSmsRedirect) {
-      setPendingSmsRedirect(false);
-      if (currentUserProfile?.status === 'active' && currentUserProfile?.schoolId) {
-        setActiveTool('sms-dashboard');
-      } else {
-        setActiveTool('sms-onboarding');
-      }
-    }
+    // Demo sessions strictly access public AI Studio tools; never Super Admin or SMS
+    setPendingSmsRedirect(false);
+    setUserRole('teacher');
+    setActiveTool('dashboard');
   };
 
   const toggleDarkMode = () => {
@@ -503,7 +493,7 @@ function AppContent() {
       }
       if (tool === 'super-admin') {
         const canSuperAdmin =
-          currentUser.email?.toLowerCase().trim() === 'owner@pakedu.com' ||
+          isSuperAdmin ||
           userRole === 'super-admin' ||
           Boolean(currentUserProfile?.isSuperAdmin);
         if (!canSuperAdmin) {
@@ -515,7 +505,6 @@ function AppContent() {
           isSuperAdmin ||
           isImpersonating ||
           isAdminUser ||
-          currentUser.email?.toLowerCase().trim() === 'owner@pakedu.com' ||
           currentUserProfile?.status === 'active';
 
         if (!canAccessSms) {

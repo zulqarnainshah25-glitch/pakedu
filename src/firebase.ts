@@ -1,6 +1,13 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  getFirestore,
+  doc,
+  getDocFromServer,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore';
 import firebaseAppletConfig from '../firebase-applet-config.json';
 
 // Support Vite environment variables for full 12-factor runtime security
@@ -36,7 +43,26 @@ const resolvedFirebaseConfig = {
 };
 
 const app = initializeApp(resolvedFirebaseConfig);
-export const db = getFirestore(app, resolvedFirebaseConfig.firestoreDatabaseId);
+
+// Initialize Firestore with IndexedDB persistent offline cache for write-queueing and resilience
+function initFirestoreWithOfflinePersistence() {
+  try {
+    return initializeFirestore(
+      app,
+      {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      },
+      resolvedFirebaseConfig.firestoreDatabaseId
+    );
+  } catch (err) {
+    console.warn('[Firestore] Notice: Persistent cache not supported in current environment; falling back to memory/default cache:', err);
+    return getFirestore(app, resolvedFirebaseConfig.firestoreDatabaseId);
+  }
+}
+
+export const db = initFirestoreWithOfflinePersistence();
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 

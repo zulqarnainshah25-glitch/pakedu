@@ -1,154 +1,305 @@
 /**
- * Firestore Security Rules Specification Test Suite
- * Verifies that all "Dirty Dozen" adversarial payloads return PERMISSION_DENIED.
+ * Firestore Security Rules Integration Test Suite
+ * Uses @firebase/rules-unit-testing to verify Multi-Tenant RBAC Security.
+ *
+ * Requirements Covered:
+ * 1. Teacher of School A cannot read/write School B students
+ * 2. Unverified / unaffiliated user cannot read any student
+ * 3. User cannot self-promote to admin/super-admin
+ * 4. User cannot self-activate status to 'active'
+ * 5. Join request spoofing for another uid is denied
+ * 6. Join request for own uid is permitted
+ * 7. Super-admin can read/write all
+ * 8. Teacher can write attendance only for assignedClassIds
  */
 
-export interface DirtyDozenTestCase {
-  id: number;
-  name: string;
-  operation: 'get' | 'list' | 'create' | 'update' | 'delete';
-  path: string;
-  auth: { uid: string; email: string; email_verified: boolean } | null;
-  payload?: Record<string, unknown>;
-  expectedResult: 'PERMISSION_DENIED' | 'ALLOWED';
+import fs from 'node:fs';
+import path from 'node:path';
+import {
+  initializeTestEnvironment,
+  assertFails,
+  assertSucceeds,
+  RulesTestEnvironment,
+} from '@firebase/rules-unit-testing';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+
+const PROJECT_ID = 'pakedu-rules-test';
+const RULES_PATH = path.resolve(process.cwd(), 'firestore.rules');
+
+export async function runFirestoreRulesTests() {
+  console.log('=== Running Firestore Security Rules Unit Tests ===\n');
+
+  if (!fs.existsSync(RULES_PATH)) {
+    throw new Error(`Rules file not found at: ${RULES_PATH}`);
+  }
+
+  const rulesContent = fs.readFileSync(RULES_PATH, 'utf8');
+
+  let testEnv: RulesTestEnvironment | null = null;
+  try {
+    testEnv = await initializeTestEnvironment({
+      projectId: PROJECT_ID,
+      firestore: {
+        rules: rulesContent,
+        host: process.env.FIRESTORE_EMULATOR_HOST?.split(':')[0] || '127.0.0.1',
+        port: Number(process.env.FIRESTORE_EMULATOR_HOST?.split(':')[1] || 8080),
+      },
+    });
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.warn('⚠️  Notice: Firebase Firestore Emulator is not reachable at 127.0.0.1:8080.');
+    console.warn(`   Reason: ${errorMsg}`);
+    console.warn('\n📌 HOW TO RUN FIRESTORE RULES TESTS LOCALLY:');
+    console.warn('   1. Install Firebase CLI: npm install -g firebase-tools');
+    console.warn('   2. Start Emulator: firebase emulators:start --only firestore');
+    console.warn('   3. Run Tests: npm run test:rules\n');
+    return;
+  }
+
+  try {
+    // Seed initial database state with security rules disabled
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+
+      // Seed Schools
+      await setDoc(doc(db, 'schools', 'school_a'), {
+        id: 'school_a',
+        name: 'Govt High School A',
+        semisCode: '403010101',
+        status: 'active',
+      });
+      await setDoc(doc(db, 'schools', 'school_b'), {
+        id: 'school_b',
+        name: 'Govt High School B',
+        semisCode: '403020202',
+        status: 'active',
+      });
+
+      // Seed School A Student
+      await setDoc(doc(db, 'schools', 'school_a', 'students', 'std_a_1'), {
+        id: 'std_a_1',
+        grNumber: 'GR-1001',
+        name: 'Ali Khan',
+        fatherName: 'Tariq Khan',
+        gender: 'Male',
+        currentClassId: 'cls_9_a',
+        status: 'Active',
+      });
+
+      // Seed School B Student
+      await setDoc(doc(db, 'schools', 'school_b', 'students', 'std_b_1'), {
+        id: 'std_b_1',
+        grNumber: 'GR-2001',
+        name: 'Bilal Ahmed',
+        fatherName: 'Ahmed Noor',
+        gender: 'Male',
+        currentClassId: 'cls_9_b',
+        status: 'Active',
+      });
+
+      // Seed Profiles in users collection
+      // 1. Super Admin Profile
+      await setDoc(doc(db, 'users', 'super_admin_uid'), {
+        uid: 'super_admin_uid',
+        email: 'owner@pakedu.com',
+        fullName: 'Super Administrator',
+        role: 'super-admin',
+        status: 'active',
+        isSuperAdmin: true,
+      });
+
+      // 2. School A Teacher Profile (Active)
+      await setDoc(doc(db, 'users', 'teacher_a_uid'), {
+        uid: 'teacher_a_uid',
+        email: 'teacher.a@seld.gos.pk',
+        fullName: 'Teacher School A',
+        role: 'teacher',
+        schoolId: 'school_a',
+        status: 'active',
+        assignedClassIds: ['cls_9_a'],
+      });
+
+      // 3. School B Teacher Profile (Active)
+      await setDoc(doc(db, 'users', 'teacher_b_uid'), {
+        uid: 'teacher_b_uid',
+        email: 'teacher.b@seld.gos.pk',
+        fullName: 'Teacher School B',
+        role: 'teacher',
+        schoolId: 'school_b',
+        status: 'active',
+        assignedClassIds: ['cls_9_b'],
+      });
+
+      // 4. School A Admin Profile (Active)
+      await setDoc(doc(db, 'users', 'admin_a_uid'), {
+        uid: 'admin_a_uid',
+        email: 'admin.a@seld.gos.pk',
+        fullName: 'Headmaster School A',
+        role: 'admin',
+        schoolId: 'school_a',
+        status: 'active',
+        assignedClassIds: [],
+      });
+
+      // 5. Unaffiliated / Applicant User (Status 'none')
+      await setDoc(doc(db, 'users', 'unaffiliated_uid'), {
+        uid: 'unaffiliated_uid',
+        email: 'user@example.com',
+        fullName: 'General Public User',
+        role: 'teacher',
+        status: 'none',
+        assignedClassIds: [],
+      });
+    });
+
+    console.log('--- Test 1: Teacher of School A cannot read/write School B students ---');
+    const teacherAContext = testEnv.authenticatedContext('teacher_a_uid', {
+      email: 'teacher.a@seld.gos.pk',
+      email_verified: true,
+    });
+    const teacherADb = teacherAContext.firestore();
+
+    // Teacher A reads School A student -> ALLOWED
+    await assertSucceeds(getDoc(doc(teacherADb, 'schools', 'school_a', 'students', 'std_a_1')));
+    console.log('  ✅ PASS: Teacher A can read School A student');
+
+    // Teacher A reads School B student -> DENIED
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_b', 'students', 'std_b_1')));
+    console.log('  ✅ PASS: Teacher A cannot read School B student');
+
+    // Teacher A writes School B student -> DENIED
+    await assertFails(
+      setDoc(doc(teacherADb, 'schools', 'school_b', 'students', 'std_b_2'), {
+        id: 'std_b_2',
+        grNumber: 'GR-2002',
+        name: 'Intruder Student',
+        fatherName: 'Unknown',
+        gender: 'Male',
+        currentClassId: 'cls_9_b',
+        status: 'Active',
+      })
+    );
+    console.log('  ✅ PASS: Teacher A cannot write School B student');
+
+    console.log('\n--- Test 2: Unverified / unaffiliated user cannot read any student ---');
+    const unaffiliatedContext = testEnv.authenticatedContext('unaffiliated_uid', {
+      email: 'user@example.com',
+      email_verified: false,
+    });
+    const unaffiliatedDb = unaffiliatedContext.firestore();
+
+    await assertFails(getDoc(doc(unaffiliatedDb, 'schools', 'school_a', 'students', 'std_a_1')));
+    await assertFails(getDoc(doc(unaffiliatedDb, 'schools', 'school_b', 'students', 'std_b_1')));
+    console.log('  ✅ PASS: Unaffiliated user denied read access to students in any school');
+
+    console.log('\n--- Test 3: User cannot self-promote to admin or super-admin ---');
+    // Try to update own profile to 'admin'
+    await assertFails(
+      updateDoc(doc(unaffiliatedDb, 'users', 'unaffiliated_uid'), {
+        role: 'admin',
+      })
+    );
+    // Try to update own profile to 'super-admin'
+    await assertFails(
+      updateDoc(doc(unaffiliatedDb, 'users', 'unaffiliated_uid'), {
+        role: 'super-admin',
+        isSuperAdmin: true,
+      })
+    );
+    console.log('  ✅ PASS: User cannot self-promote role to admin or super-admin');
+
+    console.log('\n--- Test 4: User cannot self-activate status to active ---');
+    await assertFails(
+      updateDoc(doc(unaffiliatedDb, 'users', 'unaffiliated_uid'), {
+        status: 'active',
+      })
+    );
+    console.log('  ✅ PASS: User cannot self-activate status to active');
+
+    console.log('\n--- Test 5: Join request spoofing for another uid is denied ---');
+    // User 'unaffiliated_uid' attempts to submit a join request claiming to be 'teacher_b_uid'
+    await assertFails(
+      setDoc(doc(unaffiliatedDb, 'schools', 'school_a', 'joinRequests', 'req_spoof_1'), {
+        id: 'req_spoof_1',
+        uid: 'teacher_b_uid', // Spoofed UID
+        fullName: 'Spoofed Teacher',
+        email: 'spoof@attacker.com',
+        phone: '0300-1111111',
+        designation: 'PST',
+        schoolId: 'school_a',
+        schoolName: 'Govt High School A',
+        semisCode: '403010101',
+        requestedAt: new Date().toISOString(),
+        status: 'pending',
+      })
+    );
+    console.log('  ✅ PASS: Join request spoofing for another UID is rejected');
+
+    // Legitimate join request for own UID is allowed
+    await assertSucceeds(
+      setDoc(doc(unaffiliatedDb, 'schools', 'school_a', 'joinRequests', 'req_valid_1'), {
+        id: 'req_valid_1',
+        uid: 'unaffiliated_uid',
+        fullName: 'Legitimate Applicant',
+        email: 'user@example.com',
+        phone: '0300-2222222',
+        designation: 'JEST',
+        schoolId: 'school_a',
+        schoolName: 'Govt High School A',
+        semisCode: '403010101',
+        requestedAt: new Date().toISOString(),
+        status: 'pending',
+      })
+    );
+    console.log('  ✅ PASS: Legitimate join request for own UID is accepted');
+
+    console.log('\n--- Test 6: Super-admin can read and write all ---');
+    const superAdminContext = testEnv.authenticatedContext('super_admin_uid', {
+      superAdmin: true,
+    });
+    const superAdminDb = superAdminContext.firestore();
+
+    await assertSucceeds(getDoc(doc(superAdminDb, 'schools', 'school_a', 'students', 'std_a_1')));
+    await assertSucceeds(getDoc(doc(superAdminDb, 'schools', 'school_b', 'students', 'std_b_1')));
+    await assertSucceeds(getDoc(doc(superAdminDb, 'users', 'unaffiliated_uid')));
+    console.log('  ✅ PASS: Super-admin has universal read access across all tenants');
+
+    console.log('\n--- Test 7: Teacher can write attendance ONLY for assigned class ---');
+    // Teacher A is assigned 'cls_9_a'
+    await assertSucceeds(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'attendance', '2026-11-22_cls_9_a'), {
+        id: '2026-11-22_cls_9_a',
+        schoolId: 'school_a',
+        classId: 'cls_9_a',
+        date: '2026-11-22',
+        records: { std_a_1: 'Present' },
+      })
+    );
+    console.log('  ✅ PASS: Teacher A successfully marked attendance for assigned class');
+
+    // Teacher A tries to mark attendance for unassigned class 'cls_10_a'
+    await assertFails(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'attendance', '2026-11-22_cls_10_a'), {
+        id: '2026-11-22_cls_10_a',
+        schoolId: 'school_a',
+        classId: 'cls_10_a', // NOT in assignedClassIds
+        date: '2026-11-22',
+        records: { std_a_1: 'Present' },
+      })
+    );
+    console.log('  ✅ PASS: Teacher A denied attendance write for unassigned class');
+
+    console.log('\n🎉 ALL 7 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
+  } finally {
+    if (testEnv) {
+      await testEnv.cleanup();
+    }
+  }
 }
 
-const VALID_BASE_PAYLOAD = {
-  board: 'Sindh STBB',
-  section: 'Primary',
-  className: 'Class 5',
-  subject: 'General Science',
-  chapter: 'Chapter 1: Classification of Living Things',
-  topic: 'Five Kingdom System',
-  duration: '40 Minutes',
-  planType: 'Daily',
-  slos: 'Students will be able to classify living organisms into five kingdoms.',
-  previousKnowledge: 'Ask students to name living and non-living things around the classroom.',
-  teachingAids: 'Textbook, chart of five kingdoms, flashcards, whiteboard.',
-  introduction: 'Show specimens/pictures of plants, animals, fungi, and bacteria.',
-  procedure: 'Step 1: Introduce classification.\nStep 2: Explain each kingdom.',
-  teacherActivities: 'Present chart and explain characteristics of Monera, Protista, Fungi, Plantae, Animalia.',
-  studentActivities: 'Group sorting activity using organism flashcards.',
-  assessment: 'Match each organism to its respective kingdom.',
-  homework: 'Draw and label two examples each of Plantae and Animalia in notebook.',
-  vocabulary: 'Classification :: Grouping organisms based on similarities\nKingdom :: Highest taxonomic rank',
-  lifeSkills: 'Observation, scientific curiosity, environmental stewardship.',
-  teacherReflection: 'Students actively participated in the flashcard sorting activity.',
-  questions: '1. What is classification?\n2. Name the five kingdoms.',
-  exercise: '1. Fill in the blanks.\n2. Match the organism to its kingdom.',
-  worksheetPrompt: 'Fill in the blanks and draw a labeled plant cell in the box.',
-  bloomAssessment: 'Remembering :: Define classification. :: 2\nUnderstanding :: Differentiate between Fungi and Plantae. :: 3',
-  visibility: 'public',
-  authorId: 'teacher_uid_01',
-  createdAt: 'REQUEST_TIME',
-  updatedAt: 'REQUEST_TIME',
-};
-
-export const DIRTY_DOZEN_TESTS: DirtyDozenTestCase[] = [
-  {
-    id: 1,
-    name: 'Shadow Field Injection',
-    operation: 'create',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, ghostField: 'injected' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 2,
-    name: 'Identity Spoofing on Create',
-    operation: 'create',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, authorId: 'spoofed_uid_99' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 3,
-    name: 'Unverified Email Write',
-    operation: 'create',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: false },
-    payload: VALID_BASE_PAYLOAD,
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 4,
-    name: 'ID Poisoning Attack',
-    operation: 'create',
-    path: '/syllabus_data/bad$id*with!invalid@chars',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: VALID_BASE_PAYLOAD,
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 5,
-    name: 'Denial-of-Wallet String Overflow',
-    operation: 'create',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, procedure: 'A'.repeat(5001) },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 6,
-    name: 'Enum Bypass Attack',
-    operation: 'create',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, board: 'Invalid Board' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 7,
-    name: 'Timestamp Forgery on Create',
-    operation: 'create',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, createdAt: '2020-01-01T00:00:00Z' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 8,
-    name: 'Ownership Hijack on Update',
-    operation: 'update',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, authorId: 'attacker_uid_02' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 9,
-    name: 'Immortal Field Mutation (createdAt)',
-    operation: 'update',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, createdAt: '2026-10-27T00:00:00Z' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 10,
-    name: 'Value Poisoning on Update',
-    operation: 'update',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'teacher_uid_01', email: 'teacher@seld.gos.pk', email_verified: true },
-    payload: { ...VALID_BASE_PAYLOAD, slos: '' },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 11,
-    name: 'Private Document Read Leak',
-    operation: 'get',
-    path: '/syllabus_data/private_doc_01',
-    auth: null,
-    expectedResult: 'PERMISSION_DENIED',
-  },
-  {
-    id: 12,
-    name: 'Unauthorized Delete by Non-Owner',
-    operation: 'delete',
-    path: '/syllabus_data/stbb_c5_sci_ch1',
-    auth: { uid: 'other_teacher_99', email: 'other@seld.gos.pk', email_verified: true },
-    expectedResult: 'PERMISSION_DENIED',
-  },
-];
+if (process.argv[1]?.endsWith('firestore.rules.test.ts')) {
+  runFirestoreRulesTests().catch((err) => {
+    console.error('Test execution failed:', err);
+    process.exit(1);
+  });
+}

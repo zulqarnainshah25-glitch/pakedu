@@ -1,12 +1,26 @@
 import { handleCvBuild } from '../src/utils/cvBuilderApi';
 import { getEffectiveGeminiApiKey } from '../src/utils/envConfig';
+import {
+  setCorsAndSecurityHeaders,
+  validatePayloadSize,
+  authenticateRequest,
+  enforceRateLimits,
+} from './_security';
 
 export default async function handler(req: any, res: any) {
-  res.setHeader('Cache-Control', 'no-store');
+  if (setCorsAndSecurityHeaders(req, res)) return;
 
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!validatePayloadSize(req, res)) return;
+
+  const authUser = await authenticateRequest(req, res);
+  if (!authUser) return;
+
+  const rateOk = await enforceRateLimits(req, res, authUser.uid);
+  if (!rateOk) return;
 
   try {
     const rawBody = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
