@@ -316,9 +316,13 @@ function AppContent() {
       !isImpersonating &&
       activeTool !== 'super-admin'
     ) {
-      setActiveTool('sms-dashboard');
+      if (isSuperAdmin || currentUser?.email?.toLowerCase() === 'owner@pakedu.com') {
+        setActiveTool('super-admin');
+      } else {
+        setActiveTool('sms-dashboard');
+      }
     }
-  }, [isAffiliatedUser, showPublicTools, activeTool, isImpersonating]);
+  }, [isAffiliatedUser, showPublicTools, activeTool, isImpersonating, isSuperAdmin, currentUser]);
 
   // When an unaffiliated user attempts to access an SMS internal sub-tool, guide them to the onboarding screen
   useEffect(() => {
@@ -393,7 +397,11 @@ function AppContent() {
       hasInitialRoutedRef.current = currentUser.uid;
 
       // Condition A: Super Admin
-      if (smartRoute.targetTool === 'super-admin') {
+      if (
+        smartRoute.targetTool === 'super-admin' ||
+        isSuperAdmin ||
+        (currentUser.email && currentUser.email.toLowerCase() === 'owner@pakedu.com')
+      ) {
         setUserRole('super-admin');
         setActiveTool('super-admin');
         return;
@@ -406,15 +414,22 @@ function AppContent() {
         return;
       }
 
-      // Restore session if user was already on an authorized tool
+      // Condition C: Verified School Admin
+      if (smartRoute.role === 'admin' || isAdminUser) {
+        setUserRole('admin');
+        const savedSessionTool = typeof window !== 'undefined' ? sessionStorage.getItem('pakedu_active_tool') : null;
+        if (savedSessionTool && savedSessionTool.startsWith('sms-')) {
+          setActiveTool(savedSessionTool as ActiveToolId);
+        } else {
+          setActiveTool('sms-dashboard');
+        }
+        return;
+      }
+
+      // Restore session if teacher was already on an authorized SMS sub-tool
       const savedSessionTool = typeof window !== 'undefined' ? sessionStorage.getItem('pakedu_active_tool') : null;
       if (savedSessionTool) {
-        if (smartRoute.role === 'admin' && savedSessionTool.startsWith('sms-')) {
-          setUserRole('admin');
-          setActiveTool(savedSessionTool as ActiveToolId);
-          return;
-        }
-        if (smartRoute.role === 'teacher' && savedSessionTool.startsWith('sms-') && savedSessionTool !== 'sms-staff') {
+        if (smartRoute.role === 'teacher' && savedSessionTool.startsWith('sms-') && savedSessionTool !== 'sms-staff' && savedSessionTool !== 'sms-fees') {
           setUserRole('teacher');
           setActiveTool(savedSessionTool as ActiveToolId);
           return;
@@ -425,13 +440,13 @@ function AppContent() {
         }
       }
 
-      // Condition C, D, or E: Route directly to smartRoute.targetTool
+      // Condition D or E: Route directly to smartRoute.targetTool
       setUserRole(smartRoute.role);
       setActiveTool(smartRoute.targetTool);
     } else if (!currentUser) {
       hasInitialRoutedRef.current = null;
     }
-  }, [authLoading, currentUser, smartRoute, isImpersonating, setUserRole]);
+  }, [authLoading, currentUser, smartRoute, isImpersonating, isSuperAdmin, isAdminUser, setUserRole]);
 
   const handleDemoSessionSuccess = (session: DemoUserSession) => {
     // Demo sessions are strictly restricted to local development environments
@@ -730,7 +745,7 @@ function AppContent() {
             )}
 
             {/* Super Admin Fleet Directory (Visible if Super Admin or Demo Mode) */}
-            {(isSuperAdmin || demoMode) && (
+            {(isSuperAdmin || userRole === 'super-admin' || currentUser?.email?.toLowerCase() === 'owner@pakedu.com' || demoMode) && (
               <button
                 type="button"
                 onClick={() => selectTool('super-admin')}

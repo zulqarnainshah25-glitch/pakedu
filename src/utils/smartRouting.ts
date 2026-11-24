@@ -43,8 +43,13 @@ export function hasAdminCapabilities(
   const email = (user?.email || profile?.email || '').trim().toLowerCase();
   const uid = user?.uid || profile?.uid || '';
 
-  // 1. Super Admin (strictly via verified custom claim or profile role/flag; NO email check)
-  if (Boolean(claims?.superAdmin) || Boolean(profile?.isSuperAdmin) || profile?.role === 'super-admin') {
+  // 1. Super Admin (strictly via verified custom claim, profile role/flag, or verified profile owner email)
+  if (
+    Boolean(claims?.superAdmin) ||
+    Boolean(profile?.isSuperAdmin) ||
+    profile?.role === 'super-admin' ||
+    Boolean(profile && (profile.email || '').trim().toLowerCase() === 'owner@pakedu.com')
+  ) {
     return true;
   }
 
@@ -53,7 +58,12 @@ export function hasAdminCapabilities(
     return true;
   }
 
-  // 3. Primary admin type or admin designation
+  // 3. Known institutional admin accounts (e.g. Zulqarnain Shah, Waleed Shah)
+  if (email === 'zulqarnainshah25@gmail.com' || email === 'waleedshah1@gmail.com') {
+    return true;
+  }
+
+  // 4. Primary admin type or admin designation
   if (profile?.primaryAdminType === 'principal' || profile?.primaryAdminType === 'teacher_admin') {
     return true;
   }
@@ -61,11 +71,6 @@ export function hasAdminCapabilities(
     profile?.designation &&
     /principal|headmaster|headmistress|administrator|admin|incharge/i.test(profile.designation)
   ) {
-    return true;
-  }
-
-  // 4. Known institutional admin accounts (e.g. Waleed Shah)
-  if (email === 'waleedshah1@gmail.com') {
     return true;
   }
 
@@ -110,8 +115,15 @@ export function determineSmartRoute(
     };
   }
 
-  // Condition A (Super Admin) - Strictly via verified custom claim or profile role/flag (NO email check)
-  const hasSuperAdminFlag = Boolean(claims?.superAdmin) || Boolean(profile?.isSuperAdmin) || profile?.role === 'super-admin';
+  const email = (user?.email || profile?.email || '').trim().toLowerCase();
+
+  // Condition A (Super Admin) - Via verified claim, profile role/flag, or verified profile owner email
+  const hasSuperAdminFlag =
+    Boolean(claims?.superAdmin) ||
+    Boolean(profile?.isSuperAdmin) ||
+    profile?.role === 'super-admin' ||
+    Boolean(profile && (profile.email || '').trim().toLowerCase() === 'owner@pakedu.com');
+
   if (hasSuperAdminFlag) {
     return {
       targetTool: 'super-admin',

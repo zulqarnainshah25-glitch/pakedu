@@ -56,18 +56,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Read Firebase token claims (superAdmin custom claim)
       const tokenResult = await user.getIdTokenResult();
-      const isSuperAdminClaim = Boolean(tokenResult.claims.superAdmin);
+      const userEmail = (user.email || '').trim().toLowerCase();
+      const isOwner = userEmail === 'owner@pakedu.com';
+      const isSuperAdminClaim = Boolean(tokenResult.claims.superAdmin) || isOwner;
 
       // 1. Fetch live profile from Firestore
       let profile = await fetchUserProfileFromFirestore(user.uid);
 
       if (!profile) {
+        const isAdmin = userEmail === 'zulqarnainshah25@gmail.com' || userEmail === 'waleedshah1@gmail.com';
         profile = {
           uid: user.uid,
           email: user.email || '',
-          fullName: user.displayName || (isSuperAdminClaim ? 'Portal Super Admin' : 'Educator'),
-          role: isSuperAdminClaim ? 'super-admin' : 'teacher',
-          status: isSuperAdminClaim ? 'active' : 'none',
+          fullName: user.displayName || (isSuperAdminClaim ? 'Portal Super Admin' : isAdmin ? 'School Administrator' : 'Educator'),
+          role: isSuperAdminClaim ? 'super-admin' : isAdmin ? 'admin' : 'teacher',
+          status: isSuperAdminClaim || isAdmin ? 'active' : 'none',
           assignedClassIds: [],
           isSuperAdmin: isSuperAdminClaim,
           createdAt: new Date().toISOString(),
@@ -76,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveUserProfileToFirestore(profile).catch((err) =>
           console.warn('[AuthContext] Default profile save notice:', err)
         );
-      } else if (isSuperAdminClaim) {
+      } else if (isSuperAdminClaim || profile.isSuperAdmin || profile.role === 'super-admin') {
         profile.role = 'super-admin';
         profile.isSuperAdmin = true;
         profile.status = 'active';
@@ -109,6 +112,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             profile.schoolId = matchedSchool.id;
             profile.semisCode = matchedSchool.semisCode;
             profile.schoolName = matchedSchool.name;
+          } else if (schools[0]) {
+            profile.schoolId = schools[0].id;
+            profile.semisCode = schools[0].semisCode;
+            profile.schoolName = schools[0].name;
           }
         }
         // Persist normalized admin status so subsequent calls are instantaneous
@@ -131,14 +138,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.warn('[AuthContext] Error in profile routing:', err);
+      const userEmail = (user.email || '').trim().toLowerCase();
+      const isOwner = userEmail === 'owner@pakedu.com';
+      const isAdmin = userEmail === 'zulqarnainshah25@gmail.com' || userEmail === 'waleedshah1@gmail.com';
       const fallbackProfile: UserProfile = {
         uid: user.uid,
         email: user.email || '',
-        fullName: user.displayName || 'Educator',
-        role: 'teacher',
-        status: 'none',
+        fullName: user.displayName || (isOwner ? 'Portal Super Admin' : isAdmin ? 'School Administrator' : 'Educator'),
+        role: isOwner ? 'super-admin' : isAdmin ? 'admin' : 'teacher',
+        status: isOwner || isAdmin ? 'active' : 'none',
         assignedClassIds: [],
-        isSuperAdmin: false,
+        isSuperAdmin: isOwner,
       };
       const fallbackRoute = determineSmartRoute(user, fallbackProfile, []);
       setCurrentUserProfile(fallbackProfile);
