@@ -14,6 +14,7 @@ import {
   PrimaryAdminType,
   ClassFeeStructure,
   FeePayment,
+  FeeConcessionRule,
 } from '../types';
 import {
   INITIAL_MOCK_SCHOOL,
@@ -26,6 +27,7 @@ import {
   INITIAL_MOCK_SCHOOL_REG_REQUESTS,
   INITIAL_MOCK_FEE_STRUCTURES,
   INITIAL_MOCK_FEE_PAYMENTS,
+  INITIAL_MOCK_FEE_CONCESSIONS,
 } from '../data/mockSmsData';
 import {
   FirestoreSyncError,
@@ -51,6 +53,9 @@ import {
   deleteFeeStructureFromFirestore,
   saveFeePaymentToFirestore,
   fetchFeePaymentsFromFirestore,
+  saveFeeConcessionToFirestore,
+  fetchFeeConcessionsFromFirestore,
+  deleteFeeConcessionFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
 import { hasAdminCapabilities } from '../../../utils/smartRouting';
@@ -139,6 +144,7 @@ interface SmsContextType {
   pendingSchoolRegistrationRequests: SchoolRegistrationRequest[];
   submitSchoolRegistration: (
     schoolData: Omit<School, 'id' | 'adminUids' | 'status'> & {
+      id?: string;
       status?: SchoolStatus;
       primaryAdminType?: PrimaryAdminType;
       primaryAdminName?: string;
@@ -151,6 +157,10 @@ interface SmsContextType {
       designation?: string;
       uid?: string;
       primaryAdminType?: PrimaryAdminType;
+    },
+    options?: {
+      requestId?: string;
+      skipFirestoreSync?: boolean;
     }
   ) => SchoolRegistrationRequest;
   approveSchoolRegistration: (requestId: string) => void;
@@ -159,7 +169,13 @@ interface SmsContextType {
   // Join Requests (Faculty Onboarding)
   joinRequests: TeacherJoinRequest[];
   pendingJoinRequests: TeacherJoinRequest[];
-  submitJoinRequest: (requestData: Omit<TeacherJoinRequest, 'id' | 'requestedAt' | 'status'>) => void;
+  submitJoinRequest: (
+    requestData: Omit<TeacherJoinRequest, 'id' | 'requestedAt' | 'status'>,
+    options?: {
+      requestId?: string;
+      skipFirestoreSync?: boolean;
+    }
+  ) => void;
   approveJoinRequest: (requestId: string, assignedClassIds: string[], assignAsClassTeacherFor?: string) => void;
   rejectJoinRequest: (requestId: string) => void;
 
@@ -193,9 +209,14 @@ interface SmsContextType {
   // Fee Management (Financials)
   feeStructures: ClassFeeStructure[];
   feePayments: FeePayment[];
+  feeConcessions: FeeConcessionRule[];
   saveClassFeeStructure: (structure: Omit<ClassFeeStructure, 'schoolId'>) => Promise<boolean>;
   deleteClassFeeStructure: (classId: string) => Promise<boolean>;
   recordFeePayment: (payment: Omit<FeePayment, 'schoolId'>) => Promise<boolean>;
+  recordBulkFeePayments: (payments: Array<Omit<FeePayment, 'schoolId'>>) => Promise<boolean>;
+  saveFeeConcessionRule: (rule: Omit<FeeConcessionRule, 'schoolId'>) => Promise<boolean>;
+  deleteFeeConcessionRule: (concessionId: string) => Promise<boolean>;
+  applyStudentConcession: (studentId: string, rule: FeeConcessionRule | null) => Promise<boolean>;
   getFeeStructureForClass: (classId: string) => ClassFeeStructure | undefined;
   getStudentFeeStatus: (studentId: string, month: string) => FeePayment | undefined;
   canManageFeeStructure: boolean;
@@ -222,6 +243,7 @@ const SMS_SCHOOL_REG_REQUESTS_STORAGE_KEY = 'pakedu_sms_school_reg_requests_v1';
 const SMS_TEACHERS_STORAGE_KEY = 'pakedu_sms_teachers_v1';
 const SMS_FEE_STRUCTURES_STORAGE_KEY = 'pakedu_sms_fee_structures_v1';
 const SMS_FEE_PAYMENTS_STORAGE_KEY = 'pakedu_sms_fee_payments_v1';
+const SMS_FEE_CONCESSIONS_STORAGE_KEY = 'pakedu_sms_fee_concessions_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -253,8 +275,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   // Synchronize with AuthContext when available
+  let authUserUid: string | null = null;
+  let authRefreshFn: (() => Promise<UserProfile | null>) | null = null;
   try {
     const authCtx = useAuth();
+    authUserUid = authCtx.currentUser?.uid || null;
+    authRefreshFn = authCtx.refreshUserProfile;
     useEffect(() => {
       if (authCtx.currentUserProfile) {
         setCurrentUserProfile(authCtx.currentUserProfile);
@@ -403,6 +429,17 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       await syncFn();
       setSyncError(null);
       setIsPendingSync(false);
+      if (
+        operation === 'submitSchoolRegistration' ||
+        operation === 'submitJoinRequest' ||
+        operation === 'registerNewSchool'
+      ) {
+        try {
+          await authRefreshFn?.();
+        } catch {
+          // Non-fatal refresh notice
+        }
+      }
       return true;
     } catch (err: any) {
       console.error(`[SmsContext] Sync error during ${operation}:`, err);
@@ -660,6 +697,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [feeConcessions, setFeeConcessions] = useState<FeeConcessionRule[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_FEE_CONCESSIONS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_FEE_CONCESSIONS;
+          return parsed.filter((c: FeeConcessionRule) => !c.id.startsWith('conc_orphan_') && !c.id.startsWith('conc_staff_') && !c.id.startsWith('conc_merit_'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_FEE_CONCESSIONS : [];
+    } catch (e) {
+      console.warn('Failed to parse saved fee concessions:', e);
+      return [];
+    }
+  });
+
   const setDemoMode = (enabled: boolean) => {
     if (!import.meta.env.DEV) {
       setDemoModeState(false);
@@ -685,6 +740,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSchoolRegistrationRequests(INITIAL_MOCK_SCHOOL_REG_REQUESTS);
       setFeeStructures(INITIAL_MOCK_FEE_STRUCTURES);
       setFeePayments(INITIAL_MOCK_FEE_PAYMENTS);
+      setFeeConcessions(INITIAL_MOCK_FEE_CONCESSIONS);
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -721,6 +777,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsedPayments = savedPayments ? JSON.parse(savedPayments) : [];
         setFeePayments(parsedPayments.filter((p: FeePayment) => !p.id.startsWith('pay_00')));
 
+        const savedConcessions = localStorage.getItem(SMS_FEE_CONCESSIONS_STORAGE_KEY);
+        const parsedConcessions = savedConcessions ? JSON.parse(savedConcessions) : [];
+        setFeeConcessions(parsedConcessions.filter((c: FeeConcessionRule) => !c.id.startsWith('conc_orphan_') && !c.id.startsWith('conc_staff_') && !c.id.startsWith('conc_merit_')));
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -732,6 +792,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSchoolRegistrationRequests([]);
         setFeeStructures([]);
         setFeePayments([]);
+        setFeeConcessions([]);
         setAttendanceRegisters({});
       }
     }
@@ -797,6 +858,18 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [feePayments]);
 
+  // Save fee concessions to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMS_FEE_CONCESSIONS_STORAGE_KEY,
+        JSON.stringify(feeConcessions)
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [feeConcessions]);
+
   const setUserRole = (role: UserRole) => {
     setUserRoleState(role);
     try {
@@ -824,7 +897,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Sync Schools Directory & Registration Requests on mount / mode change
+  // Sync Schools Directory & Registration Requests on mount / auth state / mode change
   useEffect(() => {
     if (demoMode) return;
     let cancelled = false;
@@ -850,7 +923,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       cancelled = true;
     };
-  }, [demoMode]);
+  }, [demoMode, authUserUid, currentUserProfile?.role, currentUserProfile?.status]);
 
   // Cloud Firestore Sync for active school subcollections when not in demo mode
   useEffect(() => {
@@ -929,10 +1002,19 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee payments fetch error:', err));
 
+    // 8. Sync fee concessions & discount rules for active school
+    fetchFeeConcessionsFromFirestore(schoolId)
+      .then((remoteConcessions) => {
+        if (!cancelled) {
+          setFeeConcessions(remoteConcessions || []);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Fee concessions fetch error:', err));
+
     return () => {
       cancelled = true;
     };
-  }, [demoMode, activeSchool.id]);
+  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
   const registerNewSchool = (
@@ -981,6 +1063,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       role: registeringRole,
       schoolId: newSchool.id,
       schoolName: newSchool.name,
+      semisCode: newSchool.semisCode,
+      primaryAdminType,
       status: 'active',
       designation:
         adminProfile.designation ||
@@ -1012,6 +1096,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Submit School Registration Request (Requires Super Admin Approval)
   const submitSchoolRegistration = (
     schoolData: Omit<School, 'id' | 'adminUids' | 'status'> & {
+      id?: string;
       status?: SchoolStatus;
       primaryAdminType?: PrimaryAdminType;
       primaryAdminName?: string;
@@ -1024,9 +1109,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       designation?: string;
       uid?: string;
       primaryAdminType?: PrimaryAdminType;
+    },
+    options?: {
+      requestId?: string;
+      skipFirestoreSync?: boolean;
     }
   ): SchoolRegistrationRequest => {
-    const schoolId = `sch_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const cleanSemis = (schoolData.semisCode || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+    const schoolId =
+      schoolData.id ||
+      (cleanSemis ? `sch_${cleanSemis}` : `sch_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`);
     const adminUid = adminProfile.uid || `uid_admin_${Date.now().toString(36)}`;
     const primaryAdminType = adminProfile.primaryAdminType || schoolData.primaryAdminType || 'principal';
     const primaryAdminName = schoolData.primaryAdminName || adminProfile.fullName;
@@ -1043,7 +1135,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       createdAt: new Date().toISOString(),
     };
 
-    const requestId = `sch_req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const requestId =
+      options?.requestId ||
+      `sch_req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const newRequest: SchoolRegistrationRequest = {
       id: requestId,
       schoolId: newSchool.id,
@@ -1067,8 +1161,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'pending',
     };
 
-    setSchoolRegistrationRequests((prev) => [newRequest, ...prev]);
-    setRegisteredSchools((prev) => [newSchool, ...prev]);
+    setSchoolRegistrationRequests((prev) => [newRequest, ...prev.filter((r) => r.id !== requestId)]);
+    setRegisteredSchools((prev) => [newSchool, ...prev.filter((s) => s.id !== newSchool.id)]);
     setActiveSchool(newSchool);
 
     const pendingProfile: UserProfile = {
@@ -1078,6 +1172,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       role: 'admin',
       schoolId: newSchool.id,
       schoolName: newSchool.name,
+      semisCode: newSchool.semisCode,
+      primaryAdminType,
       status: 'pending',
       designation:
         adminProfile.designation ||
@@ -1088,15 +1184,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setCurrentUserProfile(pendingProfile);
+    setUserRole('admin');
 
-    if (!demoMode) {
-      performSync('submitSchoolRegistration', () =>
-        Promise.all([
+    if (!demoMode && !options?.skipFirestoreSync) {
+      performSync('submitSchoolRegistration', async () => {
+        await saveUserProfileToFirestore(pendingProfile);
+        await Promise.all([
           saveSchoolToFirestore(newSchool),
           saveSchoolRegistrationRequestToFirestore(newRequest),
-          saveUserProfileToFirestore(pendingProfile),
-        ])
-      );
+        ]);
+      });
     }
 
     return newRequest;
@@ -1106,6 +1203,37 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const approveSchoolRegistration = (requestId: string) => {
     const target = schoolRegistrationRequests.find((r) => r.id === requestId);
     if (!target) return;
+
+    const existingSchool = registeredSchools.find((s) => s.id === target.schoolId);
+    const activatedSchool: School = existingSchool
+      ? {
+          ...existingSchool,
+          status: 'active',
+          adminUids:
+            target.adminUid && !(existingSchool.adminUids || []).includes(target.adminUid)
+              ? [...(existingSchool.adminUids || []), target.adminUid]
+              : existingSchool.adminUids || (target.adminUid ? [target.adminUid] : []),
+          primaryAdminType: existingSchool.primaryAdminType || target.primaryAdminType || 'principal',
+          primaryAdminName: existingSchool.primaryAdminName || target.adminName,
+          primaryAdminEmail: existingSchool.primaryAdminEmail || target.adminEmail,
+        }
+      : {
+          id: target.schoolId,
+          name: target.schoolName,
+          semisCode: target.semisCode,
+          board: target.board,
+          district: target.district,
+          taluka: target.taluka,
+          adminUids: target.adminUid ? [target.adminUid] : [],
+          activeAcademicYear: target.activeAcademicYear || '2025-2026',
+          phone: target.phone,
+          email: target.email,
+          status: 'active',
+          primaryAdminType: target.primaryAdminType || 'principal',
+          primaryAdminName: target.adminName,
+          primaryAdminEmail: target.adminEmail,
+          createdAt: target.requestedAt || new Date().toISOString(),
+        };
 
     const updatedRequest: SchoolRegistrationRequest = {
       ...target,
@@ -1118,12 +1246,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       prev.map((r) => (r.id === requestId ? updatedRequest : r))
     );
 
-    setRegisteredSchools((prev) =>
-      prev.map((s) => (s.id === target.schoolId ? { ...s, status: 'active' } : s))
-    );
+    setRegisteredSchools((prev) => {
+      const exists = prev.some((s) => s.id === activatedSchool.id);
+      return exists
+        ? prev.map((s) => (s.id === activatedSchool.id ? activatedSchool : s))
+        : [activatedSchool, ...prev];
+    });
 
     if (activeSchool.id === target.schoolId) {
-      setActiveSchool((prev) => ({ ...prev, status: 'active' }));
+      setActiveSchool(activatedSchool);
     }
 
     // If applicant is currently logged in, activate their admin profile
@@ -1131,16 +1262,26 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currentUserProfile &&
       (currentUserProfile.uid === target.adminUid || currentUserProfile.email === target.adminEmail)
     ) {
-      setCurrentUserProfile((prev) => (prev ? { ...prev, status: 'active', role: 'admin' } : null));
+      setCurrentUserProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: 'active',
+              role: 'admin',
+              schoolId: target.schoolId,
+              schoolName: target.schoolName,
+              semisCode: target.semisCode,
+            }
+          : null
+      );
       setUserRole('admin');
     }
 
     if (!demoMode) {
-      performSync('approveSchoolRegistration', () => {
-        const targetSchool = registeredSchools.find((s) => s.id === target.schoolId);
-        return Promise.all([
+      performSync('approveSchoolRegistration', () =>
+        Promise.all([
           saveSchoolRegistrationRequestToFirestore(updatedRequest),
-          targetSchool ? saveSchoolToFirestore({ ...targetSchool, status: 'active' }) : Promise.resolve(true),
+          saveSchoolToFirestore(activatedSchool),
           target.adminUid
             ? saveUserProfileToFirestore({
                 uid: target.adminUid,
@@ -1149,15 +1290,17 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 role: 'admin',
                 schoolId: target.schoolId,
                 schoolName: target.schoolName,
+                semisCode: target.semisCode,
+                primaryAdminType: target.primaryAdminType || 'principal',
                 status: 'active',
-                designation: target.adminDesignation,
+                designation: target.adminDesignation || 'Principal / Headmaster',
                 phone: target.adminPhone,
                 assignedClassIds: [],
                 createdAt: target.requestedAt,
               })
             : Promise.resolve(true),
-        ]);
-      });
+        ])
+      );
     }
   };
 
@@ -1200,9 +1343,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Submit join request as a Teacher
   const submitJoinRequest = (
-    requestData: Omit<TeacherJoinRequest, 'id' | 'requestedAt' | 'status'>
+    requestData: Omit<TeacherJoinRequest, 'id' | 'requestedAt' | 'status'>,
+    options?: {
+      requestId?: string;
+      skipFirestoreSync?: boolean;
+    }
   ) => {
-    const id = `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const id =
+      options?.requestId ||
+      `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const newReq: TeacherJoinRequest = {
       ...requestData,
       id,
@@ -1210,7 +1359,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'pending',
     };
 
-    setJoinRequests((prev) => [newReq, ...prev]);
+    setJoinRequests((prev) => [newReq, ...prev.filter((r) => r.id !== id)]);
 
     // Update current user profile to pending
     const updatedProfile: UserProfile = {
@@ -1231,14 +1380,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
 
     setCurrentUserProfile(updatedProfile);
+    setUserRole('teacher');
 
-    if (!demoMode) {
-      performSync('submitJoinRequest', () =>
-        Promise.all([
-          saveJoinRequestToFirestore(requestData.schoolId, newReq),
-          saveUserProfileToFirestore(updatedProfile),
-        ])
-      );
+    if (!demoMode && !options?.skipFirestoreSync) {
+      performSync('submitJoinRequest', async () => {
+        await saveUserProfileToFirestore(updatedProfile);
+        await saveJoinRequestToFirestore(requestData.schoolId, newReq);
+      });
     }
   };
 
@@ -1785,6 +1933,111 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  const recordBulkFeePayments = async (
+    payments: Array<Omit<FeePayment, 'schoolId'>>
+  ): Promise<boolean> => {
+    if (!payments.length) return true;
+    const schoolId = activeSchool.id || 'default_school';
+    const fullPayments: FeePayment[] = payments.map((p) => ({
+      ...p,
+      schoolId,
+      updatedAt: new Date().toISOString(),
+    }));
+
+    setFeePayments((prev) => {
+      const next = [...prev];
+      fullPayments.forEach((fp) => {
+        const index = next.findIndex(
+          (p) => p.id === fp.id || (p.studentId === fp.studentId && p.month === fp.month)
+        );
+        if (index >= 0) {
+          next[index] = fp;
+        } else {
+          next.unshift(fp);
+        }
+      });
+      return next;
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveBulkFeePayments', () =>
+        Promise.all(fullPayments.map((fp) => saveFeePaymentToFirestore(activeSchool.id, fp)))
+      );
+    }
+    return true;
+  };
+
+  const saveFeeConcessionRule = async (
+    rule: Omit<FeeConcessionRule, 'schoolId'>
+  ): Promise<boolean> => {
+    const fullRule: FeeConcessionRule = {
+      ...rule,
+      schoolId: activeSchool.id || 'default_school',
+      createdAt: rule.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setFeeConcessions((prev) => {
+      const idx = prev.findIndex((r) => r.id === fullRule.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullRule;
+        return copy;
+      }
+      return [fullRule, ...prev];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveFeeConcession', () =>
+        saveFeeConcessionToFirestore(activeSchool.id, fullRule)
+      );
+    }
+    return true;
+  };
+
+  const deleteFeeConcessionRule = async (concessionId: string): Promise<boolean> => {
+    setFeeConcessions((prev) => prev.filter((r) => r.id !== concessionId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync('deleteFeeConcession', () =>
+        deleteFeeConcessionFromFirestore(activeSchool.id, concessionId)
+      );
+    }
+    return true;
+  };
+
+  const applyStudentConcession = async (
+    studentId: string,
+    rule: FeeConcessionRule | null
+  ): Promise<boolean> => {
+    const existing = students.find((s) => s.id === studentId);
+    if (!existing) return false;
+
+    const updates: Partial<Student> = rule
+      ? {
+          concessionId: rule.id,
+          concessionTitle: rule.title,
+          concessionType: rule.discountType,
+          concessionValue: rule.value,
+        }
+      : {
+          concessionId: '',
+          concessionTitle: '',
+          concessionType: 'percentage',
+          concessionValue: 0,
+        };
+
+    const updatedStudent: Student = { ...existing, ...updates };
+
+    setStudents((prev) => prev.map((s) => (s.id === studentId ? updatedStudent : s)));
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('applyStudentConcession', () =>
+        saveStudentToFirestore(activeSchool.id, updatedStudent)
+      );
+    }
+    return true;
+  };
+
   const getFeeStructureForClass = (classId: string): ClassFeeStructure | undefined => {
     return feeStructures.find((f) => f.classId === classId);
   };
@@ -1852,9 +2105,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canAdmitStudents,
         feeStructures,
         feePayments,
+        feeConcessions,
         saveClassFeeStructure,
         deleteClassFeeStructure,
         recordFeePayment,
+        recordBulkFeePayments,
+        saveFeeConcessionRule,
+        deleteFeeConcessionRule,
+        applyStudentConcession,
         getFeeStructureForClass,
         getStudentFeeStatus,
         canManageFeeStructure,

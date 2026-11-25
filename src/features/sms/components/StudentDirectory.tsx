@@ -21,9 +21,12 @@ import {
   UserCheck,
   Printer,
   Download,
+  Receipt,
+  Tag,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 import { Student } from '../types';
+import { calculateStudentFeeLedger } from '../utils/feeCalculations';
 
 interface StudentDirectoryProps {
   onBack: () => void;
@@ -49,6 +52,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     activeSchool,
     activeTeacher,
     canAdmitStudents,
+    feeStructures,
+    feePayments,
+    feeConcessions,
+    applyStudentConcession,
   } = useSms();
 
   const isAdmin = userRole === 'admin' || userRole === 'principal' || userRole === 'super-admin';
@@ -80,8 +87,27 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const [status, setStatus] = useState<'active' | 'struck_off' | 'transferred' | 'graduated'>('active');
   const [guardianPhone, setGuardianPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [selectedConcessionId, setSelectedConcessionId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const currentMonthKey = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }, []);
+
+  const viewingStudentLedger = useMemo(() => {
+    if (!viewingStudent) return null;
+    // Always sync with latest student object from context
+    const latestStudent = students.find((s) => s.id === viewingStudent.id) || viewingStudent;
+    return calculateStudentFeeLedger(
+      latestStudent,
+      feeStructures,
+      feePayments,
+      feeConcessions,
+      currentMonthKey
+    );
+  }, [viewingStudent, students, feeStructures, feePayments, feeConcessions, currentMonthKey]);
 
   // Ensure classes for the active school are fetched from Firestore
   useEffect(() => {
@@ -128,6 +154,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setStatus('active');
     setGuardianPhone('');
     setAddress('');
+    setSelectedConcessionId('');
     setFormError(null);
     setIsFormModalOpen(true);
   };
@@ -148,6 +175,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setStatus(student.status);
     setGuardianPhone(student.guardianPhone || '');
     setAddress(student.address || '');
+    setSelectedConcessionId(student.concessionId || '');
     setFormError(null);
     setIsFormModalOpen(true);
   };
@@ -202,8 +230,11 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
     const grade = selectedClass.grade;
     const section = selectedClass.section;
+    const matchedRule = selectedConcessionId
+      ? feeConcessions.find((r) => r.id === selectedConcessionId)
+      : undefined;
 
-    const payload = {
+    const payload: Omit<Student, 'id'> = {
       fullName: fullName.trim(),
       fatherName: fatherName.trim(),
       grNumber: grNumber.trim().toUpperCase(),
@@ -217,6 +248,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       status,
       guardianPhone: guardianPhone.trim(),
       address: address.trim() || undefined,
+      concessionId: matchedRule ? matchedRule.id : '',
+      concessionTitle: matchedRule ? matchedRule.title : '',
+      concessionType: matchedRule ? matchedRule.discountType : 'percentage',
+      concessionValue: matchedRule ? matchedRule.value : 0,
     };
 
     if (editingStudent) {
@@ -606,6 +641,16 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             >
                               {student.fullName}
                             </button>
+                            {student.concessionTitle && (student.concessionValue || 0) > 0 && (
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.2 mt-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[9px] font-bold">
+                                <Tag className="w-2.5 h-2.5" />
+                                {student.concessionTitle} (
+                                {student.concessionType === 'fixed'
+                                  ? `Rs.${student.concessionValue}`
+                                  : `${student.concessionValue}%`}
+                                )
+                              </span>
+                            )}
                             <span className="text-[10px] text-slate-400 block sm:hidden">
                               S/D/O {student.fatherName}
                             </span>
@@ -771,10 +816,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
         </div>
       )}
 
-      {/* Student Profile Card Modal (View Details) */}
+      {/* Student Profile Card Modal (View Details + Fee Ledger) */}
       {viewingStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in my-8 max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <div
@@ -869,6 +914,163 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Fee Ledger & Concession Assignment */}
+            {viewingStudentLedger && (
+              <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                      Student Fee Ledger &amp; Balances
+                    </h4>
+                  </div>
+
+                  {/* Permanent Concession Assignment (Admin Only) */}
+                  {isAdmin ? (
+                    <div className="flex items-center gap-1.5">
+                      <label htmlFor="profile-concession-select" className="text-[10px] font-bold text-slate-500">
+                        Permanent Discount:
+                      </label>
+                      <select
+                        id="profile-concession-select"
+                        value={
+                          (students.find((s) => s.id === viewingStudent.id) || viewingStudent)
+                            .concessionId || ''
+                        }
+                        onChange={(e) => {
+                          const rule = feeConcessions.find((r) => r.id === e.target.value) || null;
+                          applyStudentConcession(viewingStudent.id, rule);
+                          setViewingStudent((prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  concessionId: rule ? rule.id : '',
+                                  concessionTitle: rule ? rule.title : '',
+                                  concessionType: rule ? rule.discountType : 'percentage',
+                                  concessionValue: rule ? rule.value : 0,
+                                }
+                              : null
+                          );
+                        }}
+                        className="px-2.5 py-1 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg text-[11px] font-semibold text-amber-800 dark:text-amber-200 cursor-pointer"
+                      >
+                        <option value="">No Concession (Full Fee)</option>
+                        {feeConcessions
+                          .filter((r) => r.isActive !== false)
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.title} ({r.discountType === 'fixed' ? `Rs.${r.value}` : `${r.value}%`})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  ) : viewingStudentLedger.activeConcession.concessionTitle ? (
+                    <span className="px-2 py-0.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
+                      Concession: {viewingStudentLedger.activeConcession.concessionTitle} (
+                      {viewingStudentLedger.activeConcession.discountType === 'fixed'
+                        ? `Rs.${viewingStudentLedger.activeConcession.discountValue}`
+                        : `${viewingStudentLedger.activeConcession.discountValue}%`}
+                      )
+                    </span>
+                  ) : null}
+                </div>
+
+                {/* 4 KPI Ledger Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Due</span>
+                    <strong className="text-sm font-mono text-slate-900 dark:text-white">
+                      Rs. {viewingStudentLedger.totalDue.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60">
+                    <span className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 block">Total Paid</span>
+                    <strong className="text-sm font-mono text-emerald-700 dark:text-emerald-300">
+                      Rs. {viewingStudentLedger.totalPaid.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-rose-50/70 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/60">
+                    <span className="text-[10px] font-bold uppercase text-rose-700 dark:text-rose-400 block">Pending Balance</span>
+                    <strong className="text-sm font-mono text-rose-700 dark:text-rose-300">
+                      Rs. {viewingStudentLedger.pendingBalance.toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60">
+                    <span className="text-[10px] font-bold uppercase text-sky-700 dark:text-sky-400 block">Advance Balance</span>
+                    <strong className="text-sm font-mono text-sky-700 dark:text-sky-300">
+                      Rs. {viewingStudentLedger.advanceBalance.toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Monthly Fee Ledger Breakdown Table */}
+                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                  <div className="overflow-x-auto max-h-48">
+                    <table className="w-full text-left text-[11px] border-collapse">
+                      <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-300 font-bold uppercase text-[10px] sticky top-0">
+                        <tr>
+                          <th className="py-2 px-3">Month</th>
+                          <th className="py-2 px-3 text-right">Net Due</th>
+                          <th className="py-2 px-3 text-right">Discount</th>
+                          <th className="py-2 px-3 text-right">Paid</th>
+                          <th className="py-2 px-3 text-right">Balance</th>
+                          <th className="py-2 px-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {viewingStudentLedger.rows.map((row) => (
+                          <tr key={row.month} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                              <div>{row.monthLabel}</div>
+                              {row.receiptNumber && (
+                                <div className="text-[9px] font-mono text-slate-400">{row.receiptNumber}</div>
+                              )}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono">
+                              Rs. {row.netDue.toLocaleString()}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono text-amber-600 dark:text-amber-400">
+                              {row.discount > 0 ? `-Rs. ${row.discount.toLocaleString()}` : '-'}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              Rs. {row.paidAmount.toLocaleString()}
+                            </td>
+                            <td className="py-2 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                              {row.isFutureMonth
+                                ? `Credit`
+                                : `Rs. ${row.pendingBalance.toLocaleString()}`}
+                            </td>
+                            <td className="py-2 px-3">
+                              {row.status === 'paid' && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-[9px]">
+                                  Paid
+                                </span>
+                              )}
+                              {row.status === 'partial' && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-bold uppercase text-[9px]">
+                                  Partial
+                                </span>
+                              )}
+                              {row.status === 'unpaid' && (
+                                <span className="px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 font-bold uppercase text-[9px]">
+                                  Unpaid
+                                </span>
+                              )}
+                              {row.status === 'advance_credit' && (
+                                <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 font-bold uppercase text-[9px]">
+                                  Advance Credit
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* School context */}
             <div className="text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3 flex items-center justify-between">
@@ -1138,6 +1340,33 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+
+              {/* Permanent Fee Concession / Scholarship (Admin Only) */}
+              {isAdmin && (
+                <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl">
+                  <label htmlFor="admission-concession-select" className="block text-[11px] font-bold text-amber-900 dark:text-amber-200 mb-1">
+                    Permanent Fee Concession / Scholarship (Optional — Admin Only)
+                  </label>
+                  <select
+                    id="admission-concession-select"
+                    value={selectedConcessionId}
+                    onChange={(e) => setSelectedConcessionId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                  >
+                    <option value="">-- No Permanent Discount (Standard Fee) --</option>
+                    {feeConcessions
+                      .filter((r) => r.isActive !== false)
+                      .map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.title} ({r.discountType === 'fixed' ? `Rs. ${r.value} off` : `${r.value}% off`})
+                        </option>
+                      ))}
+                  </select>
+                  <span className="text-[10px] text-amber-700 dark:text-amber-300 mt-1 block">
+                    Automatically applied whenever monthly fee vouchers or collections are generated for this student.
+                  </span>
+                </div>
+              )}
 
               {/* Buttons */}
               <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">

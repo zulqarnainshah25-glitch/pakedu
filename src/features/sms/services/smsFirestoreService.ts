@@ -19,6 +19,7 @@ import {
   TeacherInfo,
   ClassFeeStructure,
   FeePayment,
+  FeeConcessionRule,
 } from '../types';
 
 /**
@@ -560,5 +561,66 @@ export async function fetchFeePaymentsFromFirestore(
     return payments;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchFeePayments', `schools/${schoolId}/feePayments`);
+  }
+}
+
+// 11. Fee Concessions & Discount Rules Management (schools/{schoolId}/feeConcessions/{concessionId})
+export async function saveFeeConcessionToFirestore(
+  schoolId: string,
+  rule: FeeConcessionRule
+): Promise<boolean> {
+  if (!schoolId || !rule.id) {
+    throw new FirestoreSyncError('School ID and Concession ID are required', 'invalid-argument', 'saveFeeConcession');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'feeConcessions', rule.id);
+    await setDoc(
+      ref,
+      {
+        ...rule,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveFeeConcession', `schools/${schoolId}/feeConcessions/${rule.id}`);
+  }
+}
+
+export async function fetchFeeConcessionsFromFirestore(
+  schoolId: string
+): Promise<FeeConcessionRule[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'feeConcessions');
+    const snapshot = await getDocs(col);
+    const rules: FeeConcessionRule[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as FeeConcessionRule;
+        rules.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return rules;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchFeeConcessions', `schools/${schoolId}/feeConcessions`);
+  }
+}
+
+export async function deleteFeeConcessionFromFirestore(
+  schoolId: string,
+  concessionId: string
+): Promise<boolean> {
+  if (!schoolId || !concessionId) {
+    throw new FirestoreSyncError('School ID and Concession ID are required', 'invalid-argument', 'deleteFeeConcession');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'feeConcessions', concessionId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteFeeConcession', `schools/${schoolId}/feeConcessions/${concessionId}`);
   }
 }

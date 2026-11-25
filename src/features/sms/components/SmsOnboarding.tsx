@@ -21,6 +21,7 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
+import { useAuth } from '../../../context/AuthContext';
 import { PrimaryAdminType } from '../types';
 
 interface SmsOnboardingProps {
@@ -89,6 +90,28 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
 
   const [formError, setFormError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [checkingApproval, setCheckingApproval] = useState(false);
+
+  const { refreshUserProfile } = useAuth();
+
+  const handleCheckApprovalStatus = async () => {
+    setCheckingApproval(true);
+    setFormError(null);
+    try {
+      const refreshed = await refreshUserProfile();
+      if (refreshed?.status === 'active') {
+        setSuccessToast('Your institutional account has been approved! Redirecting to dashboard...');
+        onOnboardingComplete();
+      } else {
+        setSuccessToast('Status checked: Your application is still awaiting administrator review.');
+        setTimeout(() => setSuccessToast(null), 4000);
+      }
+    } catch {
+      setFormError('Unable to check approval status right now. Please try again.');
+    } finally {
+      setCheckingApproval(false);
+    }
+  };
 
   // If user profile status
   const isPending = currentUserProfile?.status === 'pending';
@@ -313,14 +336,25 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
-                <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span>Super Admin Verification Gate Active</span>
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>Super Admin Verification Gate Active</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  As an institutional security policy, all new school establishments require clearance by the Portal Super Administrator to prevent unauthorized data access and preserve multi-tenant isolation.
+                </p>
               </div>
-              <p className="text-[11px] leading-relaxed">
-                As an institutional security policy, all new school establishments require clearance by the Portal Super Administrator to prevent unauthorized data access and preserve multi-tenant isolation.
-              </p>
+              <button
+                type="button"
+                onClick={handleCheckApprovalStatus}
+                disabled={checkingApproval}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs whitespace-nowrap transition cursor-pointer disabled:opacity-60 shrink-0"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${checkingApproval ? 'animate-spin' : ''}`} />
+                <span>{checkingApproval ? 'Checking...' : 'Check Approval Status'}</span>
+              </button>
             </div>
           </div>
         ) : (
@@ -402,14 +436,25 @@ export const SmsOnboarding: React.FC<SmsOnboardingProps> = ({
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 space-y-1">
-              <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
-                <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                <span>Strict Institutional Security Policy Active</span>
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-300">
+                  <ShieldCheck className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span>Strict Institutional Security Policy Active</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Your application is securely queued for administrative review. Once your school headmaster or administrator verifies your account and allocates your classes under &ldquo;Faculty &amp; Requests&rdquo;, your School Operations workspace will unlock automatically.
+                </p>
               </div>
-              <p className="text-[11px] leading-relaxed">
-                Your application is securely queued for administrative review. Once your school headmaster or administrator verifies your account and allocates your classes under &ldquo;Faculty &amp; Requests&rdquo;, your School Operations workspace will unlock automatically.
-              </p>
+              <button
+                type="button"
+                onClick={handleCheckApprovalStatus}
+                disabled={checkingApproval}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs whitespace-nowrap transition cursor-pointer disabled:opacity-60 shrink-0"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${checkingApproval ? 'animate-spin' : ''}`} />
+                <span>{checkingApproval ? 'Checking...' : 'Check Approval Status'}</span>
+              </button>
             </div>
           </div>
         )

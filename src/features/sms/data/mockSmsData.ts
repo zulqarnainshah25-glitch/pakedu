@@ -1,4 +1,4 @@
-import { School, TeacherInfo, ClassSection, ClassFeeStructure, FeePayment } from '../types';
+import { School, TeacherInfo, ClassSection, ClassFeeStructure, FeePayment, FeeConcessionRule } from '../types';
 
 export const INITIAL_MOCK_SCHOOL: School = {
   id: 'school_latifabad_403020101',
@@ -456,6 +456,39 @@ export const INITIAL_MOCK_FEE_STRUCTURES: ClassFeeStructure[] = [
       { id: 'chg_lab', title: 'Computer Lab Fund', amount: 400 },
     ],
     academicYear: '2025-2026',
+  },
+];
+
+export const INITIAL_MOCK_FEE_CONCESSIONS: FeeConcessionRule[] = [
+  {
+    id: 'conc_orphan_50',
+    schoolId: 'school_latifabad_403020101',
+    title: 'Orphan Discount',
+    discountType: 'percentage',
+    value: 50,
+    description: '50% fee concession for orphan students upon verification.',
+    isActive: true,
+    createdAt: '2025-09-01',
+  },
+  {
+    id: 'conc_staff_100',
+    schoolId: 'school_latifabad_403020101',
+    title: 'Staff Child',
+    discountType: 'percentage',
+    value: 100,
+    description: '100% tuition & monthly fee waiver for children of school faculty/staff.',
+    isActive: true,
+    createdAt: '2025-09-01',
+  },
+  {
+    id: 'conc_merit_25',
+    schoolId: 'school_latifabad_403020101',
+    title: 'Merit Scholarship',
+    discountType: 'percentage',
+    value: 25,
+    description: '25% academic merit scholarship for top 3 position holders.',
+    isActive: true,
+    createdAt: '2025-09-01',
   },
 ];
 

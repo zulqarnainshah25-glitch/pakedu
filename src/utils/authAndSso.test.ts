@@ -24,7 +24,13 @@ import {
 } from './authAndSso';
 import { calculateSindhSalary2026 } from '../data/salaryScale2026';
 import { determineSmartRoute, hasAdminCapabilities } from './smartRouting';
-import { School, UserProfile } from '../features/sms/types';
+import { School, UserProfile, ClassFeeStructure, FeeConcessionRule, FeePayment, Student } from '../features/sms/types';
+import {
+  calculateStudentDiscount,
+  calculateStudentFeeLedger,
+  getExpectedClassMonthlyFee,
+  getNextMonthKey,
+} from '../features/sms/utils/feeCalculations';
 import {
   getClassesForSection,
   getFieldExamplesForClass,
@@ -804,6 +810,160 @@ function runAllUnitTests() {
     assert.equal(securityCode.includes('securetoken@system.gserviceaccount.com'), true, 'Must use Google public certificates');
 
     console.log('✅ PASS: Serverless Security & Vercel Headers Security Audit Tests');
+  }
+
+  // 16. Advanced Fee Management: Concessions, Partial Payments, Advance Balance & Student Fee Ledger
+  {
+    const concessionRules: FeeConcessionRule[] = [
+      { id: 'c_orphan', schoolId: 'sch_1', title: 'Orphan Discount', discountType: 'percentage', value: 50, isActive: true },
+      { id: 'c_staff', schoolId: 'sch_1', title: 'Staff Child', discountType: 'percentage', value: 100, isActive: true },
+      { id: 'c_fixed', schoolId: 'sch_1', title: 'Hardship Waiver', discountType: 'fixed', value: 400, isActive: true },
+    ];
+    const structures: ClassFeeStructure[] = [
+      {
+        id: 'cls_9_a',
+        schoolId: 'sch_1',
+        classId: 'cls_9_a',
+        grade: 'Class 9',
+        monthlyTuitionFee: 1500,
+        admissionFee: 2000,
+        examFee: 500,
+        customCharges: [{ id: 'lab', title: 'Lab Fund', amount: 500 }],
+        academicYear: '2025-2026',
+      },
+    ];
+
+    const orphanStudent: Student = {
+      id: 'stu_1',
+      grNumber: 'GR-2001',
+      fullName: 'Bilal Ahmed',
+      fatherName: 'Farooq Ahmed',
+      dob: '2011-01-01',
+      gender: 'Male',
+      classId: 'cls_9_a',
+      grade: 'Class 9',
+      section: 'A',
+      admissionDate: '2025-04-01',
+      status: 'active',
+      guardianPhone: '0300-1234567',
+      concessionId: 'c_orphan',
+      concessionTitle: 'Orphan Discount',
+      concessionType: 'percentage',
+      concessionValue: 50,
+    };
+
+    const classFee = getExpectedClassMonthlyFee('cls_9_a', structures);
+    assert.equal(classFee.grossMonthlyFee, 2000);
+
+    const orphanDisc = calculateStudentDiscount(orphanStudent, classFee.grossMonthlyFee, concessionRules);
+    assert.equal(orphanDisc.discountAmount, 1000);
+    assert.equal(orphanDisc.concessionTitle, 'Orphan Discount');
+    assert.equal(orphanDisc.percentEffective, 50);
+
+    assert.equal(getNextMonthKey('2026-11'), '2026-12');
+    assert.equal(getNextMonthKey('2026-12'), '2027-01');
+
+    // Partial payment + Next Month Advance scenario in Student Fee Ledger
+    const partialNov: FeePayment = {
+      id: 'p_nov',
+      schoolId: 'sch_1',
+      studentId: 'stu_1',
+      studentName: 'Bilal Ahmed',
+      grNumber: 'GR-2001',
+      classId: 'cls_9_a',
+      grade: 'Class 9',
+      section: 'A',
+      month: '2026-11',
+      monthLabel: 'November 2026',
+      academicYear: '2025-2026',
+      baseAmount: 1500,
+      customChargesAmount: 500,
+      discount: 1000,
+      netAmount: 1000,
+      paidAmount: 600,
+      pendingBalance: 400,
+      status: 'partial',
+    };
+
+    const partialLedger = calculateStudentFeeLedger(
+      orphanStudent,
+      structures,
+      [partialNov],
+      concessionRules,
+      '2026-11'
+    );
+    assert.equal(partialLedger.totalDue, 1000);
+    assert.equal(partialLedger.totalPaid, 600);
+    assert.equal(partialLedger.pendingBalance, 400);
+    assert.equal(partialLedger.advanceBalance, 0);
+
+    // Settled Nov + Rs. 500 advance toward Dec 2026
+    const paidNov: FeePayment = { ...partialNov, paidAmount: 1000, pendingBalance: 0, advanceGenerated: 500, status: 'paid' };
+    const advDec: FeePayment = {
+      ...partialNov,
+      id: 'p_dec',
+      month: '2026-12',
+      monthLabel: 'December 2026',
+      paidAmount: 500,
+      advanceUsed: 500,
+      pendingBalance: 500,
+      status: 'partial',
+    };
+    const advanceLedger = calculateStudentFeeLedger(
+      orphanStudent,
+      structures,
+      [paidNov, advDec],
+      concessionRules,
+      '2026-11'
+    );
+    assert.equal(advanceLedger.totalDue, 1000);
+    assert.equal(advanceLedger.totalPaid, 1500);
+    assert.equal(advanceLedger.pendingBalance, 0);
+    assert.equal(advanceLedger.advanceBalance, 500);
+
+    console.log('✅ PASS: Advanced Fee Management (Concessions, Partial Payments, Advance Credit & Ledger) Tests');
+  }
+
+  // 16. Auto-Role Provisioning & Firestore Rules Security Guard Tests
+  {
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+    const authCtxSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/context/AuthContext.tsx'), 'utf-8');
+    const authModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AuthModal.tsx'), 'utf-8');
+    const smsCtxSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+
+    // Verify /users/{uid} rules allow self-registration as teacher (none/pending) or admin (pending with schoolId)
+    assert.equal(rulesSrc.includes("incoming().get('role', '') == 'admin'"), true);
+    assert.equal(rulesSrc.includes("incoming().get('status', '') == 'pending'"), true);
+    assert.equal(
+      rulesSrc.includes("(!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false)"),
+      true,
+      'firestore.rules must block self-assignment of isSuperAdmin on user create/update'
+    );
+    assert.equal(
+      rulesSrc.includes("incoming().get('isAdmissionIncharge', false) == false"),
+      true,
+      'firestore.rules must block self-assignment of isAdmissionIncharge on create/onboarding'
+    );
+    // Verify School Admin can approve teachers in /users/{uid} for their own schoolId
+    assert.equal(rulesSrc.includes("isSchoolAdmin(incoming().get('schoolId', ''))"), true);
+    // Verify /schools/{schoolId} allows pending_approval creation by creator and reading active schools
+    assert.equal(rulesSrc.includes("incoming().get('status', '') == 'pending_approval'"), true);
+    assert.equal(rulesSrc.includes("existing().get('status', '') == 'active'"), true);
+
+    // Verify AuthContext prevents signup race condition and preserves pending status
+    assert.equal(authCtxSrc.includes('setAuthSignupTransactionInFlight'), true);
+    assert.equal(authCtxSrc.includes('isExplicitlyPendingOrRejected'), true);
+
+    // Verify AuthModal uses signup transaction lock, saves users/{uid} before request, and refreshes AuthContext
+    assert.equal(authModalSrc.includes('setAuthSignupTransactionInFlight(true)'), true);
+    assert.equal(authModalSrc.includes('await refreshUserProfile()'), true);
+    assert.equal(authModalSrc.includes('skipFirestoreSync: true'), true);
+
+    // Verify Super Admin school approval updates both activatedSchool and admin users/{uid} (with semisCode)
+    assert.equal(smsCtxSrc.includes('semisCode: target.semisCode'), true);
+    assert.equal(smsCtxSrc.includes('saveSchoolToFirestore(activatedSchool)'), true);
+
+    console.log('✅ PASS: Auto-Role Provisioning, Signup Race Guard & Firestore Rules Security Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

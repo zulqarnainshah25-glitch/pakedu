@@ -30,6 +30,11 @@ export interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+let authSignupTransactionInFlight = false;
+export function setAuthSignupTransactionInFlight(inFlight: boolean) {
+  authSignupTransactionInFlight = inFlight;
+}
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(() => {
@@ -43,13 +48,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [authLoading, setAuthLoading] = useState(true);
   const [smartRoute, setSmartRoute] = useState<SmartRouteResult | null>(null);
 
-  const fetchProfileAndCalculateRoute = useCallback(async (user: User | null) => {
+  const fetchProfileAndCalculateRoute = useCallback(async (user: User | null): Promise<UserProfile | null> => {
     if (!user) {
       setCurrentUser(null);
       setCurrentUserProfile(null);
       setSmartRoute(null);
       setAuthLoading(false);
-      return;
+      return null;
     }
 
     setCurrentUser(user);
@@ -62,6 +67,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // 1. Fetch live profile from Firestore
       let profile = await fetchUserProfileFromFirestore(user.uid);
+
+      // Avoid creating a premature default teacher profile while a signup form is writing the requested role/school profile
+      if (!profile && authSignupTransactionInFlight) {
+        return null;
+      }
 
       if (!profile) {
         const isAdmin = userEmail === 'zulqarnainshah25@gmail.com' || userEmail === 'waleedshah1@gmail.com';
@@ -88,40 +98,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // 2. Fetch schools for verification
       const schools = await fetchSchoolsFromFirestore().catch(() => []);
 
-      // If user has admin/principal capabilities, normalize profile to active admin
+      const uEmail = (user.email || profile.email || '').trim().toLowerCase();
+      const matchedSchool = schools.find((s) => {
+        const adminUids = s.adminUids || [];
+        const primaryEmail = (s.primaryAdminEmail || '').trim().toLowerCase();
+        const schoolEmail = (s.email || '').trim().toLowerCase();
+        return (
+          (profile?.schoolId && s.id === profile.schoolId) ||
+          adminUids.includes(user.uid) ||
+          (uEmail && primaryEmail === uEmail) ||
+          (uEmail && schoolEmail === uEmail)
+        );
+      });
+
+      const isExplicitlyPendingOrRejected =
+        profile.status === 'pending' || profile.status === 'rejected';
+      const isApprovedInMatchedSchool =
+        Boolean(matchedSchool) &&
+        matchedSchool!.status === 'active' &&
+        (
+          (matchedSchool!.adminUids || []).includes(user.uid) ||
+          (uEmail && (matchedSchool!.primaryAdminEmail || '').trim().toLowerCase() === uEmail)
+        );
+
+      // If user has admin/principal capabilities, normalize profile to active admin ONLY when not pending review
+      // (or heal to active if their school has now been approved by Super Admin)
       if (
         hasAdminCapabilities(user, profile, schools, tokenResult.claims) &&
         !isSuperAdminClaim &&
-        profile.role !== 'super-admin'
+        profile.role !== 'super-admin' &&
+        (!isExplicitlyPendingOrRejected || isApprovedInMatchedSchool)
       ) {
+        const needsUpdate =
+          profile.role !== 'admin' ||
+          profile.status !== 'active' ||
+          (!profile.schoolId && Boolean(matchedSchool));
         profile.role = 'admin';
         profile.status = 'active';
-        if (!profile.schoolId && schools.length > 0) {
-          const uEmail = (user.email || profile.email || '').trim().toLowerCase();
-          const matchedSchool = schools.find((s) => {
-            const adminUids = s.adminUids || [];
-            const primaryEmail = (s.primaryAdminEmail || '').trim().toLowerCase();
-            const schoolEmail = (s.email || '').trim().toLowerCase();
-            return (
-              adminUids.includes(user.uid) ||
-              (uEmail && primaryEmail === uEmail) ||
-              (uEmail && schoolEmail === uEmail)
-            );
-          });
-          if (matchedSchool) {
-            profile.schoolId = matchedSchool.id;
-            profile.semisCode = matchedSchool.semisCode;
-            profile.schoolName = matchedSchool.name;
-          } else if (schools[0]) {
-            profile.schoolId = schools[0].id;
-            profile.semisCode = schools[0].semisCode;
-            profile.schoolName = schools[0].name;
-          }
+        if (matchedSchool) {
+          profile.schoolId = profile.schoolId || matchedSchool.id;
+          profile.semisCode = profile.semisCode || matchedSchool.semisCode;
+          profile.schoolName = profile.schoolName || matchedSchool.name;
         }
-        // Persist normalized admin status so subsequent calls are instantaneous
-        saveUserProfileToFirestore(profile).catch((err) =>
-          console.warn('[AuthContext] Admin profile sync notice:', err)
-        );
+        if (needsUpdate) {
+          // Persist normalized admin status so subsequent calls are instantaneous
+          saveUserProfileToFirestore(profile).catch((err) =>
+            console.warn('[AuthContext] Admin profile sync notice:', err)
+          );
+        }
       }
 
       // 3. Calculate smart route based on Firestore profile + verified claims
@@ -136,23 +160,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch {
         // Ignore storage errors
       }
+      return profile;
     } catch (err) {
       console.warn('[AuthContext] Error in profile routing:', err);
       const userEmail = (user.email || '').trim().toLowerCase();
-      const isOwner = userEmail === 'owner@pakedu.com';
       const isAdmin = userEmail === 'zulqarnainshah25@gmail.com' || userEmail === 'waleedshah1@gmail.com';
       const fallbackProfile: UserProfile = {
         uid: user.uid,
         email: user.email || '',
-        fullName: user.displayName || (isOwner ? 'Portal Super Admin' : isAdmin ? 'School Administrator' : 'Educator'),
-        role: isOwner ? 'super-admin' : isAdmin ? 'admin' : 'teacher',
-        status: isOwner || isAdmin ? 'active' : 'none',
+        fullName: user.displayName || (isAdmin ? 'School Administrator' : 'Educator'),
+        role: isAdmin ? 'admin' : 'teacher',
+        status: isAdmin ? 'active' : 'none',
         assignedClassIds: [],
-        isSuperAdmin: isOwner,
+        isSuperAdmin: false,
       };
       const fallbackRoute = determineSmartRoute(user, fallbackProfile, []);
       setCurrentUserProfile(fallbackProfile);
       setSmartRoute(fallbackRoute);
+      return fallbackProfile;
     } finally {
       setAuthLoading(false);
     }
@@ -167,11 +192,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshUserProfile = useCallback(async () => {
     if (auth.currentUser) {
-      await fetchProfileAndCalculateRoute(auth.currentUser);
-      return currentUserProfile;
+      return await fetchProfileAndCalculateRoute(auth.currentUser);
     }
     return null;
-  }, [fetchProfileAndCalculateRoute, currentUserProfile]);
+  }, [fetchProfileAndCalculateRoute]);
 
   const signOutUser = useCallback(async () => {
     try {

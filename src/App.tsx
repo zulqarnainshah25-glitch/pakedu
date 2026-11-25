@@ -286,6 +286,13 @@ function AppContent() {
   // 2. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
   // 3. Demo Mode: All tools visible for evaluation & sandbox testing
   const isAdminUser = useMemo(() => {
+    if (
+      currentUserProfile?.status === 'pending' ||
+      currentUserProfile?.status === 'rejected' ||
+      currentUserProfile?.status === 'none'
+    ) {
+      return false;
+    }
     return hasAdminCapabilities(currentUser, currentUserProfile, registeredSchools);
   }, [currentUser, currentUserProfile, registeredSchools]);
 
@@ -390,11 +397,12 @@ function AppContent() {
         return;
       }
 
-      // Check if initial routing for this user session has already occurred
-      if (hasInitialRoutedRef.current === currentUser.uid) {
+      // Check if routing for this user + role/status state has already occurred
+      const routeSignature = `${currentUser.uid}:${currentUserProfile?.role || ''}:${currentUserProfile?.status || ''}:${smartRoute.targetTool}`;
+      if (hasInitialRoutedRef.current === routeSignature) {
         return;
       }
-      hasInitialRoutedRef.current = currentUser.uid;
+      hasInitialRoutedRef.current = routeSignature;
 
       // Condition A: Super Admin
       if (

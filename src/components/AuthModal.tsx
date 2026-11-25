@@ -37,12 +37,14 @@ import {
   ATLIER_CV_LIVE_URL,
 } from '../utils/authAndSso';
 import { useSms } from '../features/sms/context/SmsContext';
+import { useAuth, setAuthSignupTransactionInFlight } from '../context/AuthContext';
 import {
   saveSchoolToFirestore,
   saveSchoolRegistrationRequestToFirestore,
   saveUserProfileToFirestore,
   saveJoinRequestToFirestore,
   fetchSchoolsFromFirestore,
+  FirestoreSyncError,
 } from '../features/sms/services/smsFirestoreService';
 import {
   School,
@@ -71,6 +73,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSignupSuccess,
 }) => {
   const { submitSchoolRegistration, submitJoinRequest, registeredSchools } = useSms();
+  const { refreshUserProfile } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [accountIntent, setAccountIntent] = useState<'general' | 'sms'>('general');
@@ -107,8 +110,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       fetchSchoolsFromFirestore()
         .then((schools) => {
           if (!isMounted) return;
-          const activeList = (schools || []).filter((s) => s.status !== 'suspended');
-          const combined = activeList.length > 0 ? activeList : (registeredSchools || []);
+          const activeList = (schools || []).filter(
+            (s) => s.status !== 'suspended' && s.status !== 'pending_approval'
+          );
+          const fallbackActive = (registeredSchools || []).filter(
+            (s) => s.status !== 'suspended' && s.status !== 'pending_approval'
+          );
+          const combined = activeList.length > 0 ? activeList : fallbackActive;
           setAvailableSchools(combined);
           if (combined.length > 0 && !targetSemisCode) {
             setSelectedSchoolId(combined[0].id);
@@ -248,89 +256,101 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       }
 
       if (mode === 'signup') {
-        const credential = await createUserWithEmailAndPassword(
-          auth,
-          validation.sanitizedEmail,
-          password
-        );
-        if (effectiveDisplayName) {
-          await updateProfile(credential.user, {
-            displayName: effectiveDisplayName,
-          });
-        }
+        setAuthSignupTransactionInFlight(true);
+        try {
+          const credential = await createUserWithEmailAndPassword(
+            auth,
+            validation.sanitizedEmail,
+            password
+          );
+          if (effectiveDisplayName) {
+            await updateProfile(credential.user, {
+              displayName: effectiveDisplayName,
+            });
+          }
 
-        // Save data to Firestore and SMS Context
-        if (accountIntent === 'sms') {
-          if (smsRoleIntent === 'admin') {
-            const schoolId = `sch_${semisCode.trim()}`;
-            const newSchool: School = {
-              id: schoolId,
-              name: schoolName.trim(),
-              semisCode: semisCode.trim(),
-              board,
-              district: district.trim(),
-              taluka: taluka.trim(),
-              adminUids: [credential.user.uid],
-              activeAcademicYear: '2025-2026',
-              phone: adminPhone.trim(),
-              email: validation.sanitizedEmail,
-              status: 'pending_approval',
-              primaryAdminType: 'principal',
-              primaryAdminName: adminFullName.trim(),
-              primaryAdminEmail: validation.sanitizedEmail,
-              createdAt: new Date().toISOString(),
-            };
+          // Save user role, status, and school linkage directly to Firestore BEFORE releasing auth listener sync
+          if (accountIntent === 'sms') {
+            if (smsRoleIntent === 'admin') {
+              const sanitizedSemis = semisCode.trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+              const schoolId = `sch_${sanitizedSemis || credential.user.uid.slice(0, 8)}`;
+              const newSchool: School = {
+                id: schoolId,
+                name: schoolName.trim(),
+                semisCode: semisCode.trim(),
+                board,
+                district: district.trim(),
+                taluka: taluka.trim(),
+                adminUids: [credential.user.uid],
+                activeAcademicYear: '2025-2026',
+                phone: adminPhone.trim(),
+                email: validation.sanitizedEmail,
+                status: 'pending_approval',
+                primaryAdminType: 'principal',
+                primaryAdminName: adminFullName.trim(),
+                primaryAdminEmail: validation.sanitizedEmail,
+                createdAt: new Date().toISOString(),
+              };
 
-            const requestId = `sch_req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-            const newRequest: SchoolRegistrationRequest = {
-              id: requestId,
-              schoolId: newSchool.id,
-              schoolName: newSchool.name,
-              semisCode: newSchool.semisCode,
-              board: newSchool.board,
-              district: newSchool.district,
-              taluka: newSchool.taluka,
-              activeAcademicYear: newSchool.activeAcademicYear,
-              phone: newSchool.phone,
-              email: newSchool.email,
-              primaryAdminType: 'principal',
-              adminUid: credential.user.uid,
-              adminName: adminFullName.trim(),
-              adminEmail: validation.sanitizedEmail,
-              adminPhone: adminPhone.trim(),
-              adminDesignation: 'Principal / Headmaster',
-              requestedAt: new Date().toISOString(),
-              status: 'pending',
-            };
+              const requestId = `sch_req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+              const newRequest: SchoolRegistrationRequest = {
+                id: requestId,
+                schoolId: newSchool.id,
+                schoolName: newSchool.name,
+                semisCode: newSchool.semisCode,
+                board: newSchool.board,
+                district: newSchool.district,
+                taluka: newSchool.taluka,
+                activeAcademicYear: newSchool.activeAcademicYear,
+                phone: newSchool.phone,
+                email: newSchool.email,
+                primaryAdminType: 'principal',
+                adminUid: credential.user.uid,
+                adminName: adminFullName.trim(),
+                adminEmail: validation.sanitizedEmail,
+                adminPhone: adminPhone.trim(),
+                adminDesignation: 'Principal / Headmaster',
+                requestedAt: new Date().toISOString(),
+                status: 'pending',
+              };
 
-            const pendingProfile: UserProfile = {
-              uid: credential.user.uid,
-              email: validation.sanitizedEmail,
-              fullName: adminFullName.trim(),
-              role: 'admin',
-              schoolId: newSchool.id,
-              schoolName: newSchool.name,
-              status: 'pending',
-              designation: 'Principal / Headmaster',
-              phone: adminPhone.trim(),
-              assignedClassIds: [],
-              createdAt: new Date().toISOString(),
-            };
+              const pendingProfile: UserProfile = {
+                uid: credential.user.uid,
+                email: validation.sanitizedEmail,
+                fullName: adminFullName.trim(),
+                role: 'admin',
+                schoolId: newSchool.id,
+                schoolName: newSchool.name,
+                semisCode: newSchool.semisCode,
+                primaryAdminType: 'principal',
+                status: 'pending',
+                designation: 'Principal / Headmaster',
+                phone: adminPhone.trim(),
+                assignedClassIds: [],
+                createdAt: new Date().toISOString(),
+              };
 
-            try {
+              // Write users/{uid} first so subsequent rules referencing userDoc() have the created profile
+              await saveUserProfileToFirestore(pendingProfile);
+              await Promise.all([
+                saveSchoolToFirestore(newSchool),
+                saveSchoolRegistrationRequestToFirestore(newRequest),
+              ]);
+
               submitSchoolRegistration(
                 {
-                  name: schoolName.trim(),
-                  semisCode: semisCode.trim(),
-                  board,
-                  district: district.trim(),
-                  taluka: taluka.trim(),
-                  activeAcademicYear: '2025-2026',
-                  phone: adminPhone.trim(),
-                  email: validation.sanitizedEmail,
+                  id: newSchool.id,
+                  name: newSchool.name,
+                  semisCode: newSchool.semisCode,
+                  board: newSchool.board,
+                  district: newSchool.district,
+                  taluka: newSchool.taluka,
+                  activeAcademicYear: newSchool.activeAcademicYear,
+                  phone: newSchool.phone,
+                  email: newSchool.email,
                   primaryAdminType: 'principal',
-                  primaryAdminName: adminFullName.trim(),
-                  primaryAdminEmail: validation.sanitizedEmail,
+                  primaryAdminName: newSchool.primaryAdminName,
+                  primaryAdminEmail: newSchool.primaryAdminEmail,
                   status: 'pending_approval',
                 },
                 {
@@ -340,63 +360,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   phone: adminPhone.trim(),
                   designation: 'Principal / Headmaster',
                   primaryAdminType: 'principal',
+                },
+                {
+                  requestId: newRequest.id,
+                  skipFirestoreSync: true,
                 }
               );
-            } catch (ctxErr) {
-              console.warn('[Context] submitSchoolRegistration notice:', ctxErr);
-            }
+            } else {
+              // Teacher Signup
+              const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
+              const matchedSchool = pool.find(
+                (s) => s.id === selectedSchoolId || s.semisCode.trim() === targetSemisCode.trim()
+              );
+              const resolvedSemis = matchedSchool ? matchedSchool.semisCode : targetSemisCode.trim();
+              const sanitizedSemis = resolvedSemis.replace(/[^a-zA-Z0-9_-]/g, '_');
+              const schoolId = matchedSchool ? matchedSchool.id : `sch_${sanitizedSemis}`;
+              const resolvedSchoolName = matchedSchool ? matchedSchool.name : `Govt. School (SEMIS: ${resolvedSemis})`;
 
-            await Promise.allSettled([
-              saveSchoolToFirestore(newSchool),
-              saveSchoolRegistrationRequestToFirestore(newRequest),
-              saveUserProfileToFirestore(pendingProfile),
-            ]);
-          } else {
-            // Teacher Signup
-            const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
-            const matchedSchool = pool.find(
-              (s) => s.id === selectedSchoolId || s.semisCode.trim() === targetSemisCode.trim()
-            );
-            const resolvedSemis = matchedSchool ? matchedSchool.semisCode : targetSemisCode.trim();
-            const schoolId = matchedSchool ? matchedSchool.id : `sch_${resolvedSemis}`;
-            const resolvedSchoolName = matchedSchool ? matchedSchool.name : `Govt. School (SEMIS: ${resolvedSemis})`;
-
-            const joinReqId = `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
-            const newJoinReq: TeacherJoinRequest = {
-              id: joinReqId,
-              uid: credential.user.uid,
-              fullName: teacherFullName.trim(),
-              fatherName: fatherName.trim(),
-              email: validation.sanitizedEmail,
-              phone: teacherPhone.trim(),
-              cnic: cnic.trim(),
-              designation: designation.trim(),
-              schoolId,
-              schoolName: resolvedSchoolName,
-              semisCode: resolvedSemis,
-              requestedAt: new Date().toISOString(),
-              status: 'pending',
-            };
-
-            const teacherProfile: UserProfile = {
-              uid: credential.user.uid,
-              email: validation.sanitizedEmail,
-              fullName: teacherFullName.trim(),
-              fatherName: fatherName.trim(),
-              role: 'teacher',
-              schoolId,
-              schoolName: resolvedSchoolName,
-              semisCode: resolvedSemis,
-              status: 'pending',
-              designation: designation.trim(),
-              cnic: cnic.trim(),
-              phone: teacherPhone.trim(),
-              assignedClassIds: [],
-              createdAt: new Date().toISOString(),
-            };
-
-            try {
-              submitJoinRequest({
+              const joinReqId = `req_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+              const newJoinReq: TeacherJoinRequest = {
+                id: joinReqId,
                 uid: credential.user.uid,
                 fullName: teacherFullName.trim(),
                 fatherName: fatherName.trim(),
@@ -407,41 +390,82 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 schoolId,
                 schoolName: resolvedSchoolName,
                 semisCode: resolvedSemis,
-              });
-            } catch (ctxErr) {
-              console.warn('[Context] submitJoinRequest notice:', ctxErr);
+                requestedAt: new Date().toISOString(),
+                status: 'pending',
+              };
+
+              const teacherProfile: UserProfile = {
+                uid: credential.user.uid,
+                email: validation.sanitizedEmail,
+                fullName: teacherFullName.trim(),
+                fatherName: fatherName.trim(),
+                role: 'teacher',
+                schoolId,
+                schoolName: resolvedSchoolName,
+                semisCode: resolvedSemis,
+                status: 'pending',
+                designation: designation.trim(),
+                cnic: cnic.trim(),
+                phone: teacherPhone.trim(),
+                assignedClassIds: [],
+                createdAt: new Date().toISOString(),
+              };
+
+              await saveUserProfileToFirestore(teacherProfile);
+              await saveJoinRequestToFirestore(schoolId, newJoinReq);
+
+              submitJoinRequest(
+                {
+                  uid: credential.user.uid,
+                  fullName: teacherFullName.trim(),
+                  fatherName: fatherName.trim(),
+                  email: validation.sanitizedEmail,
+                  phone: teacherPhone.trim(),
+                  cnic: cnic.trim(),
+                  designation: designation.trim(),
+                  schoolId,
+                  schoolName: resolvedSchoolName,
+                  semisCode: resolvedSemis,
+                },
+                {
+                  requestId: newJoinReq.id,
+                  skipFirestoreSync: true,
+                }
+              );
             }
-
-            await Promise.allSettled([
-              saveJoinRequestToFirestore(schoolId, newJoinReq),
-              saveUserProfileToFirestore(teacherProfile),
-            ]);
+          } else {
+            // General User Signup
+            const generalProfile: UserProfile = {
+              uid: credential.user.uid,
+              email: validation.sanitizedEmail,
+              fullName: displayName.trim(),
+              role: 'teacher',
+              status: 'none',
+              assignedClassIds: [],
+              createdAt: new Date().toISOString(),
+            };
+            await saveUserProfileToFirestore(generalProfile);
           }
-        } else {
-          // General User Signup
-          const generalProfile: UserProfile = {
-            uid: credential.user.uid,
-            email: validation.sanitizedEmail,
-            fullName: displayName.trim(),
-            role: 'teacher',
-            status: 'none',
-            assignedClassIds: [],
-            createdAt: new Date().toISOString(),
-          };
-          await saveUserProfileToFirestore(generalProfile).catch(() => {});
-        }
 
-        onClose();
-        if (onSignupSuccess) {
-          onSignupSuccess(accountIntent, accountIntent === 'sms' ? smsRoleIntent : undefined);
+          await refreshUserProfile();
+          onClose();
+          if (onSignupSuccess) {
+            onSignupSuccess(accountIntent, accountIntent === 'sms' ? smsRoleIntent : undefined);
+          }
+          return;
+        } finally {
+          setAuthSignupTransactionInFlight(false);
         }
-        return;
       } else {
         await signInWithEmailAndPassword(auth, validation.sanitizedEmail, password);
       }
 
       onClose();
     } catch (err) {
+      if (err instanceof FirestoreSyncError) {
+        setErrorMessage(`Account created, but profile provisioning failed: ${err.message}`);
+        return;
+      }
       const diag = diagnoseFirebaseAuthError(
         err,
         currentHostname,

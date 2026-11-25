@@ -93,7 +93,13 @@ service cloud.firestore {
 
     function isValidStudent(data) {
       return data.keys().hasAll(['id', 'grNumber', 'fullName', 'fatherName', 'gender', 'classId', 'guardianPhone', 'status']) &&
-        data.keys().hasOnly(['id', 'grNumber', 'fullName', 'name', 'fatherName', 'gender', 'dob', 'admissionDate', 'classId', 'currentClassId', 'grade', 'currentGrade', 'section', 'currentSection', 'bFormNumber', 'bFormOrCnic', 'guardianPhone', 'address', 'status', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'grNumber', 'fullName', 'name', 'fatherName', 'gender', 'dob', 'admissionDate',
+          'classId', 'currentClassId', 'grade', 'currentGrade', 'section', 'currentSection',
+          'bFormNumber', 'bFormOrCnic', 'guardianPhone', 'address', 'status',
+          'concessionId', 'concessionTitle', 'concessionType', 'concessionValue', 'advanceBalance',
+          'createdAt', 'updatedAt'
+        ]) &&
         data.id is string && isValidId(data.id) &&
         data.grNumber is string && data.grNumber.size() >= 1 && data.grNumber.size() <= 50 &&
         data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
@@ -125,7 +131,15 @@ service cloud.firestore {
 
     function isValidFeePayment(data) {
       return data.keys().hasAll(['id', 'schoolId', 'studentId', 'month', 'netAmount', 'paidAmount', 'status']) &&
-        data.keys().hasOnly(['id', 'schoolId', 'studentId', 'studentName', 'grNumber', 'classId', 'grade', 'section', 'month', 'monthLabel', 'academicYear', 'baseAmount', 'customChargesAmount', 'discount', 'netAmount', 'paidAmount', 'status', 'paymentDate', 'paymentMethod', 'receiptNumber', 'notes', 'recordedByUid', 'recordedByName', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'studentId', 'studentName', 'grNumber', 'classId', 'grade', 'section',
+          'month', 'monthLabel', 'academicYear', 'baseAmount', 'customChargesAmount',
+          'discount', 'concessionId', 'concessionTitle', 'concessionPercent',
+          'netAmount', 'paidAmount', 'pendingBalance', 'advanceUsed', 'advanceGenerated',
+          'allocatedNextMonth', 'installments',
+          'status', 'paymentDate', 'paymentMethod', 'receiptNumber', 'notes',
+          'recordedByUid', 'recordedByName', 'createdAt', 'updatedAt'
+        ]) &&
         data.id is string && isValidId(data.id) &&
         data.schoolId is string && isValidId(data.schoolId) &&
         data.studentId is string && isValidId(data.studentId) &&
@@ -133,6 +147,16 @@ service cloud.firestore {
         data.netAmount is number &&
         data.paidAmount is number &&
         (data.status == 'paid' || data.status == 'unpaid' || data.status == 'partial');
+    }
+
+    function isValidFeeConcession(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'title', 'discountType', 'value']) &&
+        data.keys().hasOnly(['id', 'schoolId', 'title', 'discountType', 'value', 'description', 'isActive', 'createdAt', 'updatedAt']) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+        (data.discountType == 'percentage' || data.discountType == 'fixed') &&
+        data.value is number && data.value >= 0;
     }
 
     // =========================================================================
@@ -193,33 +217,88 @@ service cloud.firestore {
     // 1. Users Collection (/users/{uid})
     // =========================================================================
     match /users/{uid} {
-      // User can read their own profile; Super Admin can read all
-      allow get: if isSuperAdmin() || (isSignedIn() && request.auth.uid == uid);
+      // User can read their own profile; Super Admin can read all; School Admin can read staff of their school
+      allow get: if isSuperAdmin() ||
+        (isSignedIn() && request.auth.uid == uid) ||
+        (resource != null && existing().get('schoolId', '') != '' && isSchoolAdmin(existing().get('schoolId', '')));
       allow list: if isSuperAdmin();
 
-      // User can create own doc only with role 'teacher', status 'none' or 'pending'
-      // Never role/isSuperAdmin/status 'active' self-assigned
+      // Newly authenticated user can create own profile during signup with requested role:
+      // - 'teacher' with status 'none' (general signup) or 'pending' (join existing school)
+      // - 'admin' with status 'pending' and a schoolId (register a new school)
+      // Never allow self-assigning 'super-admin', isSuperAdmin, isAdmissionIncharge, or active admin status.
+      // Active School Admin may also create/activate a teacher doc for their own school during approval.
       allow create: if isSuperAdmin() || (
         isSignedIn() &&
         request.auth.uid == uid &&
         isValidId(uid) &&
+        incoming().get('uid', uid) == uid &&
+        (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false) &&
+        incoming().get('isAdmissionIncharge', false) == false &&
+        (
+          (
+            incoming().get('role', '') == 'teacher' &&
+            (incoming().get('status', '') in ['none', 'pending'])
+          ) || (
+            incoming().get('role', '') == 'admin' &&
+            incoming().get('status', '') == 'pending' &&
+            incoming().get('schoolId', '') is string &&
+            incoming().get('schoolId', '').size() > 0
+          )
+        )
+      ) || (
+        isSignedIn() &&
+        isValidId(uid) &&
+        (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false) &&
         incoming().get('role', '') == 'teacher' &&
-        (incoming().get('status', '') in ['none', 'pending']) &&
-        (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false)
+        (incoming().get('status', '') in ['pending', 'active']) &&
+        incoming().get('schoolId', '') is string &&
+        incoming().get('schoolId', '').size() > 0 &&
+        isSchoolAdmin(incoming().get('schoolId', ''))
       );
 
-      // User can update own doc but CANNOT change role, isSuperAdmin, status -> 'active', schoolId
-      // Super Admin can read/write all
+      // Update rules:
+      // 1. Super Admin can update any user (including approving school admins)
+      // 2. User can update own doc:
+      //    - normal edits keep role, schoolId, status unchanged
+      //    - onboarding transition ONLY from 'none' (no school) or 'rejected' -> 'pending' with 'teacher' or 'admin' + schoolId
+      //    - never self-elevate to 'active' or 'super-admin'
+      // 3. Active School Admin can approve/update teachers belonging to (or applying to) their school
       allow update: if isSuperAdmin() || (
         isSignedIn() &&
-        request.auth.uid == uid &&
         isValidId(uid) &&
-        incoming().get('role', '') == existing().get('role', '') &&
-        incoming().get('schoolId', '') == existing().get('schoolId', '') &&
         (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == existing().get('isSuperAdmin', false)) &&
         (
-          incoming().get('status', '') == existing().get('status', '') ||
-          (existing().get('status', '') == 'none' && incoming().get('status', '') == 'pending')
+          (
+            request.auth.uid == uid &&
+            incoming().get('isAdmissionIncharge', false) == existing().get('isAdmissionIncharge', false) &&
+            (
+              (
+                incoming().get('role', '') == existing().get('role', '') &&
+                incoming().get('schoolId', '') == existing().get('schoolId', '') &&
+                incoming().get('status', '') == existing().get('status', '')
+              ) || (
+                (existing().get('status', 'none') in ['none', 'rejected']) &&
+                (existing().get('schoolId', '') == '' || existing().get('status', '') == 'rejected') &&
+                incoming().get('status', '') == 'pending' &&
+                (incoming().get('role', '') in ['teacher', 'admin']) &&
+                incoming().get('schoolId', '') is string &&
+                incoming().get('schoolId', '').size() > 0
+              )
+            )
+          ) || (
+            existing().get('isSuperAdmin', false) == false &&
+            existing().get('role', '') != 'super-admin' &&
+            incoming().get('role', '') == 'teacher' &&
+            (incoming().get('status', '') in ['active', 'rejected', 'pending']) &&
+            incoming().get('schoolId', '') is string &&
+            incoming().get('schoolId', '').size() > 0 &&
+            isSchoolAdmin(incoming().get('schoolId', '')) &&
+            (
+              existing().get('schoolId', '') == '' ||
+              existing().get('schoolId', '') == incoming().get('schoolId', '')
+            )
+          )
         )
       );
 
@@ -230,11 +309,22 @@ service cloud.firestore {
     // 2. Schools Collection (/schools/{schoolId})
     // =========================================================================
     match /schools/{schoolId} {
-      // Read only for members of that school and super-admin
-      allow get, list: if isSchoolMember(schoolId) || isSuperAdmin();
+      // Directory read allowed for active schools (required for teacher signup school selector),
+      // pending school creators, members of that school, and super-admin.
+      allow get, list: if existing().get('status', '') == 'active' ||
+        isSchoolMember(schoolId) ||
+        isSuperAdmin() ||
+        (isSignedIn() && (request.auth.uid in existing().get('adminUids', [])));
 
-      // Create by Super Admin only
-      allow create: if isSuperAdmin() && isValidId(schoolId);
+      // Super Admin can create any school; authenticated user registering a new school
+      // can create a pending_approval school listing themselves in adminUids.
+      allow create: if isValidId(schoolId) && (
+        isSuperAdmin() || (
+          isSignedIn() &&
+          incoming().get('status', '') == 'pending_approval' &&
+          (request.auth.uid in incoming().get('adminUids', []))
+        )
+      );
 
       // Update by Super Admin only (or school admin for limited fields)
       allow update: if isValidId(schoolId) && (
@@ -330,6 +420,13 @@ service cloud.firestore {
             userDoc().get('isAdmissionIncharge', false) == true
           )
         );
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Fee Concessions (/schools/{schoolId}/feeConcessions/{concessionId}) ---
+      match /feeConcessions/{concessionId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isSchoolAdmin(schoolId) && isValidId(concessionId) && isValidFeeConcession(incoming());
         allow delete: if isSchoolAdmin(schoolId);
       }
     }

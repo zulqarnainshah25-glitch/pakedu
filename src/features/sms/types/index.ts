@@ -115,6 +115,20 @@ export interface ClassSection {
   createdAt: string;
 }
 
+export type ConcessionDiscountType = 'percentage' | 'fixed';
+
+export interface FeeConcessionRule {
+  id: string;
+  schoolId: string;
+  title: string;              // e.g. "Orphan Discount", "Staff Child", "Merit Scholarship"
+  discountType: ConcessionDiscountType;
+  value: number;              // e.g. 50 for 50%, 100 for 100%, or PKR fixed amount
+  description?: string;
+  isActive: boolean;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
 export interface Student {
   id: string;
   grNumber: string;           // General Register / Admission Number
@@ -130,6 +144,12 @@ export interface Student {
   status: 'active' | 'struck_off' | 'transferred' | 'graduated';
   guardianPhone: string;
   address?: string;
+  // Permanent Fee Concession & Advance Balance Tracking
+  concessionId?: string;
+  concessionTitle?: string;
+  concessionType?: ConcessionDiscountType;
+  concessionValue?: number;
+  advanceBalance?: number;
 }
 
 export interface AttendanceRecord {
@@ -182,6 +202,15 @@ export interface ClassFeeStructure {
 export type PaymentStatus = 'paid' | 'unpaid' | 'partial';
 export type PaymentMethod = 'Cash' | 'Bank Transfer' | 'EasyPaisa' | 'JazzCash' | 'Cheque';
 
+export interface FeeInstallmentEntry {
+  amount: number;
+  date: string;
+  method: PaymentMethod;
+  receiptNumber: string;
+  recordedByName?: string;
+  note?: string;
+}
+
 export interface FeePayment {
   id: string;
   schoolId: string;
@@ -196,9 +225,17 @@ export interface FeePayment {
   academicYear: string;
   baseAmount: number;
   customChargesAmount: number;
-  discount: number;           // Concession / Scholarship
+  discount: number;           // Concession / Scholarship amount in PKR
+  concessionId?: string;
+  concessionTitle?: string;
+  concessionPercent?: number;
   netAmount: number;
   paidAmount: number;
+  pendingBalance?: number;    // Remaining due when status === 'partial'
+  advanceUsed?: number;       // Advance credit applied toward this month
+  advanceGenerated?: number;  // Overpayment allocated forward as advance
+  allocatedNextMonth?: string;// e.g. "2026-12"
+  installments?: FeeInstallmentEntry[];
   status: PaymentStatus;
   paymentDate?: string;
   paymentMethod?: PaymentMethod;

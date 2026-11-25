@@ -438,3 +438,14 @@ html.dark .cv-paper-sheet .cv-light-sidebar {
   text-justify: inter-word !important;
   text-align-last: left !important;
 }
+
+@media print {
+  .print-break-inside-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .print-page-break-after {
+    break-after: page !important;
+    page-break-after: always !important;
+  }
+}

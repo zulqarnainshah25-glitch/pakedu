@@ -28,19 +28,43 @@ import {
   FileSpreadsheet,
   BarChart3,
   RefreshCw,
+  Tag,
+  Percent,
+  Wallet,
+  FileCheck2,
+  Edit2,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
-import { ClassFeeStructure, CustomFeeCharge, FeePayment, PaymentMethod, School, Student } from '../types';
+import {
+  ClassFeeStructure,
+  ConcessionDiscountType,
+  CustomFeeCharge,
+  FeeConcessionRule,
+  FeePayment,
+  PaymentMethod,
+  PaymentStatus,
+  School,
+  Student,
+} from '../types';
 import {
   fetchStudentsFromFirestore,
   fetchFeeStructuresFromFirestore,
   fetchFeePaymentsFromFirestore,
+  fetchFeeConcessionsFromFirestore,
 } from '../services/smsFirestoreService';
+import {
+  calculateStudentDiscount,
+  formatMonthLabel,
+  getExpectedClassMonthlyFee,
+  getNextMonthKey,
+} from '../utils/feeCalculations';
 import { triggerPrintDocument } from '../../../utils/printDocument';
+
+export type FeeTabId = 'structure' | 'collect' | 'bulk' | 'concessions' | 'defaulters' | 'reports';
 
 interface FeeManagementProps {
   onBack?: () => void;
-  initialTab?: 'structure' | 'collect' | 'defaulters' | 'reports';
+  initialTab?: FeeTabId;
   initialStudentId?: string;
   initialClassId?: string;
 }
@@ -50,6 +74,7 @@ interface SchoolFeeDataset {
   students: Student[];
   feeStructures: ClassFeeStructure[];
   feePayments: FeePayment[];
+  feeConcessions: FeeConcessionRule[];
 }
 
 function escapeCsvCell(value: string | number | undefined | null): string {
@@ -76,9 +101,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     students,
     feeStructures,
     feePayments,
+    feeConcessions,
     saveClassFeeStructure,
     deleteClassFeeStructure,
     recordFeePayment,
+    recordBulkFeePayments,
+    saveFeeConcessionRule,
+    deleteFeeConcessionRule,
+    applyStudentConcession,
+    updateStudent,
     canManageFeeStructure,
     canCollectFee,
     canAdmitStudents,
@@ -92,8 +123,11 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
   const canAccessModule = canCollectFee || canAccessReports;
 
   // Active Tab state: If user cannot manage structure, default to 'collect'
-  const [activeTab, setActiveTab] = useState<'structure' | 'collect' | 'defaulters' | 'reports'>(() => {
+  const [activeTab, setActiveTab] = useState<FeeTabId>(() => {
     if (initialTab === 'structure' && !canManageFeeStructure && canCollectFee) {
+      return 'collect';
+    }
+    if (initialTab === 'concessions' && !canManageFeeStructure) {
       return 'collect';
     }
     return initialTab;
@@ -326,10 +360,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     await refreshActiveSchoolClasses(selected.id);
   };
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  const [amountReceivedInput, setAmountReceivedInput] = useState<number>(0);
+  const [allocateSurplusToNextMonth, setAllocateSurplusToNextMonth] = useState<boolean>(true);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [isProcessingPayment, setIsProcessingPayment] = useState<boolean>(false);
   const [activeVoucherForPrint, setActiveVoucherForPrint] = useState<FeePayment | null>(null);
+  const [collectionFeedback, setCollectionFeedback] = useState<string | null>(null);
 
   // Filter students for selected collection class
   const classStudents = useMemo(() => {
@@ -359,7 +396,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     );
   }, [feeStructures, editingStructures, collectionClassId, classes, activeSchool]);
 
-  // Calculate Base, Custom Charges, Subtotal, Net Payable
+  // Calculate Base, Custom Charges, Permanent Concession, Net Payable
   const baseMonthlyTuition = activeClassFeeStructure?.monthlyTuitionFee || 0;
   const customChargesSum = useMemo(() => {
     return (activeClassFeeStructure?.customCharges || []).reduce(
@@ -368,7 +405,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     );
   }, [activeClassFeeStructure]);
   const grossMonthlyFee = baseMonthlyTuition + customChargesSum;
-  const netPayable = Math.max(0, grossMonthlyFee - (Number(discountAmount) || 0));
+
+  const studentPermanentDiscount = useMemo(() => {
+    return calculateStudentDiscount(selectedStudent, grossMonthlyFee, feeConcessions);
+  }, [selectedStudent, grossMonthlyFee, feeConcessions]);
 
   // Check if student already has a payment record for this month
   const existingPaymentForStudent = useMemo(() => {
@@ -377,6 +417,44 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       (p) => p.studentId === collectionStudentId && p.month === selectedMonth
     );
   }, [feePayments, collectionStudentId, selectedMonth]);
+
+  // Sync discount amount whenever student, month, or permanent concession changes
+  useEffect(() => {
+    if (!selectedStudent) {
+      setDiscountAmount(0);
+      return;
+    }
+    if (existingPaymentForStudent && existingPaymentForStudent.discount !== undefined) {
+      setDiscountAmount(Number(existingPaymentForStudent.discount) || 0);
+    } else {
+      setDiscountAmount(studentPermanentDiscount.discountAmount);
+    }
+  }, [
+    selectedStudent?.id,
+    selectedMonth,
+    studentPermanentDiscount.discountAmount,
+    existingPaymentForStudent?.id,
+  ]);
+
+  const netPayable = Math.max(0, grossMonthlyFee - (Number(discountAmount) || 0));
+  const alreadyPaidThisMonth = Number(existingPaymentForStudent?.paidAmount) || 0;
+  const remainingDueThisMonth = Math.max(0, netPayable - alreadyPaidThisMonth);
+
+  const nextMonthKey = useMemo(() => getNextMonthKey(selectedMonth), [selectedMonth]);
+  const nextMonthLabel = useMemo(() => formatMonthLabel(nextMonthKey), [nextMonthKey]);
+
+  // Sync Exact Amount Received input default to remaining due when student/month/discount changes
+  useEffect(() => {
+    if (!selectedStudent) {
+      setAmountReceivedInput(0);
+      return;
+    }
+    setAmountReceivedInput(remainingDueThisMonth);
+  }, [selectedStudent?.id, selectedMonth, remainingDueThisMonth]);
+
+  const numericReceivedNow = Math.max(0, Number(amountReceivedInput) || 0);
+  const surplusAmount = Math.max(0, numericReceivedNow - remainingDueThisMonth);
+  const projectedPendingAfterPayment = Math.max(0, remainingDueThisMonth - numericReceivedNow);
 
   // Generate Receipt Number: RCPT-YYYY-XXXX
   const generateReceiptNumber = () => {
@@ -390,12 +468,69 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       alert('Please select a student first.');
       return;
     }
+    if (numericReceivedNow <= 0 && netPayable > 0 && remainingDueThisMonth > 0) {
+      alert('Please enter the Exact Amount Received (greater than Rs. 0).');
+      return;
+    }
 
     setIsProcessingPayment(true);
+    setCollectionFeedback(null);
     try {
-      const receiptNo = existingPaymentForStudent?.receiptNumber || generateReceiptNumber();
+      const nowIso = new Date().toISOString();
+      const receiptNo =
+        existingPaymentForStudent?.receiptNumber && alreadyPaidThisMonth === 0
+          ? existingPaymentForStudent.receiptNumber
+          : existingPaymentForStudent?.status === 'paid' && numericReceivedNow === 0
+          ? existingPaymentForStudent.receiptNumber || generateReceiptNumber()
+          : generateReceiptNumber();
+
+      const totalCollectedAttempt = alreadyPaidThisMonth + numericReceivedNow;
+      const excessOverMonthNet = Math.max(0, totalCollectedAttempt - netPayable);
+
+      const appliedToCurrentMonth =
+        excessOverMonthNet > 0 && allocateSurplusToNextMonth
+          ? netPayable
+          : excessOverMonthNet > 0
+          ? netPayable
+          : Math.min(netPayable, totalCollectedAttempt);
+
+      const pendingAfterPayment = Math.max(0, netPayable - appliedToCurrentMonth);
+      const nextStatus: PaymentStatus =
+        pendingAfterPayment === 0
+          ? 'paid'
+          : appliedToCurrentMonth > 0
+          ? 'partial'
+          : 'unpaid';
+
+      const prevInstallments = existingPaymentForStudent?.installments || [];
+      const newInstallments =
+        numericReceivedNow > 0
+          ? [
+              ...prevInstallments,
+              {
+                amount: numericReceivedNow,
+                date: nowIso,
+                method: paymentMethod,
+                receiptNumber: receiptNo,
+                recordedByName: currentUserProfile?.fullName || 'School Admin',
+                note: paymentNotes || undefined,
+              },
+            ]
+          : prevInstallments;
+
+      const defaultNote =
+        nextStatus === 'partial'
+          ? `Partial payment received (Remaining Pending: Rs. ${pendingAfterPayment.toLocaleString()})`
+          : excessOverMonthNet > 0 && allocateSurplusToNextMonth
+          ? `Paid in full + Rs. ${excessOverMonthNet.toLocaleString()} Advance allocated to ${nextMonthLabel}`
+          : excessOverMonthNet > 0
+          ? `Paid in full + Rs. ${excessOverMonthNet.toLocaleString()} Advance balance credited`
+          : 'Paid in full on time';
+
       const paymentRecord: FeePayment = {
-        id: existingPaymentForStudent?.id || `pay_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id:
+          existingPaymentForStudent?.id ||
+          `pay_${selectedStudent.id}_${selectedMonth}_${Date.now().toString(36)}`,
         schoolId: activeSchool.id,
         studentId: selectedStudent.id,
         studentName: selectedStudent.fullName,
@@ -409,19 +544,124 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         baseAmount: baseMonthlyTuition,
         customChargesAmount: customChargesSum,
         discount: Number(discountAmount) || 0,
+        concessionId: studentPermanentDiscount.concessionId || existingPaymentForStudent?.concessionId,
+        concessionTitle: studentPermanentDiscount.concessionTitle || existingPaymentForStudent?.concessionTitle,
+        concessionPercent: studentPermanentDiscount.percentEffective || existingPaymentForStudent?.concessionPercent,
         netAmount: netPayable,
-        paidAmount: netPayable,
-        status: 'paid',
-        paymentDate: new Date().toISOString(),
+        paidAmount: appliedToCurrentMonth,
+        pendingBalance: pendingAfterPayment,
+        advanceUsed: existingPaymentForStudent?.advanceUsed || 0,
+        advanceGenerated:
+          (existingPaymentForStudent?.advanceGenerated || 0) + excessOverMonthNet,
+        allocatedNextMonth:
+          excessOverMonthNet > 0 && allocateSurplusToNextMonth
+            ? nextMonthKey
+            : existingPaymentForStudent?.allocatedNextMonth,
+        installments: newInstallments,
+        status: nextStatus,
+        paymentDate: nowIso,
         paymentMethod,
         receiptNumber: receiptNo,
-        notes: paymentNotes || 'Paid in full on time',
+        notes: paymentNotes.trim() || defaultNote,
         recordedByUid: currentUserProfile?.uid || 'admin_user',
         recordedByName: currentUserProfile?.fullName || 'School Admin',
-        createdAt: existingPaymentForStudent?.createdAt || new Date().toISOString(),
+        createdAt: existingPaymentForStudent?.createdAt || nowIso,
       };
 
       await recordFeePayment(paymentRecord);
+
+      // Handle Excess / Overpayment -> Allocate to Next Month (Advance) or Student Advance Balance
+      if (excessOverMonthNet > 0) {
+        if (allocateSurplusToNextMonth) {
+          const nextExpected = getExpectedClassMonthlyFee(
+            selectedStudent.classId,
+            feeStructures,
+            activeSchool.activeAcademicYear || '2025-2026'
+          );
+          const nextDiscount = calculateStudentDiscount(
+            selectedStudent,
+            nextExpected.grossMonthlyFee,
+            feeConcessions
+          );
+          const nextNetAmount = Math.max(
+            0,
+            nextExpected.grossMonthlyFee - nextDiscount.discountAmount
+          );
+          const existingNext = feePayments.find(
+            (p) => p.studentId === selectedStudent.id && p.month === nextMonthKey
+          );
+          const nextPaidTotal = (Number(existingNext?.paidAmount) || 0) + excessOverMonthNet;
+          const nextAdvanceTotal = (Number(existingNext?.advanceUsed) || 0) + excessOverMonthNet;
+          const nextPending = Math.max(0, nextNetAmount - nextPaidTotal);
+          const nextMonthStatus: PaymentStatus =
+            nextPending === 0 ? 'paid' : 'partial';
+
+          const nextMonthRecord: FeePayment = {
+            id:
+              existingNext?.id ||
+              `pay_adv_${selectedStudent.id}_${nextMonthKey}_${Date.now().toString(36)}`,
+            schoolId: activeSchool.id,
+            studentId: selectedStudent.id,
+            studentName: selectedStudent.fullName,
+            grNumber: selectedStudent.grNumber,
+            classId: selectedStudent.classId,
+            grade: selectedStudent.grade,
+            section: selectedStudent.section,
+            month: nextMonthKey,
+            monthLabel: nextMonthLabel,
+            academicYear: nextExpected.academicYear,
+            baseAmount: nextExpected.baseMonthlyTuition,
+            customChargesAmount: nextExpected.customChargesAmount,
+            discount: nextDiscount.discountAmount,
+            concessionId: nextDiscount.concessionId,
+            concessionTitle: nextDiscount.concessionTitle,
+            concessionPercent: nextDiscount.percentEffective,
+            netAmount: nextNetAmount,
+            paidAmount: nextPaidTotal,
+            pendingBalance: nextPending,
+            advanceUsed: nextAdvanceTotal,
+            advanceGenerated: existingNext?.advanceGenerated || 0,
+            status: nextMonthStatus,
+            paymentDate: nowIso,
+            paymentMethod,
+            receiptNumber: `${receiptNo}-ADV`,
+            notes: `Advance Rs. ${excessOverMonthNet.toLocaleString()} allocated from ${currentMonthLabel}`,
+            recordedByUid: currentUserProfile?.uid || 'admin_user',
+            recordedByName: currentUserProfile?.fullName || 'School Admin',
+            createdAt: existingNext?.createdAt || nowIso,
+          };
+
+          await recordFeePayment(nextMonthRecord);
+          updateStudent(selectedStudent.id, {
+            advanceBalance: (Number(selectedStudent.advanceBalance) || 0) + excessOverMonthNet,
+          });
+          setCollectionFeedback(
+            `Recorded Rs. ${numericReceivedNow.toLocaleString()}: ${currentMonthLabel} marked Paid, and Rs. ${excessOverMonthNet.toLocaleString()} allocated to ${nextMonthLabel} as Advance.`
+          );
+        } else {
+          updateStudent(selectedStudent.id, {
+            advanceBalance: (Number(selectedStudent.advanceBalance) || 0) + excessOverMonthNet,
+          });
+          setCollectionFeedback(
+            `Recorded Rs. ${numericReceivedNow.toLocaleString()}: ${currentMonthLabel} marked Paid, and Rs. ${excessOverMonthNet.toLocaleString()} added to Student's Advance Balance.`
+          );
+        }
+      } else if (nextStatus === 'partial') {
+        setCollectionFeedback(
+          `Partial payment of Rs. ${numericReceivedNow.toLocaleString()} recorded. Remaining Pending Balance for ${currentMonthLabel}: Rs. ${pendingAfterPayment.toLocaleString()}.`
+        );
+      } else {
+        if ((existingPaymentForStudent?.advanceUsed || 0) > 0 && (selectedStudent.advanceBalance || 0) > 0) {
+          const consumed = Number(existingPaymentForStudent?.advanceUsed) || 0;
+          updateStudent(selectedStudent.id, {
+            advanceBalance: Math.max(0, (Number(selectedStudent.advanceBalance) || 0) - consumed),
+          });
+        }
+        setCollectionFeedback(
+          `Full fee payment cleared for ${selectedStudent.fullName} (${currentMonthLabel}).`
+        );
+      }
+
       setActiveVoucherForPrint(paymentRecord);
       setPaymentNotes('');
     } catch (err) {
@@ -452,8 +692,17 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       baseAmount: baseMonthlyTuition,
       customChargesAmount: customChargesSum,
       discount: Number(discountAmount) || 0,
+      concessionTitle: studentPermanentDiscount.concessionTitle,
+      concessionPercent: studentPermanentDiscount.percentEffective,
       netAmount: netPayable,
       paidAmount: existingPaymentForStudent?.paidAmount || 0,
+      pendingBalance:
+        existingPaymentForStudent?.status === 'paid'
+          ? 0
+          : Math.max(0, netPayable - (existingPaymentForStudent?.paidAmount || 0)),
+      advanceUsed: existingPaymentForStudent?.advanceUsed || 0,
+      advanceGenerated: existingPaymentForStudent?.advanceGenerated || 0,
+      allocatedNextMonth: existingPaymentForStudent?.allocatedNextMonth,
       status: existingPaymentForStudent?.status || 'unpaid',
       paymentDate: existingPaymentForStudent?.paymentDate,
       paymentMethod: existingPaymentForStudent?.paymentMethod || paymentMethod,
@@ -463,6 +712,263 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     };
 
     setActiveVoucherForPrint(tempVoucher);
+  };
+
+  // =========================================================================
+  // TAB 3: BULK VOUCHER GENERATION STATE
+  // =========================================================================
+  const [bulkClassId, setBulkClassId] = useState<string>(
+    initialClassId || (classes.length > 0 ? classes[0].id : '')
+  );
+  const [bulkMonth, setBulkMonth] = useState<string>(selectedMonth);
+  const [bulkDueDate, setBulkDueDate] = useState<string>(() => {
+    const now = new Date();
+    const tenth = new Date(now.getFullYear(), now.getMonth(), 10);
+    return tenth.toISOString().split('T')[0];
+  });
+  const [bulkVoucherNote, setBulkVoucherNote] = useState<string>(
+    'Payable at designated Sindh Bank / School Counter before due date.'
+  );
+  const [bulkBatchForPrint, setBulkBatchForPrint] = useState<FeePayment[] | null>(null);
+  const [isSavingBulk, setIsSavingBulk] = useState<boolean>(false);
+  const [bulkSaveNotice, setBulkSaveNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (classes.length > 0) {
+      const stillValid = classes.some((c) => c.id === bulkClassId);
+      if (!bulkClassId || !stillValid) {
+        setBulkClassId(classes[0].id);
+      }
+    } else {
+      setBulkClassId('');
+    }
+  }, [classes, activeSchool.id]);
+
+  const bulkMonthLabel = useMemo(() => formatMonthLabel(bulkMonth), [bulkMonth]);
+
+  const generatedBulkVouchers = useMemo<FeePayment[]>(() => {
+    if (!bulkClassId) return [];
+    const targetStudents = students.filter(
+      (s) => s.classId === bulkClassId && s.status === 'active'
+    );
+    if (targetStudents.length === 0) return [];
+
+    const expected = getExpectedClassMonthlyFee(
+      bulkClassId,
+      feeStructures,
+      activeSchool.activeAcademicYear || '2025-2026'
+    );
+
+    return targetStudents.map((stu, idx) => {
+      const existing = feePayments.find(
+        (p) => p.studentId === stu.id && p.month === bulkMonth
+      );
+      const disc = calculateStudentDiscount(
+        stu,
+        expected.grossMonthlyFee,
+        feeConcessions
+      );
+      const effectiveDiscount =
+        existing && existing.discount !== undefined
+          ? Number(existing.discount) || 0
+          : disc.discountAmount;
+      const net = Math.max(0, expected.grossMonthlyFee - effectiveDiscount);
+      const paid = existing ? Number(existing.paidAmount) || 0 : 0;
+      const pending = existing?.status === 'paid' ? 0 : Math.max(0, net - paid);
+
+      return {
+        id: existing?.id || `vchr_${stu.id}_${bulkMonth}`,
+        schoolId: activeSchool.id,
+        studentId: stu.id,
+        studentName: stu.fullName,
+        grNumber: stu.grNumber,
+        classId: stu.classId,
+        grade: stu.grade,
+        section: stu.section,
+        month: bulkMonth,
+        monthLabel: bulkMonthLabel,
+        academicYear: expected.academicYear,
+        baseAmount: expected.baseMonthlyTuition,
+        customChargesAmount: expected.customChargesAmount,
+        discount: effectiveDiscount,
+        concessionId: disc.concessionId || existing?.concessionId,
+        concessionTitle: disc.concessionTitle || existing?.concessionTitle,
+        concessionPercent: disc.percentEffective || existing?.concessionPercent,
+        netAmount: net,
+        paidAmount: paid,
+        pendingBalance: pending,
+        advanceUsed: existing?.advanceUsed || 0,
+        status: existing?.status || 'unpaid',
+        paymentDate: existing?.paymentDate,
+        paymentMethod: existing?.paymentMethod,
+        receiptNumber:
+          existing?.receiptNumber ||
+          `VCHR-${bulkMonth.replace('-', '')}-${String(idx + 1).padStart(3, '0')}`,
+        notes: existing?.notes || bulkVoucherNote,
+        recordedByName: currentUserProfile?.fullName || 'Accounts Office',
+      };
+    });
+  }, [
+    bulkClassId,
+    bulkMonth,
+    bulkMonthLabel,
+    bulkVoucherNote,
+    students,
+    feeStructures,
+    feePayments,
+    feeConcessions,
+    activeSchool.id,
+    activeSchool.activeAcademicYear,
+    currentUserProfile?.fullName,
+  ]);
+
+  const bulkSummary = useMemo(() => {
+    return generatedBulkVouchers.reduce(
+      (acc, v) => {
+        acc.totalGross += (Number(v.baseAmount) || 0) + (Number(v.customChargesAmount) || 0);
+        acc.totalDiscount += Number(v.discount) || 0;
+        acc.totalNet += Number(v.netAmount) || 0;
+        acc.totalPaid += Number(v.paidAmount) || 0;
+        acc.totalPending += Number(v.pendingBalance) || 0;
+        if ((Number(v.discount) || 0) > 0) acc.discountedCount += 1;
+        return acc;
+      },
+      {
+        totalGross: 0,
+        totalDiscount: 0,
+        totalNet: 0,
+        totalPaid: 0,
+        totalPending: 0,
+        discountedCount: 0,
+      }
+    );
+  }, [generatedBulkVouchers]);
+
+  const handleSaveUnpaidBulkVouchers = async () => {
+    const unpaidOnly = generatedBulkVouchers.filter(
+      (v) =>
+        !feePayments.some(
+          (p) => p.studentId === v.studentId && p.month === v.month && (p.status === 'paid' || p.status === 'partial')
+        )
+    );
+    if (unpaidOnly.length === 0) {
+      setBulkSaveNotice('All students in this batch already have saved vouchers or paid records.');
+      setTimeout(() => setBulkSaveNotice(null), 4000);
+      return;
+    }
+    setIsSavingBulk(true);
+    try {
+      await recordBulkFeePayments(unpaidOnly);
+      setBulkSaveNotice(
+        `Saved ${unpaidOnly.length} generated voucher(s) for ${bulkMonthLabel} to cloud register.`
+      );
+      setTimeout(() => setBulkSaveNotice(null), 4000);
+    } finally {
+      setIsSavingBulk(false);
+    }
+  };
+
+  const handlePrintAllBulkVouchers = () => {
+    if (generatedBulkVouchers.length === 0) {
+      alert('No enrolled active students found in the selected class to generate vouchers.');
+      return;
+    }
+    setBulkBatchForPrint(generatedBulkVouchers);
+    setTimeout(() => {
+      triggerPrintDocument();
+    }, 150);
+  };
+
+  // =========================================================================
+  // TAB 4: CONCESSIONS & DISCOUNTS STATE (Admin Only)
+  // =========================================================================
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+  const [ruleTitle, setRuleTitle] = useState<string>('');
+  const [ruleType, setRuleType] = useState<ConcessionDiscountType>('percentage');
+  const [ruleValue, setRuleValue] = useState<number>(50);
+  const [ruleDescription, setRuleDescription] = useState<string>('');
+  const [isSavingRule, setIsSavingRule] = useState<boolean>(false);
+  const [assignClassFilter, setAssignClassFilter] = useState<string>('ALL');
+  const [assignStudentId, setAssignStudentId] = useState<string>('');
+  const [assignRuleId, setAssignRuleId] = useState<string>('');
+  const [concessionNotice, setConcessionNotice] = useState<string | null>(null);
+
+  const handleSaveConcessionForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ruleTitle.trim() || ruleValue <= 0) return;
+    if (ruleType === 'percentage' && ruleValue > 100) {
+      alert('Percentage discount cannot exceed 100%.');
+      return;
+    }
+    setIsSavingRule(true);
+    try {
+      const ruleId =
+        editingRuleId ||
+        `conc_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+      await saveFeeConcessionRule({
+        id: ruleId,
+        title: ruleTitle.trim(),
+        discountType: ruleType,
+        value: Number(ruleValue) || 0,
+        description: ruleDescription.trim() || undefined,
+        isActive: true,
+      });
+      setConcessionNotice(
+        `Discount rule "${ruleTitle.trim()}" (${
+          ruleType === 'percentage' ? `${ruleValue}%` : `Rs. ${ruleValue}`
+        }) saved!`
+      );
+      setEditingRuleId(null);
+      setRuleTitle('');
+      setRuleType('percentage');
+      setRuleValue(50);
+      setRuleDescription('');
+      setTimeout(() => setConcessionNotice(null), 4000);
+    } finally {
+      setIsSavingRule(false);
+    }
+  };
+
+  const handleAddPresetConcession = async (
+    title: string,
+    discountType: ConcessionDiscountType,
+    value: number,
+    description: string
+  ) => {
+    const duplicate = feeConcessions.find(
+      (r) => r.title.toLowerCase() === title.toLowerCase()
+    );
+    if (duplicate) {
+      setConcessionNotice(`Rule "${title}" already exists.`);
+      setTimeout(() => setConcessionNotice(null), 3000);
+      return;
+    }
+    const id = `conc_${title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Date.now().toString(36)}`;
+    await saveFeeConcessionRule({
+      id,
+      title,
+      discountType,
+      value,
+      description,
+      isActive: true,
+    });
+    setConcessionNotice(`Added "${title} (${value}${discountType === 'percentage' ? '%' : ' PKR'})"!`);
+    setTimeout(() => setConcessionNotice(null), 3000);
+  };
+
+  const handleAssignConcessionToStudent = async () => {
+    if (!assignStudentId) return;
+    const rule = assignRuleId
+      ? feeConcessions.find((r) => r.id === assignRuleId) || null
+      : null;
+    await applyStudentConcession(assignStudentId, rule);
+    const stu = students.find((s) => s.id === assignStudentId);
+    setConcessionNotice(
+      rule
+        ? `Permanently applied "${rule.title}" to ${stu?.fullName || 'student'}.`
+        : `Removed fee concession for ${stu?.fullName || 'student'}.`
+    );
+    setTimeout(() => setConcessionNotice(null), 4000);
   };
 
   // =========================================================================
@@ -519,18 +1025,19 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     let totalCollected = 0;
     let totalPending = 0;
 
-    // Calculate total collected across all or filtered
+    // Calculate total collected across all or filtered (includes paid + partial cash received!)
     paymentsInMonth.forEach((p) => {
       if (defaulterClassFilter === 'ALL' || p.classId === defaulterClassFilter) {
-        if (p.status === 'paid') {
+        if (p.status === 'paid' || p.status === 'partial') {
           totalCollected += Number(p.paidAmount) || 0;
         }
       }
     });
 
-    // Check every active student for this month
+    // Check every active student for this month (accounting for permanent concessions and partial payments)
     activeStudentsForAnalytics.forEach((s) => {
       if (!paidStudentIds.has(s.id)) {
+        const partialRec = paymentsInMonth.find((p) => p.studentId === s.id);
         const struct =
           feeStructures.find((f) => f.classId === s.classId) ||
           editingStructures[s.classId];
@@ -538,7 +1045,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           (sum, c) => sum + (Number(c.amount) || 0),
           0
         );
-        const expected = (struct?.monthlyTuitionFee || 1500) + chargesTotal;
+        const gross = (struct?.monthlyTuitionFee || 1500) + chargesTotal;
+        const disc = calculateStudentDiscount(s, gross, feeConcessions);
+        const netExpected = partialRec
+          ? Number(partialRec.netAmount) || Math.max(0, gross - disc.discountAmount)
+          : Math.max(0, gross - disc.discountAmount);
+        const paidAlready = partialRec ? Number(partialRec.paidAmount) || 0 : 0;
+        const expected = Math.max(0, netExpected - paidAlready);
+
         totalPending += expected;
         unpaidStudents.push({
           student: s,
@@ -583,9 +1097,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
   };
 
   // =========================================================================
-  // TAB 4: REPORTS & EXPORTS (Daily, Monthly, Defaulters)
+  // TAB 6: REPORTS & EXPORTS (Daily, Monthly, Defaulters, Discounts, Partial)
   // =========================================================================
-  const [reportType, setReportType] = useState<'daily' | 'monthly' | 'defaulters'>('daily');
+  const [reportType, setReportType] = useState<'daily' | 'monthly' | 'defaulters' | 'discounts' | 'partial'>('daily');
   const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
   const [reportMonth, setReportMonth] = useState<string>(selectedMonth);
   const [reportClassFilter, setReportClassFilter] = useState<string>('ALL');
@@ -626,6 +1140,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             sch.id === activeSchool.id
               ? feePayments
               : feePayments.filter((p) => p.schoolId === sch.id),
+          feeConcessions:
+            sch.id === activeSchool.id
+              ? feeConcessions
+              : feeConcessions.filter((c) => c.schoolId === sch.id),
         }));
         setAggregatedDatasets(mockDatasets);
         return;
@@ -639,18 +1157,21 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               students,
               feeStructures,
               feePayments,
+              feeConcessions,
             };
           }
-          const [schStudents, schStructures, schPayments] = await Promise.all([
+          const [schStudents, schStructures, schPayments, schConcessions] = await Promise.all([
             fetchStudentsFromFirestore(sch.id).catch(() => []),
             fetchFeeStructuresFromFirestore(sch.id).catch(() => []),
             fetchFeePaymentsFromFirestore(sch.id).catch(() => []),
+            fetchFeeConcessionsFromFirestore(sch.id).catch(() => []),
           ]);
           return {
             school: sch,
             students: schStudents,
             feeStructures: schStructures,
             feePayments: schPayments,
+            feeConcessions: schConcessions,
           };
         })
       );
@@ -664,7 +1185,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     if (activeTab === 'reports' && isSuperAdmin) {
       loadAggregatedReportsData();
     }
-  }, [activeTab, isSuperAdmin, registeredSchools.length, activeSchool.id, feePayments.length, students.length]);
+  }, [activeTab, isSuperAdmin, registeredSchools.length, activeSchool.id, feePayments.length, students.length, feeConcessions.length]);
 
   const reportMonthLabel = useMemo(() => {
     const found = monthOptions.find((m) => m.val === reportMonth);
@@ -680,22 +1201,21 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
     if (isSuperAdmin && reportSchoolScope === 'ALL') {
       if (aggregatedDatasets.length > 0) {
-        // Ensure activeSchool always reflects latest in-memory edits
         targetDatasets = aggregatedDatasets.map((ds) =>
           ds.school.id === activeSchool.id
-            ? { school: activeSchool, students, feeStructures, feePayments }
+            ? { school: activeSchool, students, feeStructures, feePayments, feeConcessions }
             : ds
         );
       } else {
-        targetDatasets = [{ school: activeSchool, students, feeStructures, feePayments }];
+        targetDatasets = [{ school: activeSchool, students, feeStructures, feePayments, feeConcessions }];
       }
     } else if (isSuperAdmin && reportSchoolScope !== activeSchool.id) {
       const found = aggregatedDatasets.find((ds) => ds.school.id === reportSchoolScope);
       targetDatasets = found
         ? [found]
-        : [{ school: activeSchool, students, feeStructures, feePayments }];
+        : [{ school: activeSchool, students, feeStructures, feePayments, feeConcessions }];
     } else {
-      targetDatasets = [{ school: activeSchool, students, feeStructures, feePayments }];
+      targetDatasets = [{ school: activeSchool, students, feeStructures, feePayments, feeConcessions }];
     }
 
     const isAggregatedMultiSchool = isSuperAdmin && reportSchoolScope === 'ALL' && targetDatasets.length > 1;
@@ -709,7 +1229,24 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       semisCode: string;
       student: Student;
       expectedFee: number;
+      paidAlready: number;
     }> = [];
+    const discountRows: Array<{
+      schoolId: string;
+      schoolName: string;
+      semisCode: string;
+      student: Student;
+      concessionTitle: string;
+      grossFee: number;
+      discountAmount: number;
+      netFee: number;
+      paymentStatus: string;
+    }> = [];
+    const discountRuleMap = new Map<
+      string,
+      { title: string; studentsCount: number; totalMonthlyDiscount: number }
+    >();
+    const partialPaymentRows: Array<FeePayment & { schoolName: string; semisCode: string; remainingDue: number; studentAdvanceBalance: number }> = [];
 
     const schoolSummaries: Array<{
       schoolId: string;
@@ -722,6 +1259,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       dailyCollected: number;
       monthlyCollected: number;
       totalPending: number;
+      totalDiscountGranted: number;
+      partialCount: number;
       collectionRate: number;
     }> = [];
 
@@ -731,6 +1270,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     let totalPaidCount = 0;
     let totalDefaultersCount = 0;
     let totalActiveStudents = 0;
+    let totalDiscountsGranted = 0;
+    let totalPartialPending = 0;
+    let totalPartialCollected = 0;
+    let totalAdvanceHeld = 0;
 
     const methodTotals: Record<string, number> = {};
 
@@ -739,10 +1282,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       const schSemis = ds.school.semisCode || '';
       const schDistrict = ds.school.district || '';
 
-      // Daily payments (by paymentDate YYYY-MM-DD)
+      // Daily payments (both full and partial cash received on date)
       let schDailyCollected = 0;
       ds.feePayments.forEach((p) => {
-        if (p.status !== 'paid') return;
+        if (p.status !== 'paid' && p.status !== 'partial') return;
         if (applyClassFilter && p.classId !== reportClassFilter) return;
         const payDay = (p.paymentDate || p.createdAt || '').slice(0, 10);
         if (payDay === reportDate) {
@@ -755,21 +1298,45 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         }
       });
 
-      // Monthly payments (by month YYYY-MM)
+      // Monthly payments (includes paid & partial cash collected in reportMonth)
       let schMonthlyCollected = 0;
+      let schDiscountsGranted = 0;
+      let schPartialCount = 0;
       const paidStudentIdsForMonth = new Set<string>();
+      const paymentByStudentMonth = new Map<string, FeePayment>();
+
       ds.feePayments.forEach((p) => {
-        if (p.status !== 'paid') return;
         if (p.month !== reportMonth) return;
         if (applyClassFilter && p.classId !== reportClassFilter) return;
-        const amt = Number(p.paidAmount) || 0;
-        schMonthlyCollected += amt;
-        totalMonthlyCollected += amt;
-        paidStudentIdsForMonth.add(p.studentId);
-        monthlyPayments.push({ ...p, schoolName: schName, semisCode: schSemis });
+        paymentByStudentMonth.set(p.studentId, p);
+
+        if (p.status === 'paid' || p.status === 'partial') {
+          const amt = Number(p.paidAmount) || 0;
+          schMonthlyCollected += amt;
+          totalMonthlyCollected += amt;
+          if (p.status === 'paid') {
+            paidStudentIdsForMonth.add(p.studentId);
+          }
+          monthlyPayments.push({ ...p, schoolName: schName, semisCode: schSemis });
+        }
+
+        if (p.status === 'partial' || (Number(p.pendingBalance) || 0) > 0) {
+          const remainingDue = Math.max(0, (Number(p.netAmount) || 0) - (Number(p.paidAmount) || 0));
+          const stuObj = ds.students.find((s) => s.id === p.studentId);
+          const stuAdv = Number(stuObj?.advanceBalance) || 0;
+          schPartialCount += 1;
+          totalPartialPending += remainingDue;
+          totalPartialCollected += Number(p.paidAmount) || 0;
+          partialPaymentRows.push({
+            ...p,
+            schoolName: schName,
+            semisCode: schSemis,
+            remainingDue,
+            studentAdvanceBalance: stuAdv,
+          });
+        }
       });
 
-      // Defaulters for reportMonth
       const schActiveStudents = ds.students.filter((s) => {
         if (s.status !== 'active') return false;
         if (applyClassFilter && s.classId !== reportClassFilter) return false;
@@ -779,21 +1346,50 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       let schPending = 0;
       let schDefaultersCount = 0;
       schActiveStudents.forEach((s) => {
+        totalAdvanceHeld += Number(s.advanceBalance) || 0;
+
+        const expected = getExpectedClassMonthlyFee(s.classId, ds.feeStructures);
+        const disc = calculateStudentDiscount(s, expected.grossMonthlyFee, ds.feeConcessions || []);
+        const rec = paymentByStudentMonth.get(s.id);
+        const appliedDiscount = rec ? Number(rec.discount) || 0 : disc.discountAmount;
+        const concessionTitle = rec?.concessionTitle || disc.concessionTitle || (appliedDiscount > 0 ? 'Custom Discount' : '');
+
+        if (appliedDiscount > 0) {
+          schDiscountsGranted += appliedDiscount;
+          totalDiscountsGranted += appliedDiscount;
+          discountRows.push({
+            schoolId: ds.school.id,
+            schoolName: schName,
+            semisCode: schSemis,
+            student: s,
+            concessionTitle,
+            grossFee: expected.grossMonthlyFee,
+            discountAmount: appliedDiscount,
+            netFee: Math.max(0, expected.grossMonthlyFee - appliedDiscount),
+            paymentStatus: rec?.status || 'unpaid',
+          });
+          const key = concessionTitle || 'Custom Discount';
+          const prevRule = discountRuleMap.get(key) || { title: key, studentsCount: 0, totalMonthlyDiscount: 0 };
+          prevRule.studentsCount += 1;
+          prevRule.totalMonthlyDiscount += appliedDiscount;
+          discountRuleMap.set(key, prevRule);
+        }
+
         if (!paidStudentIdsForMonth.has(s.id)) {
-          const struct = ds.feeStructures.find((f) => f.classId === s.classId);
-          const customSum = (struct?.customCharges || []).reduce(
-            (sum, c) => sum + (Number(c.amount) || 0),
-            0
-          );
-          const expectedFee = (Number(struct?.monthlyTuitionFee) || 1500) + customSum;
-          schPending += expectedFee;
+          const netExpected = rec
+            ? Number(rec.netAmount) ?? Math.max(0, expected.grossMonthlyFee - appliedDiscount)
+            : Math.max(0, expected.grossMonthlyFee - appliedDiscount);
+          const paidAlready = rec ? Number(rec.paidAmount) || 0 : 0;
+          const remaining = Math.max(0, netExpected - paidAlready);
+          schPending += remaining;
           schDefaultersCount += 1;
           defaulterRows.push({
             schoolId: ds.school.id,
             schoolName: schName,
             semisCode: schSemis,
             student: s,
-            expectedFee,
+            expectedFee: remaining,
+            paidAlready,
           });
         }
       });
@@ -818,6 +1414,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         dailyCollected: schDailyCollected,
         monthlyCollected: schMonthlyCollected,
         totalPending: schPending,
+        totalDiscountGranted: schDiscountsGranted,
+        partialCount: schPartialCount,
         collectionRate: schRate,
       });
     });
@@ -831,6 +1429,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       dailyPayments,
       monthlyPayments,
       defaulterRows,
+      discountRows,
+      discountRuleSummary: Array.from(discountRuleMap.values()),
+      partialPaymentRows,
       schoolSummaries,
       totals: {
         totalDailyCollected,
@@ -840,6 +1441,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         totalDefaultersCount,
         totalActiveStudents,
         overallCollectionRate,
+        totalDiscountsGranted,
+        totalPartialPending,
+        totalPartialCollected,
+        totalAdvanceHeld,
         methodTotals,
       },
     };
@@ -851,6 +1456,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     students,
     feeStructures,
     feePayments,
+    feeConcessions,
     reportClassFilter,
     reportDate,
     reportMonth,
@@ -887,6 +1493,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         'Student Name',
         'Class & Section',
         'Fee Month',
+        'Status',
         'Payment Method',
         'Discount (PKR)',
         'Amount Paid (PKR)',
@@ -902,6 +1509,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           p.studentName,
           `${p.grade} - ${p.section || 'General'}`,
           p.monthLabel,
+          p.status,
           p.paymentMethod || 'Cash',
           String(p.discount || 0),
           String(p.paidAmount || 0),
@@ -909,7 +1517,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         ]);
       });
       lines.push([]);
-      lines.push(['TOTAL COLLECTED (PKR)', '', '', '', '', '', '', '', '', '', String(reportData.totals.totalDailyCollected), '']);
+      lines.push(['TOTAL COLLECTED (PKR)', '', '', '', '', '', '', '', '', '', '', String(reportData.totals.totalDailyCollected), '']);
     } else if (reportType === 'monthly') {
       lines.push(['PakEdu Financial Report - Monthly Fee Collection Report']);
       lines.push(['Scope', reportScopeLabel]);
@@ -954,6 +1562,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         'GR Number',
         'Student Name',
         'Class & Section',
+        'Status',
         'Payment Method',
         'Discount (PKR)',
         'Amount Paid (PKR)',
@@ -967,14 +1576,92 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           p.grNumber,
           p.studentName,
           `${p.grade} - ${p.section || 'General'}`,
+          p.status,
           p.paymentMethod || 'Cash',
           String(p.discount || 0),
           String(p.paidAmount || 0),
         ]);
       });
       lines.push([]);
-      lines.push(['TOTAL COLLECTED (PKR)', '', '', '', '', '', '', '', '', String(reportData.totals.totalMonthlyCollected)]);
-      lines.push(['TOTAL PENDING (PKR)', '', '', '', '', '', '', '', '', String(reportData.totals.totalPending)]);
+      lines.push(['TOTAL COLLECTED (PKR)', '', '', '', '', '', '', '', '', '', String(reportData.totals.totalMonthlyCollected)]);
+      lines.push(['TOTAL PENDING (PKR)', '', '', '', '', '', '', '', '', '', String(reportData.totals.totalPending)]);
+    } else if (reportType === 'discounts') {
+      lines.push(['PakEdu Financial Report - Discount & Concessions Summary']);
+      lines.push(['Scope', reportScopeLabel]);
+      lines.push(['Billing Month', reportMonthLabel]);
+      lines.push(['Generated On', generatedAt]);
+      lines.push(['Total Discounted Students', String(reportData.discountRows.length)]);
+      lines.push(['Total Monthly Discounts Granted (PKR)', String(reportData.totals.totalDiscountsGranted)]);
+      lines.push([]);
+      lines.push([
+        'School',
+        'SEMIS',
+        'GR Number',
+        'Student Name',
+        'Class & Section',
+        'Concession Rule',
+        'Gross Fee (PKR)',
+        'Discount Amount (PKR)',
+        'Net Payable (PKR)',
+        'Payment Status',
+      ]);
+      reportData.discountRows.forEach((row) => {
+        lines.push([
+          row.schoolName,
+          row.semisCode,
+          row.student.grNumber,
+          row.student.fullName,
+          `${row.student.grade} - ${row.student.section || 'General'}`,
+          row.concessionTitle,
+          String(row.grossFee),
+          String(row.discountAmount),
+          String(row.netFee),
+          row.paymentStatus,
+        ]);
+      });
+      lines.push([]);
+      lines.push(['TOTAL CONCESSIONS GRANTED (PKR)', '', '', '', '', '', '', String(reportData.totals.totalDiscountsGranted), '', '']);
+    } else if (reportType === 'partial') {
+      lines.push(['PakEdu Financial Report - Partial Payments & Pending Balance Report']);
+      lines.push(['Scope', reportScopeLabel]);
+      lines.push(['Billing Month', reportMonthLabel]);
+      lines.push(['Generated On', generatedAt]);
+      lines.push(['Partial Payment Records', String(reportData.partialPaymentRows.length)]);
+      lines.push(['Total Paid So Far (PKR)', String(reportData.totals.totalPartialCollected)]);
+      lines.push(['Total Remaining Pending Balance (PKR)', String(reportData.totals.totalPartialPending)]);
+      lines.push([]);
+      lines.push([
+        'Receipt No',
+        'School',
+        'SEMIS',
+        'GR Number',
+        'Student Name',
+        'Class & Section',
+        'Month',
+        'Net Fee (PKR)',
+        'Paid So Far (PKR)',
+        'Remaining Pending Balance (PKR)',
+        'Student Advance Credit (PKR)',
+        'Payment Date',
+      ]);
+      reportData.partialPaymentRows.forEach((p) => {
+        lines.push([
+          p.receiptNumber || 'RCPT',
+          p.schoolName,
+          p.semisCode,
+          p.grNumber,
+          p.studentName,
+          `${p.grade} - ${p.section || 'General'}`,
+          p.monthLabel,
+          String(p.netAmount || 0),
+          String(p.paidAmount || 0),
+          String(p.remainingDue || 0),
+          String(p.studentAdvanceBalance || 0),
+          p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : 'N/A',
+        ]);
+      });
+      lines.push([]);
+      lines.push(['TOTAL REMAINING PENDING BALANCE (PKR)', '', '', '', '', '', '', '', String(reportData.totals.totalPartialCollected), String(reportData.totals.totalPartialPending), '', '']);
     } else {
       lines.push(['PakEdu Financial Report - Fee Defaulters List']);
       lines.push(['Scope', reportScopeLabel]);
@@ -992,6 +1679,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         'Class & Section',
         'Guardian Phone',
         'Billing Month',
+        'Paid Already (PKR)',
         'Pending Due (PKR)',
         'Status',
       ]);
@@ -1005,12 +1693,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           `${row.student.grade} - ${row.student.section || 'General'}`,
           row.student.guardianPhone || 'N/A',
           reportMonthLabel,
+          String(row.paidAlready),
           String(row.expectedFee),
-          'Unpaid',
+          row.paidAlready > 0 ? 'Partial' : 'Unpaid',
         ]);
       });
       lines.push([]);
-      lines.push(['TOTAL PENDING DUES (PKR)', '', '', '', '', '', '', '', String(reportData.totals.totalPending), '']);
+      lines.push(['TOTAL PENDING DUES (PKR)', '', '', '', '', '', '', '', '', String(reportData.totals.totalPending), '']);
     }
 
     const csvContent = '\uFEFF' + lines.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n');
@@ -1059,7 +1748,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     );
   }
 
-  const isPrintModalOpen = Boolean(activeVoucherForPrint || showReportPrintModal);
+  const isPrintModalOpen = Boolean(activeVoucherForPrint || showReportPrintModal || bulkBatchForPrint);
 
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-200">
@@ -1189,7 +1878,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             }`}
           >
             <Layers className="w-4 h-4" />
-            <span>1. Fee Structure Setup</span>
+            <span>1. Fee Structure</span>
             {!canManageFeeStructure && (
               <span className="px-1.5 py-0.2 text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-normal">
                 Read Only
@@ -1212,6 +1901,39 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           <button
             type="button"
+            onClick={() => setActiveTab('bulk')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+              activeTab === 'bulk'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+            }`}
+          >
+            <FileCheck2 className="w-4 h-4" />
+            <span>3. Bulk Generate</span>
+          </button>
+
+          {(canManageFeeStructure || isSuperAdmin) && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('concessions')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                activeTab === 'concessions'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <Tag className="w-4 h-4" />
+              <span>4. Concessions</span>
+              {feeConcessions.length > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] bg-amber-500 text-white rounded-full font-bold">
+                  {feeConcessions.length}
+                </span>
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
             onClick={() => setActiveTab('defaulters')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeTab === 'defaulters'
@@ -1220,7 +1942,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>3. Fee Defaulters</span>
+            <span>5. Defaulters</span>
             {kpiStats.defaultersCount > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold">
                 {kpiStats.defaultersCount}
@@ -1239,7 +1961,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               }`}
             >
               <BarChart3 className="w-4 h-4" />
-              <span>4. Reports</span>
+              <span>6. Reports</span>
             </button>
           )}
         </div>
@@ -1571,12 +2293,57 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               {/* Fee Breakdown & Calculation Card */}
               {selectedStudent ? (
                 <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200 pb-2 border-b border-slate-200 dark:border-slate-700">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 pb-2 border-b border-slate-200 dark:border-slate-700">
                     <span>Fee Component Breakdown</span>
-                    <span className="text-emerald-600 dark:text-emerald-400">
-                      Academic Year: {activeClassFeeStructure.academicYear}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {(Number(selectedStudent.advanceBalance) || 0) > 0 && (
+                        <span className="px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 text-[10px]">
+                          Student Advance Credit: Rs. {(selectedStudent.advanceBalance || 0).toLocaleString()}
+                        </span>
+                      )}
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        Year: {activeClassFeeStructure.academicYear}
+                      </span>
+                    </div>
                   </div>
+
+                  {/* Permanent Student Concession Assignment / Badge */}
+                  {canManageFeeStructure ? (
+                    <div className="p-2.5 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <span className="font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                        <Tag className="w-3.5 h-3.5" />
+                        <span>Permanent Student Concession (Admin):</span>
+                      </span>
+                      <select
+                        value={selectedStudent.concessionId || ''}
+                        onChange={(e) => {
+                          const rule = feeConcessions.find((r) => r.id === e.target.value) || null;
+                          applyStudentConcession(selectedStudent.id, rule);
+                        }}
+                        className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                      >
+                        <option value="">No Permanent Discount</option>
+                        {feeConcessions
+                          .filter((r) => r.isActive !== false)
+                          .map((r) => (
+                            <option key={r.id} value={r.id}>
+                              {r.title} ({r.discountType === 'fixed' ? `Rs.${r.value}` : `${r.value}%`})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  ) : studentPermanentDiscount.concessionTitle ? (
+                    <div className="p-2 rounded-lg bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/60 text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <Tag className="w-3.5 h-3.5" />
+                      <span>
+                        Applied Permanent Concession: {studentPermanentDiscount.concessionTitle} (
+                        {studentPermanentDiscount.discountType === 'fixed'
+                          ? `Rs. ${studentPermanentDiscount.discountValue}`
+                          : `${studentPermanentDiscount.discountValue}%`}
+                        )
+                      </span>
+                    </div>
+                  ) : null}
 
                   <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
@@ -1610,7 +2377,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     <div className="flex items-center justify-between pt-2 text-xs">
                       <span className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
                         <Sparkles className="w-3.5 h-3.5" />
-                        <span>Discount / Scholarship / Concession:</span>
+                        <span>
+                          Discount / Concession
+                          {studentPermanentDiscount.concessionTitle
+                            ? ` (${studentPermanentDiscount.concessionTitle})`
+                            : ''}
+                          :
+                        </span>
                       </span>
                       <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg px-2 py-1 w-32">
                         <span className="text-slate-400 text-xs">Rs.</span>
@@ -1626,9 +2399,93 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     </div>
 
                     {/* Final Net Due */}
-                    <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700 text-sm font-bold text-emerald-700 dark:text-emerald-400">
-                      <span>Total Net Payable Due:</span>
-                      <span className="text-base">Rs. {netPayable.toLocaleString()}</span>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100">
+                      <span>Net Monthly Payable Fee:</span>
+                      <span>Rs. {netPayable.toLocaleString()}</span>
+                    </div>
+
+                    {alreadyPaidThisMonth > 0 && (
+                      <div className="flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+                        <span>
+                          Already Paid for {currentMonthLabel}
+                          {existingPaymentForStudent?.advanceUsed
+                            ? ` (incl. Rs. ${existingPaymentForStudent.advanceUsed.toLocaleString()} Advance)`
+                            : ''}
+                          :
+                        </span>
+                        <span>- Rs. {alreadyPaidThisMonth.toLocaleString()}</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                      <span>Remaining Balance Due ({currentMonthLabel}):</span>
+                      <span className="text-base">Rs. {remainingDueThisMonth.toLocaleString()}</span>
+                    </div>
+
+                    {/* Exact Amount Received (Partial & Advance Fee Tracking) */}
+                    <div className="mt-2 p-3 bg-white dark:bg-slate-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2.5">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label htmlFor="sms-exact-amount-received" className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <Wallet className="w-4 h-4 text-emerald-600" />
+                            <span>Exact Amount Received (PKR):</span>
+                          </label>
+                          <p className="text-[10px] text-slate-500">
+                            Enter less than due for Partial payment, or more for Next Month Advance.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-700 rounded-xl px-3 py-1.5 w-full sm:w-40">
+                          <span className="text-emerald-700 dark:text-emerald-400 font-bold text-xs">Rs.</span>
+                          <input
+                            id="sms-exact-amount-received"
+                            type="number"
+                            min="0"
+                            value={amountReceivedInput}
+                            onChange={(e) => setAmountReceivedInput(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                            className="w-full bg-transparent font-black text-emerald-800 dark:text-emerald-300 focus:outline-hidden text-sm font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Real-time Partial / Advance Indicator */}
+                      {remainingDueThisMonth > 0 && numericReceivedNow < remainingDueThisMonth && (
+                        <div className="p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-300 font-semibold flex items-center justify-between">
+                          <span>Status: Partial Payment</span>
+                          <span className="font-mono font-bold">
+                            Pending Balance: Rs. {projectedPendingAfterPayment.toLocaleString()}
+                          </span>
+                        </div>
+                      )}
+
+                      {surplusAmount > 0 && (
+                        <div className="p-2.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-[11px] text-sky-900 dark:text-sky-200 space-y-1.5">
+                          <div className="flex items-center justify-between font-bold">
+                            <span>Overpayment Surplus Detected:</span>
+                            <span className="font-mono text-sky-700 dark:text-sky-300">
+                              + Rs. {surplusAmount.toLocaleString()}
+                            </span>
+                          </div>
+                          <label className="flex items-center gap-2 cursor-pointer font-medium">
+                            <input
+                              type="checkbox"
+                              checked={allocateSurplusToNextMonth}
+                              onChange={(e) => setAllocateSurplusToNextMonth(e.target.checked)}
+                              className="rounded border-sky-400 text-sky-600 focus:ring-sky-500"
+                            />
+                            <span>
+                              Allocate Rs. {surplusAmount.toLocaleString()} as Advance to{' '}
+                              <strong>{nextMonthLabel}</strong>
+                            </span>
+                          </label>
+                        </div>
+                      )}
+
+                      {remainingDueThisMonth > 0 && numericReceivedNow === remainingDueThisMonth && (
+                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-[11px] text-emerald-800 dark:text-emerald-300 font-semibold flex items-center justify-between">
+                          <span>Status: Full Settlement</span>
+                          <span className="font-mono">Remaining Balance: Rs. 0</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1639,6 +2496,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     Select a class and student above to calculate monthly fees and generate voucher.
                   </p>
+                </div>
+              )}
+
+              {collectionFeedback && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{collectionFeedback}</span>
                 </div>
               )}
 
@@ -1701,6 +2565,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     <span>
                       {isProcessingPayment
                         ? 'Recording...'
+                        : remainingDueThisMonth > 0 && numericReceivedNow < remainingDueThisMonth
+                        ? 'Record Partial Payment & Print'
+                        : surplusAmount > 0
+                        ? 'Record Payment + Advance & Print'
                         : existingPaymentForStudent?.status === 'paid'
                         ? 'Update & Reissue Receipt'
                         : 'Mark as Paid & Issue Receipt'}
@@ -1730,7 +2598,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto no-scrollbar">
-                  {feePayments.slice(0, 10).map((pay) => (
+                  {feePayments.slice(0, 12).map((pay) => (
                     <div
                       key={pay.id}
                       className="py-3 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-800/40 px-2 rounded-xl transition"
@@ -1743,6 +2611,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           {pay.monthLabel} · {pay.paymentMethod || 'Cash'} · {pay.receiptNumber || 'RCPT'}
                         </div>
+                        {(pay.pendingBalance || 0) > 0 && pay.status === 'partial' && (
+                          <div className="text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                            Pending: Rs. {(pay.pendingBalance || 0).toLocaleString()}
+                          </div>
+                        )}
+                        {(pay.advanceGenerated || 0) > 0 && (
+                          <div className="text-[10px] font-semibold text-sky-600 dark:text-sky-400">
+                            +Rs. {(pay.advanceGenerated || 0).toLocaleString()} Advance ({pay.allocatedNextMonth})
+                          </div>
+                        )}
                       </div>
 
                       <div className="text-right flex items-center gap-3">
@@ -1750,7 +2628,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           <div className="font-bold text-emerald-600 dark:text-emerald-400">
                             Rs. {pay.paidAmount.toLocaleString()}
                           </div>
-                          <span className="inline-block px-1.5 py-0.2 rounded text-[9px] font-bold uppercase bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300">
+                          <span className={`inline-block px-1.5 py-0.2 rounded text-[9px] font-bold uppercase ${
+                            pay.status === 'paid'
+                              ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300'
+                              : pay.status === 'partial'
+                              ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300'
+                              : 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300'
+                          }`}>
                             {pay.status}
                           </span>
                         </div>
@@ -1768,6 +2652,579 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* TAB 3: BULK FEE VOUCHER GENERATION */}
+      {/* =================================================================== */}
+      {activeTab === 'bulk' && (
+        <div className="space-y-6">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <FileCheck2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Bulk Class Fee Voucher Generator</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Select a Class &amp; Section and Billing Month to generate fee vouchers for all enrolled students simultaneously with permanent concessions applied.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleSaveUnpaidBulkVouchers}
+                  disabled={isSavingBulk || generatedBulkVouchers.length === 0}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>{isSavingBulk ? 'Saving...' : 'Save Batch to Register'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handlePrintAllBulkVouchers}
+                  disabled={generatedBulkVouchers.length === 0}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print All Vouchers ({generatedBulkVouchers.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {bulkSaveNotice && (
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{bulkSaveNotice}</span>
+              </div>
+            )}
+
+            {/* Controls */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div>
+                <label htmlFor="bulk-class-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  1. Select Class &amp; Section
+                </label>
+                <select
+                  id="bulk-class-select"
+                  value={bulkClassId}
+                  disabled={loadingClasses}
+                  onChange={(e) => setBulkClassId(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
+                  <option value="">
+                    {loadingClasses
+                      ? 'Loading classes...'
+                      : classes.length === 0
+                      ? '-- No Classes Configured --'
+                      : '-- Choose Class --'}
+                  </option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.grade} - {c.section || 'General'} ({c.medium})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="bulk-month-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  2. Billing Month
+                </label>
+                <select
+                  id="bulk-month-select"
+                  value={bulkMonth}
+                  onChange={(e) => setBulkMonth(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                >
+                  {monthOptions.map((opt) => (
+                    <option key={opt.val} value={opt.val}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="bulk-due-date" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  3. Challan Due Date
+                </label>
+                <input
+                  id="bulk-due-date"
+                  type="date"
+                  value={bulkDueDate}
+                  onChange={(e) => setBulkDueDate(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="bulk-voucher-note" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  4. Voucher Notice
+                </label>
+                <input
+                  id="bulk-voucher-note"
+                  type="text"
+                  value={bulkVoucherNote}
+                  onChange={(e) => setBulkVoucherNote(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-800 dark:text-slate-200"
+                />
+              </div>
+            </div>
+
+            {/* Batch KPI Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-bold uppercase text-slate-500 block">Vouchers Ready</span>
+                <strong className="text-lg font-bold text-slate-900 dark:text-white">{generatedBulkVouchers.length} Students</strong>
+              </div>
+              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                <span className="text-[10px] font-bold uppercase text-slate-500 block">Gross Batch Amount</span>
+                <strong className="text-lg font-bold text-slate-900 dark:text-white font-mono">Rs. {bulkSummary.totalGross.toLocaleString()}</strong>
+              </div>
+              <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60">
+                <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400 block">Concessions ({bulkSummary.discountedCount})</span>
+                <strong className="text-lg font-bold text-amber-700 dark:text-amber-300 font-mono">- Rs. {bulkSummary.totalDiscount.toLocaleString()}</strong>
+              </div>
+              <div className="p-3.5 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/60">
+                <span className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-400 block">Total Net Payable</span>
+                <strong className="text-lg font-bold text-emerald-700 dark:text-emerald-300 font-mono">Rs. {bulkSummary.totalNet.toLocaleString()}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Generated Vouchers Table */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+            {generatedBulkVouchers.length === 0 ? (
+              <div className="py-12 text-center text-xs text-slate-500">
+                <FileCheck2 className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No Active Students in Selected Class</p>
+                <p className="text-slate-400 mt-1">Select a class with active enrolled students to generate batch vouchers.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                      <th className="py-3 px-4">Voucher #</th>
+                      <th className="py-3 px-4">GR No</th>
+                      <th className="py-3 px-4">Student Name</th>
+                      <th className="py-3 px-4">Gross Fee</th>
+                      <th className="py-3 px-4">Applied Concession</th>
+                      <th className="py-3 px-4">Net Payable</th>
+                      <th className="py-3 px-4">Paid / Balance</th>
+                      <th className="py-3 px-4 text-right">Preview</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {generatedBulkVouchers.map((v) => (
+                      <tr key={v.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{v.receiptNumber}</td>
+                        <td className="py-3 px-4 font-mono font-bold">{v.grNumber}</td>
+                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{v.studentName}</td>
+                        <td className="py-3 px-4 font-mono">Rs. {(v.baseAmount + v.customChargesAmount).toLocaleString()}</td>
+                        <td className="py-3 px-4">
+                          {v.discount > 0 ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 font-bold text-[10px] border border-amber-200 dark:border-amber-800">
+                              {v.concessionTitle ? `${v.concessionTitle}: ` : ''}-Rs. {v.discount.toLocaleString()}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                          Rs. {v.netAmount.toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4">
+                          {v.status === 'paid' ? (
+                            <span className="px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 font-bold uppercase text-[10px]">
+                              Paid
+                            </span>
+                          ) : v.status === 'partial' ? (
+                            <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-bold text-[10px]">
+                              Partial (Due Rs. {(v.pendingBalance || 0).toLocaleString()})
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded bg-rose-100 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 font-bold uppercase text-[10px]">
+                              Unpaid (Due Rs. {(v.pendingBalance ?? v.netAmount).toLocaleString()})
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setActiveVoucherForPrint(v)}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                          >
+                            <Printer className="w-3 h-3" />
+                            <span>View</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* TAB 4: FEE DISCOUNTS & CONCESSIONS (ADMIN ONLY) */}
+      {/* =================================================================== */}
+      {activeTab === 'concessions' && (canManageFeeStructure || isSuperAdmin) && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left 5 Cols: Create / Edit Rule + Quick Presets */}
+            <div className="lg:col-span-5 space-y-6">
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Tag className="w-5 h-5 text-amber-500" />
+                    <span>{editingRuleId ? 'Edit Fee Concession Rule' : 'Create Fee Discount Rule'}</span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Define institutional scholarship and fee concession categories for students.
+                  </p>
+                </div>
+
+                {/* Quick 1-Click Standard Presets */}
+                <div className="space-y-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                    Quick SELD Presets
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleAddPresetConcession('Orphan Discount', 'percentage', 50, '50% fee concession for orphan students')}
+                      className="px-2.5 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[11px] font-bold cursor-pointer"
+                    >
+                      + Orphan Discount (50%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddPresetConcession('Staff Child', 'percentage', 100, '100% tuition waiver for school staff children')}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 text-[11px] font-bold cursor-pointer"
+                    >
+                      + Staff Child (100%)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAddPresetConcession('Merit Scholarship', 'percentage', 25, '25% academic merit scholarship')}
+                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold cursor-pointer"
+                    >
+                      + Merit Scholarship (25%)
+                    </button>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveConcessionForm} className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Discount Rule Title <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Orphan Discount or Sibling Waiver"
+                      value={ruleTitle}
+                      onChange={(e) => setRuleTitle(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        Discount Type
+                      </label>
+                      <select
+                        value={ruleType}
+                        onChange={(e) => setRuleType(e.target.value as ConcessionDiscountType)}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
+                      >
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (PKR)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                        {ruleType === 'percentage' ? 'Percentage (%)' : 'Amount (PKR)'}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={ruleType === 'percentage' ? 100 : undefined}
+                        required
+                        value={ruleValue}
+                        onChange={(e) => setRuleValue(parseInt(e.target.value, 10) || 0)}
+                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      Policy Description (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g., Applicable upon Principal verification"
+                      value={ruleDescription}
+                      onChange={(e) => setRuleDescription(e.target.value)}
+                      className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-2">
+                    {editingRuleId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingRuleId(null);
+                          setRuleTitle('');
+                          setRuleValue(50);
+                          setRuleDescription('');
+                        }}
+                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={isSavingRule || !ruleTitle.trim() || ruleValue <= 0}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+                    >
+                      {isSavingRule ? 'Saving Rule...' : editingRuleId ? 'Update Discount Rule' : 'Save Discount Rule'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Assign Concession Permanently to a Student */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-indigo-500" />
+                    <span>Assign Permanent Discount to Student</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Select a student and link a concession rule permanently to auto-calculate future vouchers.
+                  </p>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Filter by Class</label>
+                    <select
+                      value={assignClassFilter}
+                      onChange={(e) => {
+                        setAssignClassFilter(e.target.value);
+                        setAssignStudentId('');
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                    >
+                      <option value="ALL">All Classes ({classes.length})</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.grade} - {c.section}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Select Student</label>
+                    <select
+                      value={assignStudentId}
+                      onChange={(e) => {
+                        setAssignStudentId(e.target.value);
+                        const stu = students.find((s) => s.id === e.target.value);
+                        setAssignRuleId(stu?.concessionId || '');
+                      }}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                    >
+                      <option value="">-- Choose Enrolled Student --</option>
+                      {students
+                        .filter((s) => s.status === 'active' && (assignClassFilter === 'ALL' || s.classId === assignClassFilter))
+                        .map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.grNumber} · {s.fullName} ({s.grade})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Discount Rule</label>
+                    <select
+                      value={assignRuleId}
+                      onChange={(e) => setAssignRuleId(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                    >
+                      <option value="">-- No Discount (Remove Concession) --</option>
+                      {feeConcessions
+                        .filter((r) => r.isActive !== false)
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.title} ({r.discountType === 'fixed' ? `Rs.${r.value}` : `${r.value}%`})
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAssignConcessionToStudent}
+                    disabled={!assignStudentId}
+                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+                  >
+                    Apply Permanent Concession
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right 7 Cols: Existing Concession Rules & Assigned Students */}
+            <div className="lg:col-span-7 space-y-6">
+              {concessionNotice && (
+                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{concessionNotice}</span>
+                </div>
+              )}
+
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <Percent className="w-4 h-4 text-emerald-600" />
+                    <span>Configured Discount Rules ({feeConcessions.length})</span>
+                  </h3>
+                </div>
+
+                {feeConcessions.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-slate-500">
+                    <Tag className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No Concession Rules Created Yet</p>
+                    <p className="text-slate-400 mt-1">Use the presets or create a custom discount rule on the left.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {feeConcessions.map((rule) => {
+                      const assignedCount = students.filter((s) => s.concessionId === rule.id).length;
+                      return (
+                        <div key={rule.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-sm text-slate-900 dark:text-white">{rule.title}</span>
+                              <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-mono">
+                                {rule.discountType === 'fixed' ? `Rs. ${rule.value} OFF` : `${rule.value}% OFF`}
+                              </span>
+                              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded">
+                                {assignedCount} student{assignedCount !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            {rule.description && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{rule.description}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingRuleId(rule.id);
+                                setRuleTitle(rule.title);
+                                setRuleType(rule.discountType);
+                                setRuleValue(rule.value);
+                                setRuleDescription(rule.description || '');
+                              }}
+                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                              title="Edit Rule"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteFeeConcessionRule(rule.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                              title="Delete Rule"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* List of Students Currently Receiving Permanent Concessions */}
+              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+                <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                    Students With Active Permanent Concessions
+                  </h3>
+                  <span className="text-[11px] font-semibold text-amber-600">
+                    {students.filter((s) => s.concessionTitle && (s.concessionValue || 0) > 0).length} enrolled
+                  </span>
+                </div>
+                <div className="overflow-x-auto max-h-72">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold uppercase text-[10px]">
+                      <tr>
+                        <th className="py-2.5 px-4">GR No</th>
+                        <th className="py-2.5 px-4">Student Name</th>
+                        <th className="py-2.5 px-4">Class</th>
+                        <th className="py-2.5 px-4">Concession Rule</th>
+                        <th className="py-2.5 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {students.filter((s) => s.concessionTitle && (s.concessionValue || 0) > 0).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-xs text-slate-400">
+                            No students currently have permanent fee concessions assigned.
+                          </td>
+                        </tr>
+                      ) : (
+                        students
+                          .filter((s) => s.concessionTitle && (s.concessionValue || 0) > 0)
+                          .map((stu) => (
+                            <tr key={stu.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                              <td className="py-2.5 px-4 font-mono font-bold">{stu.grNumber}</td>
+                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">{stu.fullName}</td>
+                              <td className="py-2.5 px-4">{stu.grade} - {stu.section}</td>
+                              <td className="py-2.5 px-4">
+                                <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-bold text-[10px]">
+                                  {stu.concessionTitle} ({stu.concessionType === 'fixed' ? `Rs.${stu.concessionValue}` : `${stu.concessionValue}%`})
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => applyStudentConcession(stu.id, null)}
+                                  className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                                >
+                                  Remove
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1943,7 +3400,11 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                      {defaultersList.map(({ student, expectedFee }) => (
+                      {defaultersList.map(({ student, expectedFee }) => {
+                        const partialRec = paymentsInMonth.find(
+                          (p) => p.studentId === student.id && p.status === 'partial'
+                        );
+                        return (
                         <tr
                           key={student.id}
                           className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
@@ -1969,9 +3430,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                             Rs. {expectedFee.toLocaleString()}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
-                              Unpaid ({currentMonthLabel})
-                            </span>
+                            {partialRec ? (
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                                Partial (Paid Rs. {(partialRec.paidAmount || 0).toLocaleString()})
+                              </span>
+                            ) : (
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800">
+                                Unpaid ({currentMonthLabel})
+                              </span>
+                            )}
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <button
@@ -1984,7 +3451,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                             </button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2137,7 +3605,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  Daily Collection (Date-wise)
+                  Daily Collection
                 </button>
                 <button
                   type="button"
@@ -2148,7 +3616,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  Monthly Collection (Month-wise)
+                  Monthly Collection
                 </button>
                 <button
                   type="button"
@@ -2159,7 +3627,29 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                 >
-                  Defaulters List (Unpaid)
+                  Defaulters List
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportType('discounts')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    reportType === 'discounts'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Discount Summary
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportType('partial')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    reportType === 'partial'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Partial Payments Report
                 </button>
               </div>
 
@@ -2277,13 +3767,25 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
             <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
               <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Collection Rate
+                {reportType === 'discounts'
+                  ? `Discounts Granted (${reportMonthLabel})`
+                  : reportType === 'partial'
+                  ? 'Partial Pending Balances'
+                  : 'Collection Rate'}
               </div>
               <div className="mt-2 text-xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
-                {reportData.totals.overallCollectionRate}%
+                {reportType === 'discounts'
+                  ? `Rs. ${reportData.totals.totalDiscountsGranted.toLocaleString()}`
+                  : reportType === 'partial'
+                  ? `Rs. ${reportData.totals.totalPartialPending.toLocaleString()}`
+                  : `${reportData.totals.overallCollectionRate}%`}
               </div>
               <div className="text-[11px] text-slate-500 mt-0.5">
-                Out of {reportData.totals.totalActiveStudents} active students
+                {reportType === 'discounts'
+                  ? `${reportData.discountRows.length} discounted student(s)`
+                  : reportType === 'partial'
+                  ? `${reportData.partialPaymentRows.length} partial entry(s)`
+                  : `Out of ${reportData.totals.totalActiveStudents} active students`}
               </div>
             </div>
 
@@ -2361,6 +3863,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   ? `Daily Fee Collection Ledger — ${reportDate}`
                   : reportType === 'monthly'
                   ? `Monthly Fee Collection Ledger — ${reportMonthLabel}`
+                  : reportType === 'discounts'
+                  ? `Discount & Concessions Summary — ${reportMonthLabel}`
+                  : reportType === 'partial'
+                  ? `Partial Payments & Pending Balance Report — ${reportMonthLabel}`
                   : `Fee Defaulters List — ${reportMonthLabel}`}
               </h3>
               <span className="text-[11px] font-semibold text-slate-500">
@@ -2368,6 +3874,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   ? `${reportData.dailyPayments.length} record(s)`
                   : reportType === 'monthly'
                   ? `${reportData.monthlyPayments.length} record(s)`
+                  : reportType === 'discounts'
+                  ? `${reportData.discountRows.length} discounted student(s)`
+                  : reportType === 'partial'
+                  ? `${reportData.partialPaymentRows.length} partial payment(s)`
                   : `${reportData.defaulterRows.length} student(s)`}
               </span>
             </div>
@@ -2524,6 +4034,136 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           <td className="py-3 px-4 font-mono text-slate-500">{row.student.guardianPhone || 'N/A'}</td>
                           <td className="py-3 px-4 text-right font-bold text-rose-600 dark:text-rose-400">
                             Rs. {row.expectedFee.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+
+            {/* 4. Discount Summary Report Table */}
+            {reportType === 'discounts' && (
+              <div className="space-y-4">
+                {reportData.discountRuleSummary.length > 0 && (
+                  <div className="p-4 bg-amber-50/50 dark:bg-amber-950/20 border-b border-amber-100 dark:border-amber-900/40 flex flex-wrap gap-2.5">
+                    {reportData.discountRuleSummary.map((ruleStat) => (
+                      <div
+                        key={ruleStat.title}
+                        className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 text-xs"
+                      >
+                        <div className="font-bold text-slate-900 dark:text-white">{ruleStat.title}</div>
+                        <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
+                          {ruleStat.studentsCount} student(s) · Rs. {ruleStat.totalMonthlyDiscount.toLocaleString()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {reportData.discountRows.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-slate-500">
+                    <Tag className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                      No Discounts Recorded for {reportMonthLabel}
+                    </p>
+                    <p className="text-slate-400 mt-1">
+                      Create discount rules in "4. Concessions" and assign them to students.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                          {isSuperAdmin && <th className="py-3 px-4">School</th>}
+                          <th className="py-3 px-4">GR No</th>
+                          <th className="py-3 px-4">Student Name</th>
+                          <th className="py-3 px-4">Class</th>
+                          <th className="py-3 px-4">Concession Category</th>
+                          <th className="py-3 px-4 text-right">Gross Fee</th>
+                          <th className="py-3 px-4 text-right">Discount</th>
+                          <th className="py-3 px-4 text-right">Net Payable</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {reportData.discountRows.map((row) => (
+                          <tr key={`${row.schoolId}_${row.student.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                            {isSuperAdmin && (
+                              <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">{row.schoolName}</td>
+                            )}
+                            <td className="py-3 px-4 font-mono font-bold">{row.student.grNumber}</td>
+                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{row.student.fullName}</td>
+                            <td className="py-3 px-4">{row.student.grade} - {row.student.section || 'General'}</td>
+                            <td className="py-3 px-4">
+                              <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-bold text-[10px]">
+                                {row.concessionTitle}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono">Rs. {row.grossFee.toLocaleString()}</td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                              - Rs. {row.discountAmount.toLocaleString()}
+                            </td>
+                            <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              Rs. {row.netFee.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. Partial Payments Report Table */}
+            {reportType === 'partial' && (
+              reportData.partialPaymentRows.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  <Wallet className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                    No Partial Payments in {reportMonthLabel}
+                  </p>
+                  <p className="text-slate-400 mt-1">
+                    When partial amounts are received in Fee Collection, they appear here with remaining balances.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                        <th className="py-3 px-4">Receipt No</th>
+                        {isSuperAdmin && <th className="py-3 px-4">School</th>}
+                        <th className="py-3 px-4">GR No</th>
+                        <th className="py-3 px-4">Student Name</th>
+                        <th className="py-3 px-4">Class</th>
+                        <th className="py-3 px-4 text-right">Net Due</th>
+                        <th className="py-3 px-4 text-right">Paid So Far</th>
+                        <th className="py-3 px-4 text-right">Pending Balance</th>
+                        <th className="py-3 px-4 text-right">Advance Credit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {reportData.partialPaymentRows.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{p.receiptNumber || 'RCPT'}</td>
+                          {isSuperAdmin && (
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">{p.schoolName}</td>
+                          )}
+                          <td className="py-3 px-4 font-mono font-bold">{p.grNumber}</td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{p.studentName}</td>
+                          <td className="py-3 px-4">{p.grade} - {p.section || 'General'}</td>
+                          <td className="py-3 px-4 text-right font-mono">Rs. {Number(p.netAmount || 0).toLocaleString()}</td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            Rs. {Number(p.paidAmount || 0).toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                            Rs. {p.remainingDue.toLocaleString()}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
+                            Rs. {p.studentAdvanceBalance.toLocaleString()}
                           </td>
                         </tr>
                       ))}
@@ -2735,7 +4375,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       {activeVoucherForPrint.discount > 0 && (
                         <tr className="text-amber-800 bg-amber-50/50">
                           <td className="py-1.5 px-3 border border-slate-300">3</td>
-                          <td className="py-1.5 px-3 border border-slate-300">Less: Scholarship / Fee Concession</td>
+                          <td className="py-1.5 px-3 border border-slate-300">
+                            Less: {activeVoucherForPrint.concessionTitle || 'Scholarship / Fee Concession'}
+                          </td>
                           <td className="py-1.5 px-3 border border-slate-300 text-right font-mono">
                             - {activeVoucherForPrint.discount.toLocaleString()}
                           </td>
@@ -2749,6 +4391,36 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           Rs. {activeVoucherForPrint.netAmount.toLocaleString()}
                         </td>
                       </tr>
+                      {activeVoucherForPrint.paidAmount > 0 && (
+                        <tr className="bg-emerald-50/50 text-emerald-900">
+                          <td colSpan={2} className="py-1.5 px-3 border border-slate-300 text-right font-semibold">
+                            Amount Paid / Settled:
+                          </td>
+                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono font-bold">
+                            Rs. {activeVoucherForPrint.paidAmount.toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
+                      {(activeVoucherForPrint.pendingBalance || 0) > 0 && (
+                        <tr className="bg-rose-50/60 text-rose-800">
+                          <td colSpan={2} className="py-1.5 px-3 border border-slate-300 text-right font-bold">
+                            Remaining Pending Balance:
+                          </td>
+                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono font-bold">
+                            Rs. {(activeVoucherForPrint.pendingBalance || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
+                      {(activeVoucherForPrint.advanceGenerated || 0) > 0 && (
+                        <tr className="bg-sky-50/70 text-sky-900">
+                          <td colSpan={2} className="py-1.5 px-3 border border-slate-300 text-right font-bold">
+                            Advance Allocated ({activeVoucherForPrint.allocatedNextMonth || 'Next Month'}):
+                          </td>
+                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono font-bold">
+                            + Rs. {(activeVoucherForPrint.advanceGenerated || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
 
@@ -2772,6 +4444,152 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       <div className="text-center">
                         <div className="w-28 border-b border-slate-400 mb-1"></div>
                         <span className="text-[10px] text-slate-500">Principal Signature</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* PRINTABLE BULK BATCH VOUCHERS MODAL (.printable-a4-sheet) */}
+      {/* =================================================================== */}
+      {bulkBatchForPrint && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-6 relative my-8">
+            <div className="no-print flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-emerald-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Bulk Class Fee Vouchers Batch ({bulkBatchForPrint.length} Vouchers — {bulkMonthLabel})
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={triggerPrintDocument}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print All Vouchers (PDF / A4)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBulkBatchForPrint(null)}
+                  className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="printable-a4-sheet bg-white text-slate-900 p-4 rounded-xl space-y-6">
+              {bulkBatchForPrint.map((voucher, idx) => (
+                <div
+                  key={voucher.id}
+                  className={`p-4 border-2 border-dashed border-slate-400 rounded-xl print-break-inside-avoid ${
+                    idx % 2 === 1 && idx < bulkBatchForPrint.length - 1 ? 'print-page-break-after' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between border-b-2 border-slate-800 pb-2">
+                    <div>
+                      <div className="text-[9px] font-bold tracking-widest text-emerald-800 uppercase">
+                        GOVERNMENT OF SINDH · SCHOOL EDUCATION &amp; LITERACY DEPARTMENT
+                      </div>
+                      <h2 className="text-base font-black text-slate-900 uppercase">
+                        {activeSchool.name || 'Govt. High School'}
+                      </h2>
+                      <div className="text-[11px] text-slate-600 font-medium">
+                        SEMIS Code: {activeSchool.semisCode || 'N/A'} · Due Date: {bulkDueDate}
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-900 text-white inline-block">
+                        MONTHLY FEE VOUCHER
+                      </div>
+                      <div className="text-[11px] font-mono font-bold text-emerald-700 mt-0.5">
+                        Voucher #: {voucher.receiptNumber}
+                      </div>
+                      <div className="text-[10px] text-slate-500">
+                        Billing Month: <strong>{voucher.monthLabel}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-2 my-2.5 text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <div>
+                      <span className="text-slate-500 text-[9px] block">Student Name:</span>
+                      <strong className="text-slate-900">{voucher.studentName}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[9px] block">GR Number:</span>
+                      <strong className="text-slate-900 font-mono">{voucher.grNumber}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[9px] block">Class &amp; Section:</span>
+                      <strong className="text-slate-900">{voucher.grade} - {voucher.section || 'General'}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[9px] block">Status:</span>
+                      <strong className="uppercase text-emerald-700">{voucher.status}</strong>
+                    </div>
+                  </div>
+
+                  <table className="w-full text-left text-[11px] border border-slate-300 border-collapse my-2">
+                    <thead className="bg-slate-100 font-bold text-slate-800">
+                      <tr>
+                        <th className="py-1 px-2.5 border border-slate-300">Fee Particulars</th>
+                        <th className="py-1 px-2.5 border border-slate-300 text-right">Amount (PKR)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td className="py-1 px-2.5 border border-slate-300">Monthly Tuition &amp; Class Charges</td>
+                        <td className="py-1 px-2.5 border border-slate-300 text-right font-mono">
+                          {(voucher.baseAmount + voucher.customChargesAmount).toLocaleString()}
+                        </td>
+                      </tr>
+                      {voucher.discount > 0 && (
+                        <tr className="text-amber-800 bg-amber-50/40">
+                          <td className="py-1 px-2.5 border border-slate-300">
+                            Less: {voucher.concessionTitle || 'Concession / Scholarship'}
+                          </td>
+                          <td className="py-1 px-2.5 border border-slate-300 text-right font-mono">
+                            - {voucher.discount.toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
+                      {voucher.paidAmount > 0 && (
+                        <tr className="text-emerald-800">
+                          <td className="py-1 px-2.5 border border-slate-300">Less: Already Paid / Advance Credit</td>
+                          <td className="py-1 px-2.5 border border-slate-300 text-right font-mono">
+                            - {voucher.paidAmount.toLocaleString()}
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="bg-slate-100 font-bold text-slate-900">
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right">Net Payable Balance:</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono text-xs text-emerald-800">
+                          Rs. {(voucher.pendingBalance ?? voucher.netAmount).toLocaleString()}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div className="flex items-end justify-between pt-2 text-[10px] text-slate-500">
+                    <span>{voucher.notes || bulkVoucherNote}</span>
+                    <div className="flex items-center gap-8">
+                      <div className="text-center">
+                        <div className="w-24 border-b border-slate-400 mb-0.5"></div>
+                        <span>Bank / Cashier Sign</span>
+                      </div>
+                      <div className="text-center">
+                        <div className="w-24 border-b border-slate-400 mb-0.5"></div>
+                        <span>Principal Sign</span>
                       </div>
                     </div>
                   </div>
@@ -2826,6 +4644,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       ? 'Daily Fee Collection Report'
                       : reportType === 'monthly'
                       ? 'Monthly Fee Collection Report'
+                      : reportType === 'discounts'
+                      ? 'Discount & Concessions Summary Report'
+                      : reportType === 'partial'
+                      ? 'Partial Payments & Pending Balance Report'
                       : 'Monthly Fee Defaulters List'}
                   </h2>
                   <div className="text-xs text-slate-600 font-medium">
@@ -2850,14 +4672,24 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     Rs.{' '}
                     {(reportType === 'daily'
                       ? reportData.totals.totalDailyCollected
+                      : reportType === 'partial'
+                      ? reportData.totals.totalPartialCollected
                       : reportData.totals.totalMonthlyCollected
                     ).toLocaleString()}
                   </strong>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">Total Pending</span>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">
+                    {reportType === 'discounts' ? 'Total Discounts Granted' : 'Total Pending Balance'}
+                  </span>
                   <strong className="text-sm text-rose-700 font-mono">
-                    Rs. {reportData.totals.totalPending.toLocaleString()}
+                    Rs.{' '}
+                    {(reportType === 'discounts'
+                      ? reportData.totals.totalDiscountsGranted
+                      : reportType === 'partial'
+                      ? reportData.totals.totalPartialPending
+                      : reportData.totals.totalPending
+                    ).toLocaleString()}
                   </strong>
                 </div>
                 <div>
@@ -2962,6 +4794,70 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">
                           {row.expectedFee.toLocaleString()}
                         </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {reportType === 'discounts' && (
+                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
+                  <thead className="bg-slate-100 font-bold text-slate-800">
+                    <tr>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
+                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Concession Rule</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Discount (PKR)</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Net Payable</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.discountRows.map((row) => (
+                      <tr key={`${row.schoolId}_${row.student.id}`}>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{row.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{row.student.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{row.student.fullName}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">{row.student.grade} - {row.student.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{row.concessionTitle}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">
+                          -{row.discountAmount.toLocaleString()}
+                        </td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold">
+                          {row.netFee.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {reportType === 'partial' && (
+                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
+                  <thead className="bg-slate-100 font-bold text-slate-800">
+                    <tr>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Receipt</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
+                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Net Due</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Paid</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.partialPaymentRows.map((p) => (
+                      <tr key={p.id}>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.receiptNumber || 'RCPT'}</td>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{p.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{p.studentName}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">{p.grade} - {p.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono">{Number(p.netAmount || 0).toLocaleString()}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono text-emerald-700 font-bold">{Number(p.paidAmount || 0).toLocaleString()}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono text-rose-700 font-bold">{p.remainingDue.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
