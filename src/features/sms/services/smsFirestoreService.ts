@@ -267,6 +267,28 @@ export async function saveStudentToFirestore(schoolId: string, student: Student)
   }
 }
 
+export async function saveStudentInviteCodeOnlyToFirestore(
+  schoolId: string,
+  studentId: string,
+  studentInviteCode: string
+): Promise<boolean> {
+  if (!schoolId || !studentId || !studentInviteCode.trim()) return false;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'students', studentId);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        studentInviteCode: studentInviteCode.trim().toUpperCase(),
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveStudentInviteCode', `schools/${schoolId}/students/${studentId}`);
+  }
+}
+
 export async function deleteStudentFromFirestore(schoolId: string, studentId: string): Promise<boolean> {
   if (!schoolId || !studentId) {
     throw new FirestoreSyncError('School ID and Student ID are required to delete', 'invalid-argument', 'deleteStudent');
@@ -933,15 +955,26 @@ export async function saveStudentPortalLinkToFirestore(
 
 export async function fetchStudentPortalLinkFromFirestore(
   schoolId: string,
-  grNumber: string
+  grOrStudentId: string
 ): Promise<StudentPortalLink | null> {
-  if (!schoolId || !grNumber.trim()) return null;
-  const linkId = buildParentLinkId(schoolId, grNumber);
+  if (!schoolId || !grOrStudentId.trim()) return null;
+  const linkId = buildParentLinkId(schoolId, grOrStudentId);
   try {
     const ref = doc(db, 'studentLinks', linkId);
     const snap = await getDoc(ref);
-    if (!snap.exists()) return null;
-    return normalizeTimestamps(snap.data() as StudentPortalLink);
+    if (snap.exists()) {
+      return normalizeTimestamps(snap.data() as StudentPortalLink);
+    }
+    // Also check exact lowercase/raw doc key fallback for Student ID lookups
+    const cleanSchool = (schoolId || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+    const altId = `${cleanSchool}__${grOrStudentId.trim().replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+    if (altId !== linkId) {
+      const altSnap = await getDoc(doc(db, 'studentLinks', altId));
+      if (altSnap.exists()) {
+        return normalizeTimestamps(altSnap.data() as StudentPortalLink);
+      }
+    }
+    return null;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchStudentLink', `studentLinks/${linkId}`);
   }

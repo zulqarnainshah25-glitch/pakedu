@@ -503,10 +503,24 @@ service cloud.firestore {
             existing().get('studentUid', '') == request.auth.uid
           )
         );
-        allow create, update: if isValidId(studentId) && isValidStudent(incoming()) && (
+        allow create: if isValidId(studentId) && isValidStudent(incoming()) && (
           isSchoolAdmin(schoolId) || (
             isSchoolMember(schoolId) &&
             userDoc().get('isAdmissionIncharge', false) == true
+          )
+        );
+        allow update: if isValidId(studentId) && isValidStudent(incoming()) && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('isAdmissionIncharge', false) == true
+          ) || (
+            // Verified parent may initialize a missing studentInviteCode for their own child only
+            isSchoolParent(schoolId) &&
+            studentId == userDoc().get('childStudentId', '') &&
+            existing().get('studentInviteCode', '') == '' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['studentInviteCode', 'updatedAt']) &&
+            incoming().get('studentInviteCode', '') is string &&
+            incoming().get('studentInviteCode', '').size() >= 6
           )
         );
         allow delete: if isSchoolAdmin(schoolId);
@@ -693,11 +707,21 @@ service cloud.firestore {
           existing().get('claimedByUid', '') == request.auth.uid
         )
       );
-      allow create, delete: if isValidId(linkId) && (
+      allow create: if isValidId(linkId) && (
         isSuperAdmin() || (
           incoming().get('schoolId', '') != '' && (
             isSchoolAdmin(incoming().get('schoolId', '')) || (
               isSchoolMember(incoming().get('schoolId', '')) &&
+              userDoc().get('isAdmissionIncharge', false) == true
+            )
+          )
+        )
+      );
+      allow delete: if isValidId(linkId) && (
+        isSuperAdmin() || (
+          existing().get('schoolId', '') != '' && (
+            isSchoolAdmin(existing().get('schoolId', '')) || (
+              isSchoolMember(existing().get('schoolId', '')) &&
               userDoc().get('isAdmissionIncharge', false) == true
             )
           )
@@ -735,11 +759,26 @@ service cloud.firestore {
           existing().get('claimedByUid', '') == request.auth.uid
         )
       );
-      allow create, delete: if isValidId(linkId) && (
+      allow create: if isValidId(linkId) && (
         isSuperAdmin() || (
           incoming().get('schoolId', '') != '' && (
             isSchoolAdmin(incoming().get('schoolId', '')) || (
               isSchoolMember(incoming().get('schoolId', '')) &&
+              userDoc().get('isAdmissionIncharge', false) == true
+            ) || (
+              // Verified parent may initialize a Student Portal invite for their own linked child
+              isSchoolParent(incoming().get('schoolId', '')) &&
+              incoming().get('studentId', '') == userDoc().get('childStudentId', '') &&
+              incoming().get('status', '') == 'available'
+            )
+          )
+        )
+      );
+      allow delete: if isValidId(linkId) && (
+        isSuperAdmin() || (
+          existing().get('schoolId', '') != '' && (
+            isSchoolAdmin(existing().get('schoolId', '')) || (
+              isSchoolMember(existing().get('schoolId', '')) &&
               userDoc().get('isAdmissionIncharge', false) == true
             )
           )

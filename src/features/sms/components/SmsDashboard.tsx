@@ -21,6 +21,9 @@ import {
   Megaphone,
   Eye,
   Lock,
+  KeyRound,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 
@@ -66,12 +69,55 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
     globalNotices,
     unreadNoticesCount,
     markNoticeAsRead,
+    students,
+    studentPortalLinks,
+    generateStudentInviteForStudent,
+    generateMissingStudentInvites,
   } = useSms();
 
   const [dashboardTab, setDashboardTab] = React.useState<'overview' | 'notifications'>('overview');
+  const [copiedStudentCodeId, setCopiedStudentCodeId] = React.useState<string | null>(null);
+  const [isBulkGeneratingInvites, setIsBulkGeneratingInvites] = React.useState(false);
+  const [inviteActionFeedback, setInviteActionFeedback] = React.useState<string | null>(null);
   const isAdmin =
     userRole === 'admin' || userRole === 'principal' || isReadOnlyImpersonation;
   const todayDate = new Date().toISOString().split('T')[0];
+
+  const recentStudentsForInvites = React.useMemo(() => {
+    return [...students]
+      .sort((a, b) => (b.admissionDate || '').localeCompare(a.admissionDate || ''))
+      .slice(0, 8);
+  }, [students]);
+
+  const missingStudentInvitesCount = React.useMemo(
+    () => students.filter((s) => !s.studentInviteCode && Boolean(s.grNumber)).length,
+    [students]
+  );
+
+  const handleCopyAdminStudentInvite = async (value: string, rowKey: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedStudentCodeId(rowKey);
+      setTimeout(() => setCopiedStudentCodeId(null), 2000);
+    } catch {
+      setInviteActionFeedback('Unable to copy automatically. Please copy the code directly.');
+    }
+  };
+
+  const handleGenerateAllMissingInvites = async () => {
+    setIsBulkGeneratingInvites(true);
+    setInviteActionFeedback(null);
+    try {
+      const count = await generateMissingStudentInvites();
+      setInviteActionFeedback(
+        count > 0
+          ? `Generated Student Invite Codes for ${count} student(s).`
+          : 'All students already have active Student Invite Codes.'
+      );
+    } finally {
+      setIsBulkGeneratingInvites(false);
+    }
+  };
 
   const schoolNotices = React.useMemo(() => {
     return globalNotices.filter(
@@ -702,6 +748,181 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
           })}
         </div>
       </div>
+
+      {/* Admin Student Invite Codes Panel (Newly Admitted & Active Students) */}
+      {isAdmin && !isReadOnlyImpersonation && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                <span>Student Portal Invite Codes (Email-Free GR / ID Signup)</span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Auto-generated on admission. Share the Student ID / GR# and Invite Code so students can create accounts without an email address.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {missingStudentInvitesCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleGenerateAllMissingInvites}
+                  disabled={isBulkGeneratingInvites}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>
+                    {isBulkGeneratingInvites
+                      ? 'Generating...'
+                      : `Generate Missing Codes (${missingStudentInvitesCount})`}
+                  </span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onNavigateToStudents}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>Open Student Register</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {inviteActionFeedback && (
+            <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-800 dark:text-sky-200">
+              {inviteActionFeedback}
+            </div>
+          )}
+
+          {recentStudentsForInvites.length === 0 ? (
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
+              No students admitted yet. Newly admitted students automatically receive a Student Invite Code here.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+              {recentStudentsForInvites.map((stu) => {
+                const link = studentPortalLinks[stu.id];
+                const code = stu.studentInviteCode || link?.inviteCode || '';
+                const isLinked = Boolean(stu.studentUid || link?.status === 'linked');
+                const inviteUrl = code
+                  ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?student_invite=${encodeURIComponent(
+                      code
+                    )}&school=${encodeURIComponent(activeSchool.id)}&gr=${encodeURIComponent(
+                      stu.grNumber
+                    )}`
+                  : '';
+
+                return (
+                  <div
+                    key={stu.id}
+                    className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 flex flex-col justify-between gap-2.5"
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                            {stu.fullName}
+                          </div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                            {stu.grade} - {stu.section}
+                          </div>
+                        </div>
+                        {isLinked ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 shrink-0">
+                            <CheckCircle2 className="w-3 h-3" />
+                            Linked
+                          </span>
+                        ) : code ? (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 shrink-0">
+                            Ready
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 shrink-0">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mt-2 space-y-1 text-[11px] text-slate-600 dark:text-slate-300">
+                        <div>
+                          GR#: <span className="font-mono font-bold text-slate-900 dark:text-white">{stu.grNumber}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                          ID: <span className="font-mono">{stu.id}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {code ? (
+                      <div className="pt-2 border-t border-slate-200/70 dark:border-slate-700/60 space-y-1.5">
+                        <div className="flex items-center justify-between gap-1 bg-white dark:bg-slate-900 px-2.5 py-1.5 rounded-lg border border-sky-200 dark:border-sky-800/70">
+                          <span className="font-mono text-[11px] font-bold text-sky-700 dark:text-sky-300 truncate">
+                            {code}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAdminStudentInvite(code, `code_${stu.id}`)}
+                            className="inline-flex items-center gap-1 text-[10px] font-semibold text-sky-700 dark:text-sky-300 hover:underline cursor-pointer shrink-0"
+                            title="Copy Invite Code"
+                          >
+                            {copiedStudentCodeId === `code_${stu.id}` ? (
+                              <>
+                                <Check className="w-3 h-3 text-emerald-500" />
+                                <span>Copied</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3 h-3" />
+                                <span>Code</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAdminStudentInvite(inviteUrl, `url_${stu.id}`)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-2.5 rounded-lg bg-slate-100 dark:bg-slate-700/70 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold transition cursor-pointer"
+                        >
+                          {copiedStudentCodeId === `url_${stu.id}` ? (
+                            <>
+                              <Check className="w-3 h-3 text-emerald-500" />
+                              <span>Copied Signup Link</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3 h-3" />
+                              <span>Copy Student Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const res = await generateStudentInviteForStudent(stu.id);
+                          if (res?.inviteCode) {
+                            setInviteActionFeedback(
+                              `Created Student Invite Code ${res.inviteCode} for ${stu.fullName} (${stu.grNumber}).`
+                            );
+                          }
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-semibold transition cursor-pointer"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>Create Invite Code</span>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Core SMS Modules Grid */}
       <div>

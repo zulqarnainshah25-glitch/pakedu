@@ -203,6 +203,7 @@ export const INITIAL_MOCK_STUDENTS: import('../types').Student[] = [
     status: 'active',
     guardianPhone: '0300-1122334',
     address: 'House # 42, Block D, Latifabad Unit 7, Hyderabad',
+    studentInviteCode: 'STU-GR1042-8K2M',
   },
   {
     id: 'std_002',
@@ -219,6 +220,7 @@ export const INITIAL_MOCK_STUDENTS: import('../types').Student[] = [
     status: 'active',
     guardianPhone: '0312-9988776',
     address: 'Flat 302, Al-Madina Heights, Auto Bhan Road, Hyderabad',
+    studentInviteCode: 'STU-GR1043-4P9X',
   },
   {
     id: 'std_003',
@@ -235,6 +237,7 @@ export const INITIAL_MOCK_STUDENTS: import('../types').Student[] = [
     status: 'active',
     guardianPhone: '0333-5566778',
     address: 'Street 5, Saddar, Hyderabad',
+    studentInviteCode: 'STU-GR1044-7N3W',
   },
   {
     id: 'std_004',
@@ -251,6 +254,7 @@ export const INITIAL_MOCK_STUDENTS: import('../types').Student[] = [
     status: 'active',
     guardianPhone: '0345-1239876',
     address: 'Mohallah Qasimabad, Phase 1, Hyderabad',
+    studentInviteCode: 'STU-GR1045-2R5V',
   },
   {
     id: 'std_005',

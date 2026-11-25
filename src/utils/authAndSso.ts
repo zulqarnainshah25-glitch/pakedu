@@ -60,6 +60,27 @@ export function sanitizeTextInput(input: unknown, maxLength = 120): string {
     .slice(0, maxLength);
 }
 
+export function buildSyntheticStudentEmail(schoolId: string, identifier: string): string {
+  const cleanSchool = (schoolId || 'default')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, '_');
+  const cleanId = (identifier || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+  return `stu.${cleanId}.${cleanSchool}@student.pakedu.app`;
+}
+
+export function isSyntheticStudentEmail(email: string): boolean {
+  return /^stu\.[a-z0-9]+\.[a-z0-9_-]+@student\.pakedu\.app$/i.test((email || '').trim());
+}
+
+export function isGrOrStudentIdInput(identifier: string): boolean {
+  const trimmed = (identifier || '').trim();
+  return trimmed.length > 0 && !trimmed.includes('@');
+}
+
 /**
  * Validates email & password inputs for Sign In, Sign Up, and Password Reset.
  */

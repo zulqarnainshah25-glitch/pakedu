@@ -21,6 +21,9 @@ import {
   DEFAULT_MAIN_PORTAL_URL,
   ATLIER_CV_LIVE_URL,
   UNIFIED_FIREBASE_PROJECT_ID,
+  buildSyntheticStudentEmail,
+  isSyntheticStudentEmail,
+  isGrOrStudentIdInput,
 } from './authAndSso';
 import { calculateSindhSalary2026 } from '../data/salaryScale2026';
 import { determineSmartRoute, hasAdminCapabilities } from './smartRouting';
@@ -1515,6 +1518,60 @@ function runAllUnitTests() {
     assert.equal(appSrc.includes("activeTool === 'sms-student-portal'"), true);
 
     console.log('✅ PASS: Student Portal Auth, Invite Claim, Strict Read-Only RBAC & Isolation Tests');
+  }
+
+  // 23. Email-Free Student Auth, GR / Student ID Login, & Admin/Parent Dashboard Invite Creation
+  {
+    assert.equal(
+      buildSyntheticStudentEmail('sch_419030330', 'GR-1001'),
+      'stu.gr1001.sch_419030330@student.pakedu.app'
+    );
+    assert.equal(
+      buildSyntheticStudentEmail('sch_419030330', '  gr1001 '),
+      'stu.gr1001.sch_419030330@student.pakedu.app'
+    );
+    assert.equal(isSyntheticStudentEmail('stu.gr1001.sch_419030330@student.pakedu.app'), true);
+    assert.equal(isSyntheticStudentEmail('teacher@seld.gos.pk'), false);
+
+    assert.equal(isGrOrStudentIdInput('GR-1001'), true);
+    assert.equal(isGrOrStudentIdInput('std_001'), true);
+    assert.equal(isGrOrStudentIdInput('teacher@seld.gos.pk'), false);
+    assert.equal(isGrOrStudentIdInput(''), false);
+
+    const syntheticValidation = validateAuthCredentials({
+      mode: 'signup',
+      email: buildSyntheticStudentEmail('sch_419030330', 'GR-1001'),
+      password: 'password123',
+      displayName: 'Shazia Bibi',
+    });
+    assert.equal(syntheticValidation.valid, true);
+
+    const authModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AuthModal.tsx'), 'utf-8');
+    const smsDashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/SmsDashboard.tsx'), 'utf-8');
+    const parentDashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/ParentDashboard.tsx'), 'utf-8');
+    const smsContextSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+
+    // AuthModal email-free student signup + GR login UI & Auth rollback
+    assert.equal(authModalSrc.includes('buildSyntheticStudentEmail'), true);
+    assert.equal(authModalSrc.includes('isGrOrStudentIdInput'), true);
+    assert.equal(authModalSrc.includes('newlyCreatedStudentUser.delete()'), true);
+    assert.equal(authModalSrc.includes('Email Address or Student GR / ID *'), true);
+    assert.equal(authModalSrc.includes('Student GR / ID detected — Select Your School *'), true);
+
+    // Admin Dashboard (SmsDashboard) + Parent Dashboard + SmsContext Invite Creation
+    assert.equal(smsDashSrc.includes('generateMissingStudentInvites'), true);
+    assert.equal(smsDashSrc.includes('generateStudentInviteForStudent'), true);
+    assert.equal(smsDashSrc.includes('Student Portal Invite Codes'), true);
+    assert.equal(parentDashSrc.includes('ensureChildStudentInviteForParent'), true);
+    assert.equal(parentDashSrc.includes('Create Student Invite Code'), true);
+    assert.equal(smsContextSrc.includes('generateMissingStudentInvites'), true);
+    assert.equal(smsContextSrc.includes('ensureChildStudentInviteForParent'), true);
+
+    // Firestore Rules parent-scoped studentInviteCode init guard
+    assert.equal(rulesSrc.includes("existing().get('studentInviteCode', '') == ''"), true);
+
+    console.log('✅ PASS: Email-Free Student Signup, GR/ID Login & Admin/Parent Dashboard Invite Code Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

@@ -3,7 +3,11 @@ import {
   Award,
   Building,
   CalendarCheck2,
+  Check,
+  CheckCircle2,
+  Copy,
   CreditCard,
+  GraduationCap,
   KeyRound,
   Lock,
   UserCheck,
@@ -48,6 +52,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
     timetableEntries,
     homeworkItems,
     linkParentToStudent,
+    ensureChildStudentInviteForParent,
   } = useSms();
 
   // Linked child profile (strictly read-only — parents only receive their own linked child)
@@ -172,6 +177,57 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
   );
 
   const [reportExamForPrint, setReportExamForPrint] = useState<Exam | null>(null);
+  const [generatedChildInvite, setGeneratedChildInvite] = useState<{
+    inviteCode: string;
+    inviteUrl: string;
+  } | null>(null);
+  const [isCreatingStudentInvite, setIsCreatingStudentInvite] = useState(false);
+  const [studentInviteFeedback, setStudentInviteFeedback] = useState<string | null>(null);
+  const [copiedChildInviteKey, setCopiedChildInviteKey] = useState<string | null>(null);
+
+  const activeChildStudentCode =
+    generatedChildInvite?.inviteCode || childStudent?.studentInviteCode || '';
+  const isChildStudentLinked = Boolean(childStudent?.studentUid);
+  const resolvedChildSchoolId = currentUserProfile?.schoolId || activeSchool.id;
+  const activeChildStudentInviteUrl =
+    generatedChildInvite?.inviteUrl ||
+    (activeChildStudentCode && childStudent
+      ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?student_invite=${encodeURIComponent(
+          activeChildStudentCode
+        )}&school=${encodeURIComponent(resolvedChildSchoolId)}&gr=${encodeURIComponent(
+          childStudent.grNumber
+        )}`
+      : '');
+
+  const handleCreateChildStudentInvite = async () => {
+    setIsCreatingStudentInvite(true);
+    setStudentInviteFeedback(null);
+    try {
+      const res = await ensureChildStudentInviteForParent();
+      if (res) {
+        setGeneratedChildInvite(res);
+        setStudentInviteFeedback(
+          `Student Invite Code ready: ${res.inviteCode}. Your child can create a Student Portal account using only GR# ${childStudent?.grNumber} and this code (no email needed).`
+        );
+      } else {
+        setStudentInviteFeedback(
+          'Unable to create Student Invite Code automatically. Ask your school admin to verify your child link.'
+        );
+      }
+    } finally {
+      setIsCreatingStudentInvite(false);
+    }
+  };
+
+  const handleCopyChildStudentValue = async (value: string, key: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedChildInviteKey(key);
+      setTimeout(() => setCopiedChildInviteKey(null), 2000);
+    } catch {
+      setStudentInviteFeedback('Clipboard unavailable. Please copy the invite code manually.');
+    }
+  };
 
   useEffect(() => {
     if (!reportExamForPrint) return;
@@ -392,6 +448,119 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
               Official A4 Report Cards ready for download
             </div>
           </div>
+        </div>
+
+        {/* Child Student Portal Invite Card (Create/View Code on Parent Dashboard) */}
+        <div className="bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800/60 rounded-2xl p-5 shadow-xs space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+                <GraduationCap className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Student Portal Access &amp; Invite Code
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Your child can register and log in using only their Student ID / GR Number and Invite Code (no email address required).
+                </p>
+              </div>
+            </div>
+
+            {isChildStudentLinked ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Student Account Linked
+              </span>
+            ) : activeChildStudentCode ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                <KeyRound className="w-3.5 h-3.5" />
+                Invite Code Ready
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                Not Created Yet
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">Login Student ID / GR#</div>
+              <div className="font-mono font-bold text-slate-900 dark:text-white mt-0.5">
+                {childStudent.grNumber}
+              </div>
+              <div className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+                ID: {childStudent.id}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/35 border border-sky-200 dark:border-sky-800/60">
+              <div className="text-[11px] text-sky-800 dark:text-sky-300">Student Invite Code</div>
+              <div className="font-mono font-bold text-sky-700 dark:text-sky-300 mt-0.5">
+                {activeChildStudentCode || 'Pending creation'}
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              {!activeChildStudentCode ? (
+                <button
+                  type="button"
+                  onClick={handleCreateChildStudentInvite}
+                  disabled={isCreatingStudentInvite}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  <span>
+                    {isCreatingStudentInvite ? 'Creating Code...' : 'Create Student Invite Code'}
+                  </span>
+                </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyChildStudentValue(activeChildStudentCode, 'code')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+                  >
+                    {copiedChildInviteKey === 'code' ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Copied Code</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Code</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyChildStudentValue(activeChildStudentInviteUrl, 'url')}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+                  >
+                    {copiedChildInviteKey === 'url' ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>Copied Link</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy Signup Link</span>
+                      </>
+                    )}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {studentInviteFeedback && (
+            <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-800 dark:text-sky-200">
+              {studentInviteFeedback}
+            </div>
+          )}
         </div>
 
         <AttendanceLogSection

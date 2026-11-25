@@ -387,7 +387,66 @@ export async function runFirestoreRulesTests() {
     );
     console.log('  ✅ PASS: Student A strictly read-only and isolated to own studentId and class');
 
-    console.log('\n🎉 ALL 8 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
+    // Test 9: Parent can initialize missing studentInviteCode ONLY for own linked child & cannot modify other fields
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'users', 'parent_a_uid'), {
+        uid: 'parent_a_uid',
+        role: 'parent',
+        status: 'active',
+        schoolId: 'school_a',
+        childStudentId: 'std_a_1',
+        childGrNumber: 'GR-101',
+      });
+    });
+
+    const parentADb = testEnv.authenticatedContext('parent_a_uid').firestore();
+    await assertSucceeds(
+      updateDoc(doc(parentADb, 'schools', 'school_a', 'students', 'std_a_1'), {
+        studentInviteCode: 'STU-101-AB12',
+        updatedAt: '2026-11-26T00:00:00.000Z',
+      })
+    );
+    await assertFails(
+      updateDoc(doc(parentADb, 'schools', 'school_a', 'students', 'std_a_1'), {
+        studentInviteCode: 'STU-101-NEW9',
+        updatedAt: '2026-11-26T00:00:01.000Z',
+      })
+    );
+    await assertFails(
+      updateDoc(doc(parentADb, 'schools', 'school_a', 'students', 'std_a_other'), {
+        studentInviteCode: 'STU-102-AB12',
+        updatedAt: '2026-11-26T00:00:00.000Z',
+      })
+    );
+    await assertFails(
+      updateDoc(doc(parentADb, 'schools', 'school_a', 'students', 'std_a_1'), {
+        fullName: 'Tampered Name',
+      })
+    );
+    await assertSucceeds(
+      setDoc(doc(parentADb, 'studentLinks', 'school_a__GR-101'), {
+        id: 'school_a__GR-101',
+        schoolId: 'school_a',
+        studentId: 'std_a_1',
+        grNumber: 'GR-101',
+        inviteCode: 'STU-101-AB12',
+        status: 'available',
+      })
+    );
+    await assertFails(
+      setDoc(doc(parentADb, 'studentLinks', 'school_a__GR-102'), {
+        id: 'school_a__GR-102',
+        schoolId: 'school_a',
+        studentId: 'std_a_other',
+        grNumber: 'GR-102',
+        inviteCode: 'STU-102-AB12',
+        status: 'available',
+      })
+    );
+    console.log('  ✅ PASS: Verified parent can initialize child studentInviteCode only (no overwrite or cross-student mutation)');
+
+    console.log('\n🎉 ALL 9 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
   } finally {
     if (testEnv) {
       await testEnv.cleanup();

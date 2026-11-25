@@ -52,6 +52,7 @@ import {
   deleteClassFromFirestore,
   fetchClassesFromFirestore,
   saveStudentToFirestore,
+  saveStudentInviteCodeOnlyToFirestore,
   deleteStudentFromFirestore,
   fetchStudentsFromFirestore,
   saveAttendanceToFirestore,
@@ -237,7 +238,7 @@ interface SmsContextType {
   addClass: (newClass: Omit<ClassSection, 'id' | 'createdAt'>) => void;
   updateClass: (id: string, updated: Partial<ClassSection>) => void;
   deleteClass: (id: string) => void;
-  addStudent: (newStudent: Omit<Student, 'id'>) => void;
+  addStudent: (newStudent: Omit<Student, 'id'>) => Student | void;
   updateStudent: (id: string, updated: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   filteredClassesForUser: ClassSection[];
@@ -298,6 +299,8 @@ interface SmsContextType {
     studentId: string,
     studentEmail?: string
   ) => Promise<{ inviteCode: string; inviteUrl: string } | null>;
+  generateMissingStudentInvites: () => Promise<number>;
+  ensureChildStudentInviteForParent: () => Promise<{ inviteCode: string; inviteUrl: string } | null>;
   linkStudentAccount: (params: {
     schoolId: string;
     grNumber: string;
@@ -2262,9 +2265,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const syncStudentLinkForStudent = (student: Student) => {
     if (demoMode || !activeSchool.id || !student.grNumber) return;
     const inviteCode = student.studentInviteCode || generateStudentInviteCode(student.grNumber);
-    const linkId = buildParentLinkId(activeSchool.id, student.grNumber);
-    const linkPayload: StudentPortalLink = {
-      id: linkId,
+    const linkIds = Array.from(
+      new Set([
+        buildParentLinkId(activeSchool.id, student.grNumber),
+        ...(student.id ? [buildParentLinkId(activeSchool.id, student.id)] : []),
+      ])
+    );
+    const primaryLinkPayload: StudentPortalLink = {
+      id: linkIds[0],
       schoolId: activeSchool.id,
       schoolName: activeSchool.name,
       semisCode: activeSchool.semisCode,
@@ -2282,15 +2290,17 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudentPortalLinks((prev) => ({
       ...prev,
       [student.id]: prev[student.id]?.claimedByUid
-        ? { ...linkPayload, claimedByUid: prev[student.id].claimedByUid, status: 'linked' }
-        : linkPayload,
+        ? { ...primaryLinkPayload, claimedByUid: prev[student.id].claimedByUid, status: 'linked' }
+        : primaryLinkPayload,
     }));
-    saveStudentPortalLinkToFirestore(linkPayload).catch((err) =>
-      console.warn('[StudentLink] Sync notice:', err)
-    );
+    Promise.all(
+      linkIds.map((docId) =>
+        saveStudentPortalLinkToFirestore({ ...primaryLinkPayload, id: docId })
+      )
+    ).catch((err) => console.warn('[StudentLink] Sync notice:', err));
   };
 
-  const addStudent = (newStudentData: Omit<Student, 'id'>) => {
+  const addStudent = (newStudentData: Omit<Student, 'id'>): Student | void => {
     if (blockSchoolMutation('addStudent')) return;
     const id = `std_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const inviteCode =
@@ -2323,6 +2333,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         syncStudentLinkForStudent(newStudent);
       });
     }
+    return newStudent;
   };
 
   const updateStudent = (id: string, updated: Partial<Student>) => {
@@ -3120,13 +3131,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             inviteCode,
           };
           if (isStudentPortal) {
+            const linkIds = Array.from(
+              new Set([
+                buildParentLinkId(activeSchool.id, updatedStudent.grNumber),
+                buildParentLinkId(activeSchool.id, updatedStudent.id),
+              ])
+            );
             const stuLink: StudentPortalLink = {
               ...baseLink,
+              id: linkIds[0],
               studentEmail: cleanedEmail || '',
               claimedByUid: updatedStudent.studentUid,
               status: updatedStudent.studentUid ? 'linked' : 'available',
             };
-            await saveStudentPortalLinkToFirestore(stuLink);
+            await Promise.all(
+              linkIds.map((docId) =>
+                saveStudentPortalLinkToFirestore({ ...stuLink, id: docId })
+              )
+            );
             setStudentPortalLinks((prev) => ({
               ...prev,
               [updatedStudent.id]: prev[updatedStudent.id]?.claimedByUid
@@ -3159,6 +3181,98 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const generateStudentInviteForStudent = (studentId: string, studentEmail?: string) =>
     generatePortalInvite('student', studentId, studentEmail);
+
+  const generateMissingStudentInvites = async (): Promise<number> => {
+    if (blockSchoolMutation('generateMissingStudentInvites')) return 0;
+    if (!canManageExams && !canAdmitStudents) return 0;
+    const missing = students.filter((s) => !s.studentInviteCode && Boolean(s.grNumber));
+    if (missing.length === 0) return 0;
+
+    const updatedList = missing.map((s) => ({
+      ...s,
+      studentInviteCode: generateStudentInviteCode(s.grNumber),
+    }));
+    const updatedMap = new Map(updatedList.map((u) => [u.id, u]));
+
+    setStudents((prev) => prev.map((s) => updatedMap.get(s.id) || s));
+
+    if (!demoMode && activeSchool.id) {
+      await performSync('generateMissingStudentInvites', async () => {
+        await Promise.all(
+          updatedList.map(async (stu) => {
+            await saveStudentToFirestore(activeSchool.id, stu);
+            syncStudentLinkForStudent(stu);
+          })
+        );
+      });
+    }
+    return updatedList.length;
+  };
+
+  const ensureChildStudentInviteForParent = async (): Promise<{
+    inviteCode: string;
+    inviteUrl: string;
+  } | null> => {
+    const targetStu =
+      students.find((s) => s.id === currentUserProfile?.childStudentId) || students[0];
+    if (!targetStu || !targetStu.grNumber || !activeSchool.id) return null;
+
+    const inviteCode =
+      targetStu.studentInviteCode || generateStudentInviteCode(targetStu.grNumber);
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://pakedu.vercel.app';
+    const inviteUrl = `${origin}/?student_invite=${encodeURIComponent(
+      inviteCode
+    )}&school=${encodeURIComponent(activeSchool.id)}&gr=${encodeURIComponent(
+      targetStu.grNumber
+    )}`;
+
+    const updatedStu: Student = {
+      ...targetStu,
+      studentInviteCode: inviteCode,
+    };
+
+    if (!targetStu.studentInviteCode) {
+      setStudents((prev) =>
+        prev.map((s) => (s.id === targetStu.id ? updatedStu : s))
+      );
+      if (!demoMode) {
+        try {
+          await saveStudentInviteCodeOnlyToFirestore(activeSchool.id, updatedStu.id, inviteCode);
+          const linkIds = Array.from(
+            new Set([
+              buildParentLinkId(activeSchool.id, updatedStu.grNumber),
+              buildParentLinkId(activeSchool.id, updatedStu.id),
+            ])
+          );
+          await Promise.all(
+            linkIds.map((docId) =>
+              saveStudentPortalLinkToFirestore({
+                id: docId,
+                schoolId: activeSchool.id,
+                schoolName: activeSchool.name,
+                semisCode: activeSchool.semisCode,
+                studentId: updatedStu.id,
+                studentName: updatedStu.fullName,
+                classId: updatedStu.classId,
+                grade: updatedStu.grade,
+                section: updatedStu.section,
+                grNumber: updatedStu.grNumber.trim().toUpperCase(),
+                studentEmail: updatedStu.studentEmail?.trim().toLowerCase() || '',
+                inviteCode,
+                claimedByUid: updatedStu.studentUid,
+                status: updatedStu.studentUid ? 'linked' : 'available',
+              })
+            )
+          );
+        } catch (err) {
+          console.warn('[ParentDashboard] Student invite init notice:', err);
+        }
+      }
+    }
+
+    return { inviteCode, inviteUrl };
+  };
 
   const linkParentToStudent = async (params: {
     schoolId: string;
@@ -3626,6 +3740,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         linkParentToStudent,
         studentPortalLinks,
         generateStudentInviteForStudent,
+        generateMissingStudentInvites,
+        ensureChildStudentInviteForParent,
         linkStudentAccount,
         timetableEntries,
         homeworkItems,

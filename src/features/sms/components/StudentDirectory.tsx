@@ -440,12 +440,16 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       updateStudent(editingStudent.id, payload);
       setSuccessToast(`Student record for ${fullName} updated successfully.`);
     } else {
-      addStudent(payload);
-      setSuccessToast(`Student ${fullName} (${payload.grNumber}) admitted successfully.`);
+      const created = addStudent(payload);
+      setSuccessToast(
+        created?.studentInviteCode
+          ? `Student ${fullName} (${payload.grNumber}) admitted! Student Invite Code: ${created.studentInviteCode}`
+          : `Student ${fullName} (${payload.grNumber}) admitted successfully.`
+      );
     }
 
     setIsFormModalOpen(false);
-    setTimeout(() => setSuccessToast(null), 4000);
+    setTimeout(() => setSuccessToast(null), 5000);
   };
 
   const handleDelete = (student: Student) => {
@@ -1429,10 +1433,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       <GraduationCap className="w-4 h-4 text-sky-600 dark:text-sky-400" />
                       <div>
                         <h4 className="text-xs font-bold text-slate-900 dark:text-white">
-                          Student Portal Access
+                          Student Portal Access (Email-Free GR / ID Login)
                         </h4>
                         <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Allow student read-only login for attendance, homework, timetable &amp; report cards
+                          Login ID: <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{activeViewingStudent.grNumber}</span> · Student ID: <span className="font-mono">{activeViewingStudent.id}</span> (no email needed)
                         </p>
                       </div>
                     </div>
@@ -1483,7 +1487,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             type="email"
                             value={studentInviteEmailInput}
                             onChange={(e) => setStudentInviteEmailInput(e.target.value)}
-                            placeholder="Student login email (optional, e.g., student@gmail.com)"
+                            placeholder="Optional notification email (not required for student login)"
                             className="w-full pl-8 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-700 rounded-xl text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500"
                           />
                         </div>
