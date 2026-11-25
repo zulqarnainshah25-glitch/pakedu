@@ -26,6 +26,9 @@ import {
   Exam,
   StudentExamMarks,
   ParentStudentLink,
+  TimetableEntry,
+  HomeworkItem,
+  StudentCertificate,
 } from '../types';
 
 /**
@@ -951,5 +954,182 @@ export async function fetchPublishedExamsFromFirestore(schoolId: string): Promis
     return exams;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchPublishedExams', `schools/${schoolId}/exams`);
+  }
+}
+
+// =========================================================================
+// 15. Phase D: Timetable, Homework & Certificates
+// =========================================================================
+export async function saveTimetableEntryToFirestore(
+  schoolId: string,
+  entry: TimetableEntry
+): Promise<boolean> {
+  if (!schoolId || !entry.id) {
+    throw new FirestoreSyncError('School ID and Timetable Entry ID are required', 'invalid-argument', 'saveTimetableEntry');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'timetable', entry.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...entry,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveTimetableEntry', `schools/${schoolId}/timetable/${entry.id}`);
+  }
+}
+
+export async function fetchTimetableFromFirestore(schoolId: string): Promise<TimetableEntry[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'timetable');
+    const snapshot = await getDocs(col);
+    const items: TimetableEntry[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as TimetableEntry;
+        items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return items;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchTimetable', `schools/${schoolId}/timetable`);
+  }
+}
+
+export async function deleteTimetableEntryFromFirestore(
+  schoolId: string,
+  entryId: string
+): Promise<boolean> {
+  if (!schoolId || !entryId) {
+    throw new FirestoreSyncError('School ID and Timetable Entry ID are required', 'invalid-argument', 'deleteTimetableEntry');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'timetable', entryId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteTimetableEntry', `schools/${schoolId}/timetable/${entryId}`);
+  }
+}
+
+export async function saveHomeworkToFirestore(
+  schoolId: string,
+  homework: HomeworkItem
+): Promise<boolean> {
+  if (!schoolId || !homework.id) {
+    throw new FirestoreSyncError('School ID and Homework ID are required', 'invalid-argument', 'saveHomework');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'homework', homework.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...homework,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveHomework', `schools/${schoolId}/homework/${homework.id}`);
+  }
+}
+
+export async function fetchHomeworkFromFirestore(schoolId: string): Promise<HomeworkItem[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'homework');
+    const snapshot = await getDocs(col);
+    const items: HomeworkItem[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as HomeworkItem;
+        items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return items;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchHomework', `schools/${schoolId}/homework`);
+  }
+}
+
+export async function deleteHomeworkFromFirestore(
+  schoolId: string,
+  homeworkId: string
+): Promise<boolean> {
+  if (!schoolId || !homeworkId) {
+    throw new FirestoreSyncError('School ID and Homework ID are required', 'invalid-argument', 'deleteHomework');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'homework', homeworkId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteHomework', `schools/${schoolId}/homework/${homeworkId}`);
+  }
+}
+
+export async function saveCertificateToFirestore(
+  schoolId: string,
+  cert: StudentCertificate
+): Promise<boolean> {
+  if (!schoolId || !cert.id) {
+    throw new FirestoreSyncError('School ID and Certificate ID are required', 'invalid-argument', 'saveCertificate');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'certificates', cert.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...cert,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveCertificate', `schools/${schoolId}/certificates/${cert.id}`);
+  }
+}
+
+export async function fetchCertificatesFromFirestore(schoolId: string): Promise<StudentCertificate[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'certificates');
+    const snapshot = await getDocs(col);
+    const items: StudentCertificate[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as StudentCertificate;
+        items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return items;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchCertificates', `schools/${schoolId}/certificates`);
+  }
+}
+
+export async function deleteCertificateFromFirestore(
+  schoolId: string,
+  certificateId: string
+): Promise<boolean> {
+  if (!schoolId || !certificateId) {
+    throw new FirestoreSyncError('School ID and Certificate ID are required', 'invalid-argument', 'deleteCertificate');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'certificates', certificateId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteCertificate', `schools/${schoolId}/certificates/${certificateId}`);
   }
 }

@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   AlertCircle,
   TrendingUp,
+  CalendarDays,
+  FileBadge2,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 
@@ -25,6 +27,9 @@ interface SmsDashboardProps {
   onNavigateToStaff?: () => void;
   onNavigateToProfile?: () => void;
   onNavigateToExams?: () => void;
+  onNavigateToTimetable?: () => void;
+  onNavigateToHomework?: () => void;
+  onNavigateToCertificates?: () => void;
 }
 
 export const SmsDashboard: React.FC<SmsDashboardProps> = ({
@@ -34,6 +39,9 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
   onNavigateToStaff,
   onNavigateToProfile,
   onNavigateToExams,
+  onNavigateToTimetable,
+  onNavigateToHomework,
+  onNavigateToCertificates,
 }) => {
   const {
     userRole,
@@ -515,9 +523,99 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
               <button
                 type="button"
                 onClick={onNavigateToExams}
-                className="mt-4 inline-flex items-center justify-between w-full px-3.5 py-2 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+                className="mt-4 inline-flex items-center justify-between w-full min-h-[40px] px-3.5 py-2 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-xl transition cursor-pointer"
               >
                 <span>Open Exams &amp; Results</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 5: Timetable */}
+          {onNavigateToTimetable && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                    <CalendarDays className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                    Phase D
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Class Timetable
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  Period-wise class schedules by day, assigned faculty, rooms &amp; responsive mobile view.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToTimetable}
+                className="mt-4 inline-flex items-center justify-between w-full min-h-[40px] px-3.5 py-2 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 text-sky-700 dark:text-sky-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>View Timetable</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 6: Daily Homework */}
+          {onNavigateToHomework && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    Phase D
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Homework &amp; Diary
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  Post subject homework with instructions and submission dates synced for parents.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToHomework}
+                className="mt-4 inline-flex items-center justify-between w-full min-h-[40px] px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>Open Homework Diary</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Module 7: Certificates (Admin Only) */}
+          {isAdmin && onNavigateToCertificates && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                    <FileBadge2 className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                    Admin · Phase D
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Certificates (TC &amp; Character)
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  Issue School Leaving / Transfer Certificates (TC) and Character Certificates in A4 PDF.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToCertificates}
+                className="mt-4 inline-flex items-center justify-between w-full min-h-[40px] px-3.5 py-2 bg-amber-50 dark:bg-amber-950/60 hover:bg-amber-100 dark:hover:bg-amber-900/60 text-amber-700 dark:text-amber-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>Issue Certificates</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

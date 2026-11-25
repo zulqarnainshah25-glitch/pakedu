@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   UserCheck,
   School as SchoolIcon,
@@ -14,8 +14,10 @@ import {
   ArrowRight,
   Award,
   Key,
+  FileText,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
+import { AppointmentLetterModal } from './AppointmentLetterModal';
 
 interface TeacherProfileProps {
   onBack: () => void;
@@ -36,9 +38,14 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
     userRole,
     currentUserProfile,
     canAdmitStudents,
+    demoMode,
   } = useSms();
 
+  const [appointmentLetterOpen, setAppointmentLetterOpen] = useState(false);
+
   const isAdmin = userRole === 'admin' || userRole === 'principal';
+  const isApprovedFaculty =
+    demoMode || isAdmin || currentUserProfile?.status === 'active';
   const displayName = currentUserProfile?.fullName || activeTeacher?.name || (isAdmin ? 'School Administrator' : 'Teacher');
   const fatherName = currentUserProfile?.fatherName || activeTeacher?.fatherName || '';
   const designation = currentUserProfile?.designation || activeTeacher?.designation || (isAdmin ? 'Principal / Headmaster' : 'Teacher');
@@ -49,6 +56,10 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
   const schoolName = activeSchool?.name || currentUserProfile?.schoolName || 'Govt. Secondary School';
   const semisCode = activeSchool?.semisCode || currentUserProfile?.semisCode || '403020101';
   const assignedClassesList = isAdmin ? (classes || []) : (filteredClassesForUser || []);
+  const assignedClassesSummary =
+    assignedClassesList.length > 0
+      ? assignedClassesList.map((c) => `${c.grade} - ${c.section}`).join(', ')
+      : 'General Faculty Duties';
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -88,6 +99,17 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
               </p>
             </div>
           </div>
+
+          {isApprovedFaculty && (
+            <button
+              type="button"
+              onClick={() => setAppointmentLetterOpen(true)}
+              className="min-h-[44px] sm:min-h-[40px] w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer shrink-0"
+            >
+              <FileText className="w-4 h-4" />
+              <span>Generate Appointment Letter</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -295,6 +317,20 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
           </div>
         )}
       </div>
+
+      <AppointmentLetterModal
+        isOpen={appointmentLetterOpen}
+        onClose={() => setAppointmentLetterOpen(false)}
+        teacherName={displayName}
+        fatherName={fatherName}
+        designation={designation}
+        cnic={cnic}
+        email={email}
+        phone={phone}
+        joiningDate={joiningDate}
+        assignedClassesLabel={assignedClassesSummary}
+        school={activeSchool}
+      />
     </div>
   );
 };

@@ -334,3 +334,77 @@ export interface StudentExamMarks {
   updatedAt?: any;
 }
 
+// =============================================================================
+// Phase D: Timetable, Homework & Official Certificates
+// =============================================================================
+export type TimetableDay =
+  | 'Monday'
+  | 'Tuesday'
+  | 'Wednesday'
+  | 'Thursday'
+  | 'Friday'
+  | 'Saturday';
+
+export interface TimetableEntry {
+  id: string;
+  schoolId: string;
+  classId: string;
+  grade: string;
+  section?: string;
+  day: TimetableDay;
+  periodNumber: number;       // 1..10
+  timeSlot?: string;          // e.g. "08:00 AM - 08:45 AM"
+  subject: string;
+  teacherId: string;
+  teacherName: string;
+  roomNumber?: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
+export interface HomeworkItem {
+  id: string;
+  schoolId: string;
+  classId: string;
+  grade: string;
+  section?: string;
+  subject: string;
+  title?: string;
+  description: string;
+  assignedDate: string;       // YYYY-MM-DD
+  dueDate: string;            // YYYY-MM-DD
+  teacherId: string;
+  teacherName: string;
+  status?: 'active' | 'archived';
+  createdAt?: string;
+  updatedAt?: any;
+}
+
+export type CertificateType = 'transfer' | 'character';
+
+export interface StudentCertificate {
+  id: string;
+  certificateNumber: string;  // e.g. "TC-2026-001" or "CC-2026-001"
+  type: CertificateType;
+  schoolId: string;
+  studentId: string;
+  studentName: string;
+  fatherName: string;
+  grNumber: string;
+  classId: string;
+  grade: string;
+  section?: string;
+  dob?: string;
+  admissionDate?: string;
+  leavingDate?: string;
+  conduct: string;            // "Excellent" | "Very Good" | "Good"
+  reasonForLeaving?: string;
+  duesCleared: boolean;
+  remarks?: string;
+  issuedByUid?: string;
+  issuedByName?: string;
+  issueDate: string;          // YYYY-MM-DD
+  createdAt?: string;
+  updatedAt?: any;
+}
+

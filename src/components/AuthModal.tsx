@@ -690,14 +690,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div
       className={
         isMandatoryGate
-          ? 'no-print min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-950 relative overflow-y-auto'
-          : 'no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fadeIn'
+          ? 'no-print min-h-[100dvh] w-full flex flex-col items-center justify-center p-0 sm:p-4 lg:p-6 bg-slate-950 relative overflow-y-auto'
+          : 'no-print fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-sm animate-fadeIn overflow-y-auto'
       }
       style={
         isMandatoryGate
           ? {
               background:
-                'radial-gradient(circle at top left, #3b0764 0%, #0f172a 55%, #1e1b4b 100%)',
+                'radial-gradient(circle at top right, #1e1b4b 0%, #090e1a 55%, #0f172a 100%)',
             }
           : undefined
       }
@@ -708,87 +708,100 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       {isMandatoryGate && <div className="allforu-progress-bar no-print" />}
 
       {isMandatoryGate && (
-        <div className="w-full max-w-4xl mb-4 flex items-center justify-between text-white px-1">
+        <div className="hidden sm:flex w-full max-w-5xl mb-3 items-center justify-between text-white px-2">
           <div className="flex items-center gap-2.5">
-            <span className="text-xl sm:text-2xl font-extrabold tracking-tight text-white">
-              Allforu
+            <span className="text-xl font-extrabold tracking-tight text-white">
+              PakEdu Portal
             </span>
-            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-pink-500/20 text-pink-200 border border-pink-400/30">
-              PakEdu &amp; Sindh SELD Official Portal
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/30">
+              Allforu × Sindh SELD Enterprise ERP
             </span>
           </div>
-          <span className="text-xs font-mono text-purple-200/80 hidden sm:inline">
-            Mandatory Authentication Gate
+          <span className="text-xs font-mono text-indigo-200/80">
+            Unified Authentication &amp; Role Portal
           </span>
         </div>
       )}
 
-      <div className="relative w-full max-w-4xl bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-purple-500/25 overflow-hidden grid grid-cols-1 md:grid-cols-12">
-        {/* Left Branding Panel (Identical to AtlierCV + Allforu Deep Purple & Neon Theme) */}
+      {/* Split-Screen Layout: Desktop = Form LEFT (7 cols) + Branding RIGHT (5 cols) | Mobile = Slim Top Banner + Primary Form */}
+      <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 sm:rounded-2xl lg:rounded-3xl shadow-2xl border-0 sm:border border-indigo-500/25 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[100dvh] sm:min-h-0">
+        {/* Right Branding Panel on Desktop | Slim Top Banner on Mobile */}
         <div
-          className="md:col-span-5 p-7 text-white flex flex-col justify-between relative overflow-hidden"
+          className="order-1 lg:order-2 lg:col-span-5 p-4 sm:p-6 lg:p-8 text-white flex flex-col justify-between relative overflow-hidden"
           style={{
-            background: 'linear-gradient(135deg, #5b21b6 0%, #1e1b4b 100%)',
+            background: 'linear-gradient(155deg, #0b1120 0%, #1e1b4b 52%, #312e81 100%)',
           }}
         >
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full bg-indigo-400/15 blur-2xl"
+          />
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-semibold tracking-wider uppercase text-pink-300 border border-white/15">
-              <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-              Allforu × AtlierCV Unified ID
+            <div className="flex items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-[11px] font-semibold tracking-wider uppercase text-sky-300 border border-white/15">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                PakEdu × AtlierCV ID
+              </div>
+              {!isMandatoryGate && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-300 hover:text-white rounded-xl cursor-pointer"
+                  aria-label="Close authentication modal"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
             </div>
+
             <h2
               id="auth-modal-title"
-              className="text-2xl sm:text-3xl font-bold tracking-tight mt-4 leading-tight"
+              className="text-lg sm:text-xl lg:text-3xl font-extrabold tracking-tight mt-3 lg:mt-5 leading-tight"
             >
-              One Account for PakEdu Portal &amp; AtlierCV Studio
+              PakEdu SELD ERP &amp; School Portal
             </h2>
-            <p className="text-xs sm:text-sm text-purple-100/85 mt-3 leading-relaxed">
-              Portal open karne ke liye Sign In zaroori hai. Aapka ek hi account{' '}
-              <strong>PakEdu SELD Portal</strong> aur{' '}
-              <strong>AtlierCV Resume Studio</strong> dono ko unlock karta hai (Project:{' '}
-              <code className="font-mono text-pink-300 font-semibold">
-                {UNIFIED_FIREBASE_PROJECT_ID}
-              </code>
-              ).
+            <p className="text-xs sm:text-sm text-indigo-100/85 mt-1.5 lg:mt-3 leading-relaxed">
+              One unified login for School Admins, Teachers, Parents, and Sindh SELD AI Educators.
             </p>
 
-            <div className="mt-6 space-y-3 text-xs text-purple-100/90">
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
+            {/* Full Feature Highlights (Visible on Desktop Split-Screen) */}
+            <div className="hidden lg:flex flex-col mt-6 space-y-3 text-xs text-indigo-100/90">
+              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                 <span>
-                  1. AI Lesson Plan Generator (Sindh STBB &amp; Punjab PTB + Firestore)
+                  <strong className="text-white">Complete School ERP:</strong> Admissions, Daily Roll Call, Timetable, Homework &amp; A4 Certificates.
                 </span>
               </div>
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  2. Sindh Government Salary Calculator 2026 &amp; SELD Leave Proforma
+                  <strong className="text-white">Fees, Exams &amp; Parent Portal:</strong> Dynamic fee vouchers, published report cards &amp; parent read-only tracking.
                 </span>
               </div>
-              <div className="flex items-start gap-2.5">
-                <ShieldCheck className="w-4 h-4 text-pink-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
+                <ShieldCheck className="w-4 h-4 text-indigo-300 shrink-0 mt-0.5" />
                 <span>
-                  3. Integrated <strong className="text-white">AtlierCV Studio</strong> with Unified Login &amp; Logout Return
+                  <strong className="text-white">Educator AI Studio &amp; AtlierCV:</strong> Sindh STBB/PTB lessons, 2026 Salary calculator &amp; ATS CV builder.
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="relative z-10 mt-8 pt-4 border-t border-white/15 flex items-center justify-between text-[11px] text-purple-200/80">
-            <span>Project: {UNIFIED_FIREBASE_PROJECT_ID}</span>
+          <div className="hidden lg:flex relative z-10 mt-8 pt-4 border-t border-white/15 items-center justify-between text-[11px] text-indigo-200/80">
+            <span>Firebase: {UNIFIED_FIREBASE_PROJECT_ID}</span>
             <a
               href={ATLIER_CV_LIVE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-pink-300 hover:text-white font-semibold"
+              className="inline-flex items-center gap-1 text-sky-300 hover:text-white font-semibold"
             >
               AtlierCV Live <ExternalLink className="w-3 h-3" />
             </a>
           </div>
         </div>
 
-        {/* Right Authentication Form Panel */}
-        <div className="md:col-span-7 p-6 sm:p-8 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-y-auto max-h-[92vh]">
+        {/* Left Authentication Form Panel on Desktop | Primary Focus on Mobile */}
+        <div className="order-2 lg:order-1 lg:col-span-7 p-4 sm:p-6 lg:p-8 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-y-auto lg:max-h-[92vh]">
           <div>
             {/* Logout Notice Banner (Shown when user logs out from Portal or AtlierCV) */}
             {logoutNotice && (
@@ -800,7 +813,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Top Mode Switcher & Close Button */}
             <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="inline-flex rounded-xl bg-slate-100 dark:bg-slate-800 p-1">
+              <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl bg-slate-100 dark:bg-slate-800 p-1 gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -808,10 +821,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setErrorMessage(null);
                     setSuccessMessage(null);
                   }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`min-h-[44px] sm:min-h-[38px] px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === 'signin'
-                      ? 'bg-[#5b21b6] text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                      ? 'bg-indigo-700 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Sign In
@@ -823,10 +836,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setErrorMessage(null);
                     setSuccessMessage(null);
                   }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`min-h-[44px] sm:min-h-[38px] px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === 'signup'
-                      ? 'bg-[#5b21b6] text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                      ? 'bg-indigo-700 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Create Account
@@ -838,10 +851,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     setErrorMessage(null);
                     setSuccessMessage(null);
                   }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  className={`min-h-[44px] sm:min-h-[38px] px-2 sm:px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === 'reset'
-                      ? 'bg-[#5b21b6] text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                      ? 'bg-indigo-700 text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   Reset Password
@@ -1567,7 +1580,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="teacher@seld.gos.pk or Gmail address"
-                    className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                    className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600"
                     required
                   />
                 </div>
@@ -1584,7 +1597,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setMode('reset')}
-                        className="text-[11px] font-semibold text-[#5b21b6] dark:text-purple-400 hover:underline cursor-pointer"
+                        className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer"
                       >
                         Forgot password?
                       </button>
@@ -1601,7 +1614,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           ? 'Create password (min. 6 characters)'
                           : 'Enter your account password'
                       }
-                      className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                      className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600"
                       required
                     />
                   </div>
@@ -1611,9 +1624,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 px-5 rounded-xl text-xs sm:text-sm font-semibold text-white shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full min-h-[44px] py-2.5 px-5 rounded-xl text-xs sm:text-sm font-semibold text-white shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 hover:opacity-95"
                 style={{
-                  background: 'linear-gradient(135deg, #5b21b6 0%, #ec4899 100%)',
+                  background: 'linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%)',
                 }}
               >
                 <KeyRound className="w-4 h-4" />

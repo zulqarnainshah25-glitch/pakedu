@@ -19,9 +19,11 @@ import {
   Award,
   Calendar,
   Search,
+  FileText,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 import { TeacherJoinRequest, TeacherInfo } from '../types';
+import { AppointmentLetterModal } from './AppointmentLetterModal';
 
 export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const {
@@ -52,6 +54,7 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
   const [editCnic, setEditCnic] = useState('');
   const [editJoiningDate, setEditJoiningDate] = useState('');
   const [editIsAdmissionIncharge, setEditIsAdmissionIncharge] = useState(false);
+  const [letterTeacher, setLetterTeacher] = useState<TeacherInfo | null>(null);
 
   const openApproveModal = (req: TeacherJoinRequest) => {
     setSelectedRequest(req);
@@ -436,21 +439,32 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                       )}
                     </div>
 
-                    {/* Actions: Edit Profile & Toggle Admission Incharge */}
-                    <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditProfile(teacher)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
-                      >
-                        <Edit2 className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Edit Profile</span>
-                      </button>
+                    {/* Actions: Edit Profile, Offer Letter & Toggle Admission Incharge */}
+                    <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditProfile(teacher)}
+                          className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                        >
+                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                          <span>Edit Profile</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setLetterTeacher(teacher)}
+                          className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold transition cursor-pointer"
+                        >
+                          <FileText className="w-3.5 h-3.5" />
+                          <span>Appointment Letter</span>
+                        </button>
+                      </div>
 
                       <button
                         type="button"
                         onClick={() => handleToggleIncharge(teacher)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                        className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                           teacher.isAdmissionIncharge
                             ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700'
                             : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
@@ -818,6 +832,31 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
             </form>
           </div>
         </div>
+      )}
+
+      {letterTeacher && (
+        <AppointmentLetterModal
+          isOpen={true}
+          onClose={() => setLetterTeacher(null)}
+          teacherName={letterTeacher.name}
+          fatherName={letterTeacher.fatherName}
+          designation={letterTeacher.designation}
+          cnic={letterTeacher.cnic}
+          email={letterTeacher.email}
+          phone={letterTeacher.phone}
+          joiningDate={letterTeacher.joiningDate}
+          assignedClassesLabel={
+            classes
+              .filter(
+                (c) =>
+                  c.classTeacherId === letterTeacher.id ||
+                  (letterTeacher.assignedClasses || []).includes(c.id)
+              )
+              .map((c) => `${c.grade} - ${c.section}`)
+              .join(', ') || 'General Faculty Duties'
+          }
+          school={activeSchool}
+        />
       )}
     </div>
   );

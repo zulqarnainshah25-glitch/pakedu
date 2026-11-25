@@ -30,10 +30,12 @@ import {
   School as SchoolIcon,
   Users,
   CalendarCheck2,
+  CalendarDays,
   Building,
   ShieldAlert,
   Receipt,
   Award,
+  FileBadge2,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { LessonPlanTool } from './components/LessonPlanTool';
@@ -69,6 +71,9 @@ import { SuperAdminDashboard } from './features/sms/components/SuperAdminDashboa
 import { FeeManagement } from './features/sms/components/FeeManagement';
 import { ExamsResults } from './features/sms/components/ExamsResults';
 import { ParentDashboard } from './features/sms/components/ParentDashboard';
+import { TimetableManager } from './features/sms/components/TimetableManager';
+import { HomeworkManager } from './features/sms/components/HomeworkManager';
+import { CertificatesManager } from './features/sms/components/CertificatesManager';
 
 export type ActiveToolId =
   | 'dashboard'
@@ -81,6 +86,9 @@ export type ActiveToolId =
   | 'sms-profile'
   | 'sms-fees'
   | 'sms-exams'
+  | 'sms-timetable'
+  | 'sms-homework'
+  | 'sms-certificates'
   | 'sms-parent'
   | 'super-admin'
   | 'lesson-plan'
@@ -179,6 +187,30 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     icon: <Award className="w-5 h-5" />,
     iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
     iconColor: 'text-indigo-600 dark:text-indigo-400',
+  },
+  'sms-timetable': {
+    title: 'Class Timetable & Schedules',
+    subtitle: 'Weekly period-by-period class routine, subject teachers & mobile daily schedule',
+    badge: 'Schedule · Phase D',
+    icon: <CalendarDays className="w-5 h-5" />,
+    iconBg: 'bg-sky-50 dark:bg-sky-950/60',
+    iconColor: 'text-sky-600 dark:text-sky-400',
+  },
+  'sms-homework': {
+    title: 'Homework & Class Diary',
+    subtitle: 'Daily teacher homework assignments, submission due dates & class filters',
+    badge: 'Academics · Phase D',
+    icon: <BookOpen className="w-5 h-5" />,
+    iconBg: 'bg-emerald-50 dark:bg-emerald-950/60',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  'sms-certificates': {
+    title: 'Transfer & Character Certificates',
+    subtitle: 'Issue official School Leaving Certificates (TC) and Character Certificates in A4 PDF',
+    badge: 'Admin · Phase D',
+    icon: <FileBadge2 className="w-5 h-5" />,
+    iconBg: 'bg-amber-50 dark:bg-amber-950/60',
+    iconColor: 'text-amber-600 dark:text-amber-400',
   },
   'sms-parent': {
     title: 'Parent Portal & Child Progress',
@@ -628,21 +660,54 @@ function AppContent() {
   if (portalAccess.isInitializing) {
     return (
       <div
-        className="min-h-screen w-full flex flex-col items-center justify-center p-6 text-white"
+        className="min-h-[100dvh] w-[100vw] max-w-full flex flex-col items-center justify-center px-[6vw] py-[5vh] text-white relative overflow-hidden select-none"
         style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+          background: 'linear-gradient(145deg, #090e1a 0%, #1e1b4b 55%, #0f172a 100%)',
         }}
       >
         <div className="allforu-progress-bar" />
-        <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center mb-4 animate-pulse">
-          <ShieldCheck className="w-6 h-6 text-indigo-400" />
+
+        {/* Ambient responsive glow orbs (viewport-bounded so zero clipping on mobile) */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-[12vh] -right-[12vw] w-[55vw] h-[55vw] max-w-[320px] max-h-[320px] rounded-full bg-indigo-500/20 blur-3xl"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -bottom-[12vh] -left-[12vw] w-[55vw] h-[55vw] max-w-[320px] max-h-[320px] rounded-full bg-sky-500/15 blur-3xl"
+        />
+
+        <div className="relative z-10 w-full max-w-[90vw] sm:max-w-md flex flex-col items-center justify-center text-center space-y-4">
+          {/* Responsive animated emblem */}
+          <div className="relative flex items-center justify-center">
+            <div className="pakedu-splash-ring w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border border-indigo-400/35 bg-indigo-500/15 backdrop-blur-md flex items-center justify-center shadow-2xl">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center shadow-lg">
+                <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-200">
+              PakEdu · SELD Enterprise ERP
+            </span>
+            <h1 className="text-[clamp(1.125rem,4.5vw,1.5rem)] font-extrabold tracking-tight text-white leading-snug">
+              Launching Your School Workspace
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-[32ch] mx-auto">
+              Verifying secure institutional session and syncing modules...
+            </p>
+          </div>
+
+          {/* Mobile-safe indeterminate progress shimmer */}
+          <div className="w-[68vw] max-w-[240px] h-1.5 rounded-full bg-white/10 overflow-hidden">
+            <div className="pakedu-splash-bar h-full w-1/2 rounded-full bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400" />
+          </div>
+
+          <p className="text-[10px] font-mono text-slate-400">
+            Unified ID · {UNIFIED_FIREBASE_PROJECT_ID}
+          </p>
         </div>
-        <h1 className="text-lg font-bold tracking-tight">
-          Verifying PakEdu Portal Unified Session...
-        </h1>
-        <p className="text-xs text-slate-400 mt-1">
-          PakEdu &amp; Sindh SELD Portal (`{UNIFIED_FIREBASE_PROJECT_ID}`)
-        </p>
       </div>
     );
   }
@@ -1022,6 +1087,80 @@ function AppContent() {
                     </span>
                   </div>
                 </button>
+
+                {/* Phase D: Class Timetable */}
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-timetable')}
+                  className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'sms-timetable'
+                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-sky-500 pl-3'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                  }`}
+                >
+                  <CalendarDays className={`w-4 h-4 shrink-0 ${activeTool === 'sms-timetable' ? 'text-sky-400' : 'text-slate-500'}`} />
+                  <div className="truncate flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="block truncate">Timetable &amp; Routine</span>
+                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
+                        Phase D
+                      </span>
+                    </div>
+                    <span className="text-[11px] block truncate text-slate-500">
+                      {userRole === 'admin' ? 'Build Period Schedule' : 'Class Period Routine'}
+                    </span>
+                  </div>
+                </button>
+
+                {/* Phase D: Daily Homework Diary */}
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-homework')}
+                  className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'sms-homework'
+                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                  }`}
+                >
+                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'sms-homework' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                  <div className="truncate flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="block truncate">Homework &amp; Diary</span>
+                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
+                        Diary
+                      </span>
+                    </div>
+                    <span className="text-[11px] block truncate text-slate-500">
+                      Daily Subject Assignments
+                    </span>
+                  </div>
+                </button>
+
+                {/* Phase D (Admin Only): Transfer & Character Certificates */}
+                {userRole === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-certificates')}
+                    className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                      activeTool === 'sms-certificates'
+                        ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-amber-500 pl-3'
+                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                    }`}
+                  >
+                    <FileBadge2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-certificates' ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <div className="truncate flex-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="block truncate">Certificates (TC / CC)</span>
+                        <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
+                          Admin
+                        </span>
+                      </div>
+                      <span className="text-[11px] block truncate text-slate-500">
+                        Transfer &amp; Character A4
+                      </span>
+                    </div>
+                  </button>
+                )}
 
                 {/* Admin Only: Faculty Management & Join Requests */}
                 {userRole === 'admin' && (
@@ -1509,6 +1648,41 @@ function AppContent() {
                 >
                   Exams &amp; Results
                 </button>
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-timetable')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    activeTool === 'sms-timetable'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold'
+                      : 'hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Timetable
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-homework')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    activeTool === 'sms-homework'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold'
+                      : 'hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Homework
+                </button>
+                {userRole === 'admin' && (
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-certificates')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'sms-certificates'
+                        ? 'bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold'
+                        : 'hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Certificates
+                  </button>
+                )}
                 {userRole === 'admin' && (
                   <button
                     type="button"
@@ -2115,6 +2289,9 @@ function AppContent() {
                 onNavigateToStaff={() => selectTool('sms-staff')}
                 onNavigateToProfile={() => selectTool('sms-profile')}
                 onNavigateToExams={() => selectTool('sms-exams')}
+                onNavigateToTimetable={() => selectTool('sms-timetable')}
+                onNavigateToHomework={() => selectTool('sms-homework')}
+                onNavigateToCertificates={() => selectTool('sms-certificates')}
               />
             )}
 
@@ -2184,6 +2361,19 @@ function AppContent() {
             {/* Phase B: Exams & Student Results Module */}
             {activeTool === 'sms-exams' && (
               <ExamsResults onBack={() => selectTool('sms-dashboard')} />
+            )}
+
+            {/* Phase D: Class Timetable, Homework Diary & Official Certificates */}
+            {activeTool === 'sms-timetable' && (
+              <TimetableManager onBack={() => selectTool('sms-dashboard')} />
+            )}
+
+            {activeTool === 'sms-homework' && (
+              <HomeworkManager onBack={() => selectTool('sms-dashboard')} />
+            )}
+
+            {activeTool === 'sms-certificates' && (
+              <CertificatesManager onBack={() => selectTool('sms-dashboard')} />
             )}
 
             {/* Phase C: Parent Portal (Strict Read-Only Child Progress) */}

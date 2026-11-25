@@ -1,4 +1,16 @@
-import { School, TeacherInfo, ClassSection, ClassFeeStructure, FeePayment, FeeConcessionRule, Exam, StudentExamMarks } from '../types';
+import {
+  School,
+  TeacherInfo,
+  ClassSection,
+  ClassFeeStructure,
+  FeePayment,
+  FeeConcessionRule,
+  Exam,
+  StudentExamMarks,
+  TimetableEntry,
+  HomeworkItem,
+  StudentCertificate,
+} from '../types';
 
 export const INITIAL_MOCK_SCHOOL: School = {
   id: 'school_latifabad_403020101',
@@ -629,3 +641,68 @@ export const INITIAL_MOCK_EXAM_MARKS: StudentExamMarks[] = [
     enteredAt: '2026-03-25T10:15:00.000Z',
   },
 ];
+
+export const INITIAL_MOCK_TIMETABLE: TimetableEntry[] = [
+  {
+    id: 'tt_mon_1_cls_9_a',
+    schoolId: 'school_latifabad_403020101',
+    classId: 'cls_9_a',
+    grade: 'Class 9',
+    section: 'A (Science)',
+    day: 'Monday',
+    periodNumber: 1,
+    timeSlot: '08:00 AM - 08:45 AM',
+    subject: 'Mathematics',
+    teacherId: 't_001',
+    teacherName: 'Ustad Tariq Aziz',
+    roomNumber: 'Room 101',
+  },
+  {
+    id: 'tt_mon_2_cls_9_a',
+    schoolId: 'school_latifabad_403020101',
+    classId: 'cls_9_a',
+    grade: 'Class 9',
+    section: 'A (Science)',
+    day: 'Monday',
+    periodNumber: 2,
+    timeSlot: '08:45 AM - 09:30 AM',
+    subject: 'Physics',
+    teacherId: 't_002',
+    teacherName: 'Madam Saima Qureshi',
+    roomNumber: 'Science Lab',
+  },
+  {
+    id: 'tt_tue_1_cls_9_a',
+    schoolId: 'school_latifabad_403020101',
+    classId: 'cls_9_a',
+    grade: 'Class 9',
+    section: 'A (Science)',
+    day: 'Tuesday',
+    periodNumber: 1,
+    timeSlot: '08:00 AM - 08:45 AM',
+    subject: 'English',
+    teacherId: 't_001',
+    teacherName: 'Ustad Tariq Aziz',
+    roomNumber: 'Room 101',
+  },
+];
+
+export const INITIAL_MOCK_HOMEWORK: HomeworkItem[] = [
+  {
+    id: 'hw_001',
+    schoolId: 'school_latifabad_403020101',
+    classId: 'cls_9_a',
+    grade: 'Class 9',
+    section: 'A (Science)',
+    subject: 'Mathematics',
+    title: 'Quadratic Equations Exercise 1.2',
+    description: 'Solve Questions 1 through 8 in neat notebook and highlight factorization steps.',
+    assignedDate: '2026-11-24',
+    dueDate: '2026-11-27',
+    teacherId: 't_001',
+    teacherName: 'Ustad Tariq Aziz',
+    status: 'active',
+  },
+];
+
+export const INITIAL_MOCK_CERTIFICATES: StudentCertificate[] = [];

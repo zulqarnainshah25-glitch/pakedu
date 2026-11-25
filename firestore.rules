@@ -554,6 +554,54 @@ service cloud.firestore {
           );
         allow delete: if isSchoolAdmin(schoolId);
       }
+
+      // --- Subcollection: Timetable (/schools/{schoolId}/timetable/{entryId}) ---
+      // Admin-only writes; school staff & parents strictly read-only.
+      match /timetable/{entryId} {
+        allow get, list: if isSchoolMember(schoolId) || isSchoolParent(schoolId);
+        allow create, update: if isSchoolAdmin(schoolId) &&
+          isValidId(entryId) &&
+          request.resource.data.keys().hasAll(['id', 'schoolId', 'classId', 'day', 'periodNumber', 'subject', 'teacherId']) &&
+          request.resource.data.schoolId == schoolId &&
+          (request.resource.data.day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']) &&
+          request.resource.data.periodNumber is number;
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Homework (/schools/{schoolId}/homework/{homeworkId}) ---
+      // Admin or assigned class teacher can create/update; parents strictly read-only.
+      match /homework/{homeworkId} {
+        allow get, list: if isSchoolMember(schoolId) || isSchoolParent(schoolId);
+        allow create, update: if isValidId(homeworkId) &&
+          request.resource.data.keys().hasAll(['id', 'schoolId', 'classId', 'subject', 'description', 'dueDate', 'teacherId']) &&
+          request.resource.data.schoolId == schoolId && (
+            isSchoolAdmin(schoolId) || (
+              isSchoolMember(schoolId) &&
+              userDoc().get('role', '') == 'teacher' &&
+              ('assignedClassIds' in userDoc()) &&
+              request.resource.data.classId in userDoc().assignedClassIds
+            )
+          );
+        allow delete: if isSchoolAdmin(schoolId) || (
+          isSchoolMember(schoolId) &&
+          existing().get('teacherId', '') == request.auth.uid
+        );
+      }
+
+      // --- Subcollection: Official Certificates (/schools/{schoolId}/certificates/{certificateId}) ---
+      // Admin-only create/update/delete; staff can read; parents read only for their own child.
+      match /certificates/{certificateId} {
+        allow get, list: if isSchoolMember(schoolId) || (
+          isSchoolParent(schoolId) &&
+          existing().get('studentId', '') == userDoc().get('childStudentId', '')
+        );
+        allow create, update: if isSchoolAdmin(schoolId) &&
+          isValidId(certificateId) &&
+          request.resource.data.keys().hasAll(['id', 'certificateNumber', 'type', 'schoolId', 'studentId', 'studentName', 'grNumber', 'issueDate']) &&
+          request.resource.data.schoolId == schoolId &&
+          (request.resource.data.type in ['transfer', 'character']);
+        allow delete: if isSchoolAdmin(schoolId);
+      }
     }
 
     // =========================================================================

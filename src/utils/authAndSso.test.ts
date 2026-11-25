@@ -1308,6 +1308,68 @@ function runAllUnitTests() {
     console.log('✅ PASS: Phase C Parent Portal Routing, Strict Read-Only RBAC & Isolation Tests');
   }
 
+  // 20. Mobile Split-Screen Auth, Splash Screen, Appointment Letter & Phase D Modules Tests
+  {
+    const authModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AuthModal.tsx'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+    const indexCss = fs.readFileSync(path.resolve(process.cwd(), 'src/index.css'), 'utf-8');
+    const mobilePdfSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/utils/mobilePdfExport.ts'), 'utf-8');
+    const letterModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/AppointmentLetterModal.tsx'), 'utf-8');
+    const teacherProfileSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/TeacherProfile.tsx'), 'utf-8');
+    const teacherMgmtSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/TeacherManagement.tsx'), 'utf-8');
+    const timetableSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/TimetableManager.tsx'), 'utf-8');
+    const homeworkSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/HomeworkManager.tsx'), 'utf-8');
+    const certificatesSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/CertificatesManager.tsx'), 'utf-8');
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+    const smsContextSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+
+    // 1. Split-screen AuthModal (Desktop Form Left + Navy/Indigo Branding Right, Mobile Slim Banner Top + 44px touch targets)
+    assert.equal(authModalSrc.includes('order-2 lg:order-1 lg:col-span-7'), true);
+    assert.equal(authModalSrc.includes('order-1 lg:order-2 lg:col-span-5'), true);
+    assert.equal(authModalSrc.includes('min-h-[44px]'), true);
+    assert.equal(authModalSrc.includes('handleGoogleAuth'), true);
+
+    // 2. Mobile-responsive startup splash screen
+    assert.equal(appSrc.includes('min-h-[100dvh] w-[100vw]'), true);
+    assert.equal(appSrc.includes('pakedu-splash-ring'), true);
+    assert.equal(appSrc.includes('pakedu-splash-bar'), true);
+    assert.equal(indexCss.includes('@keyframes pakeduSplashPulse'), true);
+    assert.equal(indexCss.includes('@keyframes pakeduSplashSlide'), true);
+
+    // 3. Appointment / Job Offer Letter & Mobile PDF Exporter
+    assert.equal(mobilePdfSrc.includes('exportA4ElementAsPdf'), true);
+    assert.equal(mobilePdfSrc.includes('saveFileUniversal'), true);
+    assert.equal(letterModalSrc.includes('Appointment &amp; Job Offer Letter'), true);
+    assert.equal(letterModalSrc.includes('exportA4ElementAsPdf'), true);
+    assert.equal(letterModalSrc.includes('triggerPrintDocument'), true);
+    assert.equal(teacherProfileSrc.includes('Generate Appointment Letter'), true);
+    assert.equal(teacherProfileSrc.includes('AppointmentLetterModal'), true);
+    assert.equal(teacherMgmtSrc.includes('AppointmentLetterModal'), true);
+
+    // 4. Phase D: Timetable, Homework & Certificates (TC / Character) + RBAC rules
+    assert.equal(timetableSrc.includes('overflow-x-auto'), true);
+    assert.equal(timetableSrc.includes('canManageTimetable'), true);
+    assert.equal(homeworkSrc.includes('canPostHomework'), true);
+    assert.equal(homeworkSrc.includes('Assign Homework'), true);
+    assert.equal(certificatesSrc.includes('canManageCertificates'), true);
+    assert.equal(certificatesSrc.includes('Transfer / School Leaving Certificate (TC)'), true);
+    assert.equal(certificatesSrc.includes('Character Certificate'), true);
+    assert.equal(certificatesSrc.includes('exportA4ElementAsPdf'), true);
+
+    assert.equal(appSrc.includes("activeTool === 'sms-timetable'"), true);
+    assert.equal(appSrc.includes("activeTool === 'sms-homework'"), true);
+    assert.equal(appSrc.includes("activeTool === 'sms-certificates'"), true);
+    assert.equal(smsContextSrc.includes('saveTimetableEntry'), true);
+    assert.equal(smsContextSrc.includes('saveHomework'), true);
+    assert.equal(smsContextSrc.includes('saveCertificate'), true);
+
+    assert.equal(rulesSrc.includes('match /timetable/{entryId}'), true);
+    assert.equal(rulesSrc.includes('match /homework/{homeworkId}'), true);
+    assert.equal(rulesSrc.includes('match /certificates/{certificateId}'), true);
+
+    console.log('✅ PASS: Mobile Split-Screen Auth, Splash, Appointment Letter & Phase D Tests');
+  }
+
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
 }
 

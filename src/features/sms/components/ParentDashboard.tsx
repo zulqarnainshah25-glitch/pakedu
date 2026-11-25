@@ -1,13 +1,18 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Award,
+  BookOpen,
   Building,
   CalendarCheck2,
+  CalendarDays,
   CheckCircle2,
+  Clock,
   CreditCard,
+  Download,
   FileText,
   GraduationCap,
   KeyRound,
+  Loader2,
   Lock,
   Printer,
   Receipt,
@@ -23,6 +28,7 @@ import { computeClassPositions, computeStudentExamResult } from '../utils/examCa
 import { Exam } from '../types';
 import { fetchSchoolsFromFirestore } from '../services/smsFirestoreService';
 import { triggerPrintDocument } from '../../../utils/printDocument';
+import { exportA4ElementAsPdf } from '../../../utils/mobilePdfExport';
 
 interface ParentDashboardProps {
   onBack?: () => void;
@@ -41,6 +47,8 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
     feeConcessions,
     exams,
     examMarks,
+    timetableEntries,
+    homeworkItems,
     linkParentToStudent,
   } = useSms();
 
@@ -49,6 +57,20 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
     if (!currentUserProfile?.childStudentId) return students[0] || null;
     return students.find((s) => s.id === currentUserProfile.childStudentId) || null;
   }, [students, currentUserProfile?.childStudentId]);
+
+  const childTimetable = useMemo(() => {
+    if (!childStudent) return [];
+    return timetableEntries
+      .filter((t) => t.classId === childStudent.classId)
+      .sort((a, b) => a.day.localeCompare(b.day) || a.periodNumber - b.periodNumber);
+  }, [timetableEntries, childStudent]);
+
+  const childHomework = useMemo(() => {
+    if (!childStudent) return [];
+    return homeworkItems
+      .filter((h) => h.classId === childStudent.classId)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  }, [homeworkItems, childStudent]);
 
   const childClass = useMemo(() => {
     if (!childStudent) return classes[0] || null;
@@ -212,6 +234,8 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
   }, [exams, childStudent]);
 
   const [reportExamForPrint, setReportExamForPrint] = useState<Exam | null>(null);
+  const [savingReportPdf, setSavingReportPdf] = useState(false);
+  const reportCardSheetRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!reportExamForPrint) return;
@@ -594,6 +618,103 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
           </div>
         )}
 
+        {/* Section 2B: Child Class Timetable & Daily Homework (Read-Only) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-5 h-5 text-sky-600 dark:text-sky-400" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Class Timetable (Read-Only)
+                </h2>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-400">
+                {childTimetable.length} periods
+              </span>
+            </div>
+
+            {childTimetable.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                Timetable schedule has not been published for this class yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto max-h-64">
+                <table className="min-w-[420px] w-full text-xs text-left">
+                  <thead className="bg-slate-50 dark:bg-slate-800/70 text-[10px] uppercase text-slate-500">
+                    <tr>
+                      <th className="py-2 px-3">Day</th>
+                      <th className="py-2 px-3">Period</th>
+                      <th className="py-2 px-3">Subject</th>
+                      <th className="py-2 px-3">Teacher</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {childTimetable.map((slot) => (
+                      <tr key={slot.id}>
+                        <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                          {slot.day}
+                        </td>
+                        <td className="py-2 px-3 font-mono text-indigo-600 dark:text-indigo-400">
+                          P{slot.periodNumber}
+                        </td>
+                        <td className="py-2 px-3 font-semibold">{slot.subject}</td>
+                        <td className="py-2 px-3 text-slate-500">{slot.teacherName}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Daily Homework Diary
+                </h2>
+              </div>
+              <span className="text-[11px] font-semibold text-slate-400">
+                {childHomework.length} assigned
+              </span>
+            </div>
+
+            {childHomework.length === 0 ? (
+              <div className="p-6 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                No active homework assigned for {childStudent.grade} - {childStudent.section}.
+              </div>
+            ) : (
+              <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                {childHomework.map((hw) => (
+                  <div
+                    key={hw.id}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="px-2 py-0.5 rounded bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">
+                        {hw.subject}
+                      </span>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold text-slate-500">
+                        <Clock className="w-3 h-3" />
+                        Due: {hw.dueDate}
+                      </span>
+                    </div>
+                    {hw.title && (
+                      <div className="text-xs font-bold text-slate-900 dark:text-white">
+                        {hw.title}
+                      </div>
+                    )}
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-snug">
+                      {hw.description}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Section 3: Exam Results & Downloadable PDF Report Cards */}
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4 shadow-xs">
           <div className="flex items-center gap-2">
@@ -709,11 +830,33 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   Official Report Card — {childStudent.fullName} ({reportExamForPrint.title})
                 </h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!reportCardSheetRef.current || !childStudent) return;
+                    setSavingReportPdf(true);
+                    try {
+                      await exportA4ElementAsPdf(
+                        reportCardSheetRef.current,
+                        `Report-Card-${childStudent.grNumber}-${reportExamForPrint.title.replace(/\s+/g, '-')}.pdf`
+                      );
+                    } catch {
+                      triggerPrintDocument();
+                    } finally {
+                      setSavingReportPdf(false);
+                    }
+                  }}
+                  disabled={savingReportPdf}
+                  className="min-h-[40px] px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer disabled:opacity-60"
+                >
+                  {savingReportPdf ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  <span>{savingReportPdf ? 'Saving PDF...' : 'Save / Share PDF'}</span>
+                </button>
                 <button
                   type="button"
                   onClick={triggerPrintDocument}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+                  className="min-h-[40px] px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Print / Save as PDF</span>
@@ -721,7 +864,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                 <button
                   type="button"
                   onClick={() => setReportExamForPrint(null)}
-                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+                  className="min-h-[40px] px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                   <span>Close</span>
@@ -745,7 +888,10 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   'Consistent attendance and steady effort encouraged.';
 
                 return (
-                  <div className="printable-a4-sheet bg-white text-slate-900 p-6 sm:p-8 border-2 border-slate-800 rounded-xl">
+                  <div
+                    ref={reportCardSheetRef}
+                    className="printable-a4-sheet bg-white text-slate-900 p-6 sm:p-8 border-2 border-slate-800 rounded-xl"
+                  >
                     <div className="flex items-center justify-between gap-4 border-b-2 border-slate-900 pb-4">
                       <div className="flex items-center gap-4">
                         {activeSchool.logoUrl ? (

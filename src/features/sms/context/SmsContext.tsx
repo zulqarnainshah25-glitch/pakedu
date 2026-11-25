@@ -17,6 +17,9 @@ import {
   FeeConcessionRule,
   Exam,
   StudentExamMarks,
+  TimetableEntry,
+  HomeworkItem,
+  StudentCertificate,
 } from '../types';
 import {
   INITIAL_MOCK_SCHOOL,
@@ -32,6 +35,9 @@ import {
   INITIAL_MOCK_FEE_CONCESSIONS,
   INITIAL_MOCK_EXAMS,
   INITIAL_MOCK_EXAM_MARKS,
+  INITIAL_MOCK_TIMETABLE,
+  INITIAL_MOCK_HOMEWORK,
+  INITIAL_MOCK_CERTIFICATES,
 } from '../data/mockSmsData';
 import {
   FirestoreSyncError,
@@ -74,6 +80,15 @@ import {
   fetchChildFeePaymentsFromFirestore,
   fetchChildMarksFromFirestore,
   fetchPublishedExamsFromFirestore,
+  saveTimetableEntryToFirestore,
+  fetchTimetableFromFirestore,
+  deleteTimetableEntryFromFirestore,
+  saveHomeworkToFirestore,
+  fetchHomeworkFromFirestore,
+  deleteHomeworkFromFirestore,
+  saveCertificateToFirestore,
+  fetchCertificatesFromFirestore,
+  deleteCertificateFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
 import { hasAdminCapabilities } from '../../../utils/smartRouting';
@@ -263,6 +278,20 @@ interface SmsContextType {
     phone?: string;
   }) => Promise<UserProfile | null>;
 
+  // Phase D: Timetable, Homework & Certificates
+  timetableEntries: TimetableEntry[];
+  homeworkItems: HomeworkItem[];
+  certificates: StudentCertificate[];
+  saveTimetableEntry: (entry: Omit<TimetableEntry, 'schoolId'>) => Promise<boolean>;
+  deleteTimetableEntry: (entryId: string) => Promise<boolean>;
+  saveHomework: (item: Omit<HomeworkItem, 'schoolId'>) => Promise<boolean>;
+  deleteHomework: (homeworkId: string) => Promise<boolean>;
+  saveCertificate: (cert: Omit<StudentCertificate, 'schoolId'>) => Promise<boolean>;
+  deleteCertificate: (certificateId: string) => Promise<boolean>;
+  canManageTimetable: boolean;
+  canPostHomework: boolean;
+  canManageCertificates: boolean;
+
   // Stats
   stats: {
     totalStudents: number;
@@ -287,6 +316,9 @@ const SMS_FEE_PAYMENTS_STORAGE_KEY = 'pakedu_sms_fee_payments_v1';
 const SMS_FEE_CONCESSIONS_STORAGE_KEY = 'pakedu_sms_fee_concessions_v1';
 const SMS_EXAMS_STORAGE_KEY = 'pakedu_sms_exams_v1';
 const SMS_EXAM_MARKS_STORAGE_KEY = 'pakedu_sms_exam_marks_v1';
+const SMS_TIMETABLE_STORAGE_KEY = 'pakedu_sms_timetable_v1';
+const SMS_HOMEWORK_STORAGE_KEY = 'pakedu_sms_homework_v1';
+const SMS_CERTIFICATES_STORAGE_KEY = 'pakedu_sms_certificates_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -794,6 +826,54 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [timetableEntries, setTimetableEntries] = useState<TimetableEntry[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_TIMETABLE_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_TIMETABLE;
+          return parsed.filter((t: TimetableEntry) => !t.id.startsWith('tt_mon_') && !t.id.startsWith('tt_tue_'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_TIMETABLE : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [homeworkItems, setHomeworkItems] = useState<HomeworkItem[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_HOMEWORK_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_HOMEWORK;
+          return parsed.filter((h: HomeworkItem) => h.id !== 'hw_001');
+        }
+      }
+      return isDemo ? INITIAL_MOCK_HOMEWORK : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [certificates, setCertificates] = useState<StudentCertificate[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_CERTIFICATES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return isDemo ? INITIAL_MOCK_CERTIFICATES : [];
+    } catch {
+      return [];
+    }
+  });
+
   const setDemoMode = (enabled: boolean) => {
     if (!import.meta.env.DEV) {
       setDemoModeState(false);
@@ -822,6 +902,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setFeeConcessions(INITIAL_MOCK_FEE_CONCESSIONS);
       setExams(INITIAL_MOCK_EXAMS);
       setExamMarks(INITIAL_MOCK_EXAM_MARKS);
+      setTimetableEntries(INITIAL_MOCK_TIMETABLE);
+      setHomeworkItems(INITIAL_MOCK_HOMEWORK);
+      setCertificates(INITIAL_MOCK_CERTIFICATES);
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -870,6 +953,17 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsedExamMarks = savedExamMarks ? JSON.parse(savedExamMarks) : [];
         setExamMarks(parsedExamMarks.filter((m: StudentExamMarks) => !m.id.startsWith('exam_first_term_2026_')));
 
+        const savedTimetable = localStorage.getItem(SMS_TIMETABLE_STORAGE_KEY);
+        const parsedTimetable = savedTimetable ? JSON.parse(savedTimetable) : [];
+        setTimetableEntries(parsedTimetable.filter((t: TimetableEntry) => !t.id.startsWith('tt_mon_') && !t.id.startsWith('tt_tue_')));
+
+        const savedHomework = localStorage.getItem(SMS_HOMEWORK_STORAGE_KEY);
+        const parsedHomework = savedHomework ? JSON.parse(savedHomework) : [];
+        setHomeworkItems(parsedHomework.filter((h: HomeworkItem) => h.id !== 'hw_001'));
+
+        const savedCertificates = localStorage.getItem(SMS_CERTIFICATES_STORAGE_KEY);
+        setCertificates(savedCertificates ? JSON.parse(savedCertificates) : []);
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -884,6 +978,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFeeConcessions([]);
         setExams([]);
         setExamMarks([]);
+        setTimetableEntries([]);
+        setHomeworkItems([]);
+        setCertificates([]);
         setAttendanceRegisters({});
       }
     }
@@ -978,6 +1075,30 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [examMarks]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_TIMETABLE_STORAGE_KEY, JSON.stringify(timetableEntries));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [timetableEntries]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_HOMEWORK_STORAGE_KEY, JSON.stringify(homeworkItems));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [homeworkItems]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_CERTIFICATES_STORAGE_KEY, JSON.stringify(certificates));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [certificates]);
+
   const setUserRole = (role: UserRole) => {
     setUserRoleState(role);
     try {
@@ -1054,6 +1175,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFeeConcessions([]);
         setExams([]);
         setExamMarks([]);
+        setTimetableEntries([]);
+        setHomeworkItems([]);
+        setCertificates([]);
         setLoadingClasses(false);
         return () => {
           cancelled = true;
@@ -1111,6 +1235,20 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (!cancelled) setExamMarks(remoteMarks || []);
         })
         .catch(() => {});
+
+      fetchTimetableFromFirestore(schoolId)
+        .then((remoteTimetable) => {
+          if (!cancelled) setTimetableEntries(remoteTimetable || []);
+        })
+        .catch(() => {});
+
+      fetchHomeworkFromFirestore(schoolId)
+        .then((remoteHomework) => {
+          if (!cancelled) setHomeworkItems(remoteHomework || []);
+        })
+        .catch(() => {});
+
+      setCertificates([]);
 
       return () => {
         cancelled = true;
@@ -1212,6 +1350,31 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Exam marks fetch error:', err));
+
+    // 11. Sync Phase D: Timetable, Homework & Certificates
+    fetchTimetableFromFirestore(schoolId)
+      .then((remoteTimetable) => {
+        if (!cancelled) {
+          setTimetableEntries(remoteTimetable || []);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Timetable fetch error:', err));
+
+    fetchHomeworkFromFirestore(schoolId)
+      .then((remoteHomework) => {
+        if (!cancelled) {
+          setHomeworkItems(remoteHomework || []);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Homework fetch error:', err));
+
+    fetchCertificatesFromFirestore(schoolId)
+      .then((remoteCertificates) => {
+        if (!cancelled) {
+          setCertificates(remoteCertificates || []);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Certificates fetch error:', err));
 
     return () => {
       cancelled = true;
@@ -2629,6 +2792,153 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return updatedParentProfile;
   };
 
+  // =========================================================================
+  // Phase D: Timetable, Homework & Certificates Management
+  // =========================================================================
+  const canManageTimetable = useMemo(() => {
+    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
+  }, [effectiveRole, isSuperAdmin]);
+
+  const canPostHomework = useMemo(() => {
+    if (effectiveRole === 'parent') return false;
+    return canManageTimetable || effectiveRole === 'teacher';
+  }, [effectiveRole, canManageTimetable]);
+
+  const canManageCertificates = useMemo(() => {
+    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
+  }, [effectiveRole, isSuperAdmin]);
+
+  const saveTimetableEntry = async (
+    entry: Omit<TimetableEntry, 'schoolId'>
+  ): Promise<boolean> => {
+    if (!canManageTimetable) return false;
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullEntry: TimetableEntry = {
+      ...entry,
+      schoolId: targetSchoolId,
+      createdAt: entry.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setTimetableEntries((prev) => {
+      const idx = prev.findIndex((t) => t.id === fullEntry.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullEntry;
+        return copy;
+      }
+      return [fullEntry, ...prev];
+    });
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveTimetableEntry', () =>
+        saveTimetableEntryToFirestore(activeSchool.id, fullEntry)
+      );
+    }
+    return true;
+  };
+
+  const deleteTimetableEntry = async (entryId: string): Promise<boolean> => {
+    if (!canManageTimetable) return false;
+    setTimetableEntries((prev) => prev.filter((t) => t.id !== entryId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync('deleteTimetableEntry', () =>
+        deleteTimetableEntryFromFirestore(activeSchool.id, entryId)
+      );
+    }
+    return true;
+  };
+
+  const saveHomework = async (item: Omit<HomeworkItem, 'schoolId'>): Promise<boolean> => {
+    if (!canPostHomework) return false;
+    if (
+      !canManageTimetable &&
+      filteredClassesForUser.length > 0 &&
+      !filteredClassesForUser.some((c) => c.id === item.classId)
+    ) {
+      return false;
+    }
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullItem: HomeworkItem = {
+      ...item,
+      schoolId: targetSchoolId,
+      createdAt: item.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setHomeworkItems((prev) => {
+      const idx = prev.findIndex((h) => h.id === fullItem.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullItem;
+        return copy;
+      }
+      return [fullItem, ...prev];
+    });
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveHomework', () =>
+        saveHomeworkToFirestore(activeSchool.id, fullItem)
+      );
+    }
+    return true;
+  };
+
+  const deleteHomework = async (homeworkId: string): Promise<boolean> => {
+    if (!canPostHomework) return false;
+    const existing = homeworkItems.find((h) => h.id === homeworkId);
+    if (
+      existing &&
+      !canManageTimetable &&
+      existing.teacherId !== currentUserProfile?.uid &&
+      existing.teacherId !== activeTeacher?.id
+    ) {
+      return false;
+    }
+    setHomeworkItems((prev) => prev.filter((h) => h.id !== homeworkId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync('deleteHomework', () =>
+        deleteHomeworkFromFirestore(activeSchool.id, homeworkId)
+      );
+    }
+    return true;
+  };
+
+  const saveCertificate = async (
+    cert: Omit<StudentCertificate, 'schoolId'>
+  ): Promise<boolean> => {
+    if (!canManageCertificates) return false;
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullCert: StudentCertificate = {
+      ...cert,
+      schoolId: targetSchoolId,
+      createdAt: cert.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    setCertificates((prev) => {
+      const idx = prev.findIndex((c) => c.id === fullCert.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullCert;
+        return copy;
+      }
+      return [fullCert, ...prev];
+    });
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveCertificate', () =>
+        saveCertificateToFirestore(activeSchool.id, fullCert)
+      );
+    }
+    return true;
+  };
+
+  const deleteCertificate = async (certificateId: string): Promise<boolean> => {
+    if (!canManageCertificates) return false;
+    setCertificates((prev) => prev.filter((c) => c.id !== certificateId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync('deleteCertificate', () =>
+        deleteCertificateFromFirestore(activeSchool.id, certificateId)
+      );
+    }
+    return true;
+  };
+
   return (
     <SmsContext.Provider
       value={{
@@ -2703,6 +3013,18 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSchoolLogo,
         generateParentInviteForStudent,
         linkParentToStudent,
+        timetableEntries,
+        homeworkItems,
+        certificates,
+        saveTimetableEntry,
+        deleteTimetableEntry,
+        saveHomework,
+        deleteHomework,
+        saveCertificate,
+        deleteCertificate,
+        canManageTimetable,
+        canPostHomework,
+        canManageCertificates,
         attendanceRegisters,
         saveAttendance,
         getAttendance,
