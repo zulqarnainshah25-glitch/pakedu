@@ -85,6 +85,111 @@ function escapeCsvCell(value: string | number | undefined | null): string {
   return str;
 }
 
+interface PrintPreviewModalShellProps {
+  title: string;
+  printLabel: string;
+  onPrint: () => void;
+  onClose: () => void;
+  accent?: 'emerald' | 'indigo';
+  children: React.ReactNode;
+}
+
+const PrintPreviewModalShell: React.FC<PrintPreviewModalShellProps> = ({
+  title,
+  printLabel,
+  onPrint,
+  onClose,
+  accent = 'emerald',
+  children,
+}) => {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  const iconColor = accent === 'indigo' ? 'text-indigo-600' : 'text-emerald-600';
+  const printBtnClass =
+    accent === 'indigo'
+      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+      : 'bg-emerald-600 hover:bg-emerald-500 text-white';
+
+  return (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-6 print:static print:bg-transparent print:p-0 print:block"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div
+        className="w-full max-w-4xl max-h-[92vh] bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:overflow-visible print:block"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Sticky Header Controls (Hidden only when printing) */}
+        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-200 bg-white">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Printer className={`w-5 h-5 shrink-0 ${iconColor}`} />
+            <h3 className="text-base font-bold text-slate-900 truncate">{title}</h3>
+          </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={onPrint}
+              className={`px-4 py-2 ${printBtnClass} font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer`}
+            >
+              <Printer className="w-4 h-4" />
+              <span>{printLabel}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close preview"
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+              <span>Close</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable A4 Printable Area */}
+        <div className="overflow-y-auto flex-1 p-4 sm:p-6 print:overflow-visible print:p-0">
+          {children}
+        </div>
+
+        {/* Sticky Bottom Action Bar */}
+        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-t border-slate-200 bg-slate-50">
+          <span className="text-[11px] text-slate-500">
+            A4 Print &amp; PDF Ready · Press Esc or Close to return
+          </span>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+            >
+              Close / Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onPrint}
+              className={`px-4 py-2 ${printBtnClass} font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer`}
+            >
+              <Printer className="w-4 h-4" />
+              <span>{printLabel}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const FeeManagement: React.FC<FeeManagementProps> = ({
   onBack,
   initialTab = 'structure',
@@ -874,9 +979,6 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       return;
     }
     setBulkBatchForPrint(generatedBulkVouchers);
-    setTimeout(() => {
-      triggerPrintDocument();
-    }, 150);
   };
 
   // =========================================================================
@@ -4258,35 +4360,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       {/* PRINTABLE VOUCHER MODAL (.printable-a4-sheet) */}
       {/* =================================================================== */}
       {activeVoucherForPrint && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-6 relative">
-            {/* Modal Header Controls (Hidden during print) */}
-            <div className="no-print flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-bold text-slate-900">
-                  Official Fee Voucher / Payment Receipt Preview
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={triggerPrintDocument}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Document (A4)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveVoucherForPrint(null)}
-                  className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
+        <PrintPreviewModalShell
+          title="Official Fee Voucher / Payment Receipt Preview"
+          printLabel="Print Voucher / Save as PDF"
+          onPrint={triggerPrintDocument}
+          onClose={() => setActiveVoucherForPrint(null)}
+          accent="emerald"
+        >
             {/* Printable A4 Container: 2 Identical Copies (School Copy & Student Copy) */}
             <div className="printable-a4-sheet bg-white text-slate-900 p-6 border border-slate-200 rounded-xl space-y-8">
               {[
@@ -4450,42 +4530,20 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+        </PrintPreviewModalShell>
       )}
 
       {/* =================================================================== */}
       {/* PRINTABLE BULK BATCH VOUCHERS MODAL (.printable-a4-sheet) */}
       {/* =================================================================== */}
       {bulkBatchForPrint && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-6 relative my-8">
-            <div className="no-print flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-emerald-600" />
-                <h3 className="text-base font-bold text-slate-900">
-                  Bulk Class Fee Vouchers Batch ({bulkBatchForPrint.length} Vouchers — {bulkMonthLabel})
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={triggerPrintDocument}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Print All Vouchers (PDF / A4)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBulkBatchForPrint(null)}
-                  className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
+        <PrintPreviewModalShell
+          title={`Bulk Class Fee Vouchers Batch (${bulkBatchForPrint.length} Vouchers — ${bulkMonthLabel})`}
+          printLabel={`Print All (${bulkBatchForPrint.length} Vouchers)`}
+          onPrint={triggerPrintDocument}
+          onClose={() => setBulkBatchForPrint(null)}
+          accent="emerald"
+        >
             <div className="printable-a4-sheet bg-white text-slate-900 p-4 rounded-xl space-y-6">
               {bulkBatchForPrint.map((voucher, idx) => (
                 <div
@@ -4596,42 +4654,20 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
               ))}
             </div>
-          </div>
-        </div>
+        </PrintPreviewModalShell>
       )}
 
       {/* =================================================================== */}
       {/* PRINTABLE A4 REPORT PDF MODAL (.printable-a4-sheet) */}
       {/* =================================================================== */}
       {showReportPrintModal && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-6 relative my-8">
-            <div className="no-print flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
-              <div className="flex items-center gap-2">
-                <Printer className="w-5 h-5 text-indigo-600" />
-                <h3 className="text-base font-bold text-slate-900">
-                  Official Financial Report — A4 PDF Preview
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={triggerPrintDocument}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Print / Save as PDF (A4)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowReportPrintModal(false)}
-                  className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
+        <PrintPreviewModalShell
+          title="Official Financial Report — A4 PDF Preview"
+          printLabel="Print / Save as PDF (A4)"
+          onPrint={triggerPrintDocument}
+          onClose={() => setShowReportPrintModal(false)}
+          accent="indigo"
+        >
             <div className="printable-a4-sheet bg-white text-slate-900 p-6 border border-slate-200 rounded-xl space-y-5">
               {/* Official Letterhead */}
               <div className="flex items-start justify-between border-b-2 border-slate-800 pb-3">
@@ -4881,8 +4917,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
               </div>
             </div>
-          </div>
-        </div>
+        </PrintPreviewModalShell>
       )}
     </div>
   );

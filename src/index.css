@@ -234,6 +234,8 @@ body.printing-mode .printable-a4-sheet {
     color: #000000 !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
@@ -252,6 +254,8 @@ body.printing-mode .printable-a4-sheet {
     padding: 0 !important;
     max-width: 100% !important;
     width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   .printable-a4-sheet {
@@ -261,6 +265,7 @@ body.printing-mode .printable-a4-sheet {
     margin: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
+    overflow: visible !important;
   }
 }
 
