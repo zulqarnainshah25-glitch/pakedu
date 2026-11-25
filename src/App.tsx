@@ -955,15 +955,17 @@ function AppContent() {
                       <div className="flex items-center justify-between gap-1">
                         <span className="block truncate">Fee Management</span>
                         <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
-                          userRole === 'admin'
+                          isSuperAdmin
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : userRole === 'admin'
                             ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                             : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                         }`}>
-                          {userRole === 'admin' ? 'Accounts' : 'Incharge'}
+                          {isSuperAdmin ? 'Super Admin' : userRole === 'admin' ? 'Accounts' : 'Incharge'}
                         </span>
                       </div>
                       <span className="text-[11px] block truncate text-slate-500">
-                        Structure, Vouchers &amp; Defaulters
+                        Structure, Vouchers &amp; Reports
                       </span>
                     </div>
                   </button>

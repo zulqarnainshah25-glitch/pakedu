@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Receipt,
   CreditCard,
@@ -24,16 +24,40 @@ import {
   DollarSign,
   AlertCircle,
   Calendar,
+  Download,
+  FileSpreadsheet,
+  BarChart3,
+  RefreshCw,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
-import { ClassFeeStructure, CustomFeeCharge, FeePayment, PaymentMethod, Student } from '../types';
+import { ClassFeeStructure, CustomFeeCharge, FeePayment, PaymentMethod, School, Student } from '../types';
+import {
+  fetchStudentsFromFirestore,
+  fetchFeeStructuresFromFirestore,
+  fetchFeePaymentsFromFirestore,
+} from '../services/smsFirestoreService';
 import { triggerPrintDocument } from '../../../utils/printDocument';
 
 interface FeeManagementProps {
   onBack?: () => void;
-  initialTab?: 'structure' | 'collect' | 'defaulters';
+  initialTab?: 'structure' | 'collect' | 'defaulters' | 'reports';
   initialStudentId?: string;
   initialClassId?: string;
+}
+
+interface SchoolFeeDataset {
+  school: School;
+  students: Student[];
+  feeStructures: ClassFeeStructure[];
+  feePayments: FeePayment[];
+}
+
+function escapeCsvCell(value: string | number | undefined | null): string {
+  const str = value === undefined || value === null ? '' : String(value);
+  if (/[",\n\r]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
 }
 
 export const FeeManagement: React.FC<FeeManagementProps> = ({
@@ -44,7 +68,11 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 }) => {
   const {
     activeSchool,
+    setActiveSchool,
+    registeredSchools,
     classes,
+    loadingClasses,
+    refreshActiveSchoolClasses,
     students,
     feeStructures,
     feePayments,
@@ -53,13 +81,18 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     recordFeePayment,
     canManageFeeStructure,
     canCollectFee,
+    canAdmitStudents,
     currentUserProfile,
     userRole,
     isSuperAdmin,
+    demoMode,
   } = useSms();
 
+  const canAccessReports = isSuperAdmin || canManageFeeStructure || canAdmitStudents;
+  const canAccessModule = canCollectFee || canAccessReports;
+
   // Active Tab state: If user cannot manage structure, default to 'collect'
-  const [activeTab, setActiveTab] = useState<'structure' | 'collect' | 'defaulters'>(() => {
+  const [activeTab, setActiveTab] = useState<'structure' | 'collect' | 'defaulters' | 'reports'>(() => {
     if (initialTab === 'structure' && !canManageFeeStructure && canCollectFee) {
       return 'collect';
     }
@@ -121,30 +154,28 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     return map;
   });
 
-  // Keep local editing state synced if feeStructures updates from Firestore
-  React.useEffect(() => {
-    setEditingStructures((prev) => {
-      const next = { ...prev };
-      classes.forEach((c) => {
-        const remote = feeStructures.find((f) => f.classId === c.id);
-        if (remote && !next[c.id]) {
-          next[c.id] = { ...remote, customCharges: [...(remote.customCharges || [])] };
-        } else if (!next[c.id]) {
-          next[c.id] = {
-            id: c.id,
-            schoolId: activeSchool.id,
-            classId: c.id,
-            grade: c.grade,
-            monthlyTuitionFee: 1500,
-            admissionFee: 2000,
-            examFee: 500,
-            customCharges: [],
-            academicYear: activeSchool.activeAcademicYear || '2025-2026',
-          };
-        }
-      });
-      return next;
+  // Keep local editing state synced if activeSchool, classes, or feeStructures updates from Firestore
+  useEffect(() => {
+    const next: Record<string, ClassFeeStructure> = {};
+    classes.forEach((c) => {
+      const remote = feeStructures.find((f) => f.classId === c.id);
+      if (remote) {
+        next[c.id] = { ...remote, customCharges: [...(remote.customCharges || [])] };
+      } else {
+        next[c.id] = {
+          id: c.id,
+          schoolId: activeSchool.id,
+          classId: c.id,
+          grade: c.grade,
+          monthlyTuitionFee: 1500,
+          admissionFee: 2000,
+          examFee: 500,
+          customCharges: [],
+          academicYear: activeSchool.activeAcademicYear || '2025-2026',
+        };
+      }
     });
+    setEditingStructures(next);
   }, [feeStructures, classes, activeSchool.id, activeSchool.activeAcademicYear]);
 
   const [savingClassId, setSavingClassId] = useState<string | null>(null);
@@ -259,6 +290,41 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     initialClassId || (classes.length > 0 ? classes[0].id : '')
   );
   const [collectionStudentId, setCollectionStudentId] = useState<string>(initialStudentId || '');
+
+  // Ensure collectionClassId automatically syncs when classes load or selected school changes
+  useEffect(() => {
+    if (classes.length > 0) {
+      const stillValid = classes.some((c) => c.id === collectionClassId);
+      if (!collectionClassId || !stillValid) {
+        setCollectionClassId(classes[0].id);
+        setCollectionStudentId('');
+      }
+    } else {
+      setCollectionClassId('');
+      setCollectionStudentId('');
+    }
+  }, [classes, activeSchool.id]);
+
+  // Ensure classes are fetched when activeSchool changes or Super Admin opens Fee Management
+  useEffect(() => {
+    if (activeSchool?.id) {
+      refreshActiveSchoolClasses(activeSchool.id);
+    }
+  }, [activeSchool?.id]);
+
+  const handleSuperAdminSchoolSelect = async (schoolId: string) => {
+    const selected = registeredSchools.find((s) => s.id === schoolId);
+    if (!selected) return;
+    setActiveSchool(selected);
+    setCollectionClassId('');
+    setCollectionStudentId('');
+    setDefaulterClassFilter('ALL');
+    setReportClassFilter('ALL');
+    if (isSuperAdmin && reportSchoolScope !== 'ALL') {
+      setReportSchoolScope(selected.id);
+    }
+    await refreshActiveSchoolClasses(selected.id);
+  };
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [paymentNotes, setPaymentNotes] = useState<string>('');
@@ -516,8 +582,488 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     setActiveTab('collect');
   };
 
+  // =========================================================================
+  // TAB 4: REPORTS & EXPORTS (Daily, Monthly, Defaulters)
+  // =========================================================================
+  const [reportType, setReportType] = useState<'daily' | 'monthly' | 'defaulters'>('daily');
+  const [reportDate, setReportDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [reportMonth, setReportMonth] = useState<string>(selectedMonth);
+  const [reportClassFilter, setReportClassFilter] = useState<string>('ALL');
+  const [reportSchoolScope, setReportSchoolScope] = useState<string>(() =>
+    isSuperAdmin ? 'ALL' : activeSchool.id
+  );
+  const [aggregatedDatasets, setAggregatedDatasets] = useState<SchoolFeeDataset[]>([]);
+  const [loadingReports, setLoadingReports] = useState<boolean>(false);
+  const [showReportPrintModal, setShowReportPrintModal] = useState<boolean>(false);
+
+  // Sync reportMonth when global month changes unless customized
+  useEffect(() => {
+    setReportMonth(selectedMonth);
+  }, [selectedMonth]);
+
+  // Keep non-super-admin scope strictly locked to activeSchool
+  useEffect(() => {
+    if (!isSuperAdmin) {
+      setReportSchoolScope(activeSchool.id);
+    }
+  }, [isSuperAdmin, activeSchool.id]);
+
+  // Fetch multi-school fee datasets for Super Admin aggregated reports
+  const loadAggregatedReportsData = async () => {
+    if (!isSuperAdmin) return;
+    const schoolsList = registeredSchools.length > 0 ? registeredSchools : [activeSchool];
+    setLoadingReports(true);
+    try {
+      if (demoMode) {
+        const mockDatasets: SchoolFeeDataset[] = schoolsList.map((sch) => ({
+          school: sch,
+          students: sch.id === activeSchool.id ? students : students.filter((s) => (s as any).schoolId === sch.id),
+          feeStructures:
+            sch.id === activeSchool.id
+              ? feeStructures
+              : feeStructures.filter((f) => f.schoolId === sch.id),
+          feePayments:
+            sch.id === activeSchool.id
+              ? feePayments
+              : feePayments.filter((p) => p.schoolId === sch.id),
+        }));
+        setAggregatedDatasets(mockDatasets);
+        return;
+      }
+
+      const settled = await Promise.all(
+        schoolsList.map(async (sch): Promise<SchoolFeeDataset> => {
+          if (sch.id === activeSchool.id) {
+            return {
+              school: sch,
+              students,
+              feeStructures,
+              feePayments,
+            };
+          }
+          const [schStudents, schStructures, schPayments] = await Promise.all([
+            fetchStudentsFromFirestore(sch.id).catch(() => []),
+            fetchFeeStructuresFromFirestore(sch.id).catch(() => []),
+            fetchFeePaymentsFromFirestore(sch.id).catch(() => []),
+          ]);
+          return {
+            school: sch,
+            students: schStudents,
+            feeStructures: schStructures,
+            feePayments: schPayments,
+          };
+        })
+      );
+      setAggregatedDatasets(settled);
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reports' && isSuperAdmin) {
+      loadAggregatedReportsData();
+    }
+  }, [activeTab, isSuperAdmin, registeredSchools.length, activeSchool.id, feePayments.length, students.length]);
+
+  const reportMonthLabel = useMemo(() => {
+    const found = monthOptions.find((m) => m.val === reportMonth);
+    if (found) return found.label;
+    const [y, m] = reportMonth.split('-');
+    const d = new Date(parseInt(y, 10), parseInt(m, 10) - 1, 1);
+    return d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  }, [reportMonth, monthOptions]);
+
+  // Compute Filtered & Aggregated Report Rows
+  const reportData = useMemo(() => {
+    let targetDatasets: SchoolFeeDataset[] = [];
+
+    if (isSuperAdmin && reportSchoolScope === 'ALL') {
+      if (aggregatedDatasets.length > 0) {
+        // Ensure activeSchool always reflects latest in-memory edits
+        targetDatasets = aggregatedDatasets.map((ds) =>
+          ds.school.id === activeSchool.id
+            ? { school: activeSchool, students, feeStructures, feePayments }
+            : ds
+        );
+      } else {
+        targetDatasets = [{ school: activeSchool, students, feeStructures, feePayments }];
+      }
+    } else if (isSuperAdmin && reportSchoolScope !== activeSchool.id) {
+      const found = aggregatedDatasets.find((ds) => ds.school.id === reportSchoolScope);
+      targetDatasets = found
+        ? [found]
+        : [{ school: activeSchool, students, feeStructures, feePayments }];
+    } else {
+      targetDatasets = [{ school: activeSchool, students, feeStructures, feePayments }];
+    }
+
+    const isAggregatedMultiSchool = isSuperAdmin && reportSchoolScope === 'ALL' && targetDatasets.length > 1;
+    const applyClassFilter = !isAggregatedMultiSchool && reportClassFilter !== 'ALL';
+
+    const dailyPayments: Array<FeePayment & { schoolName: string; semisCode: string }> = [];
+    const monthlyPayments: Array<FeePayment & { schoolName: string; semisCode: string }> = [];
+    const defaulterRows: Array<{
+      schoolId: string;
+      schoolName: string;
+      semisCode: string;
+      student: Student;
+      expectedFee: number;
+    }> = [];
+
+    const schoolSummaries: Array<{
+      schoolId: string;
+      schoolName: string;
+      semisCode: string;
+      district: string;
+      activeStudentsCount: number;
+      paidCount: number;
+      defaultersCount: number;
+      dailyCollected: number;
+      monthlyCollected: number;
+      totalPending: number;
+      collectionRate: number;
+    }> = [];
+
+    let totalDailyCollected = 0;
+    let totalMonthlyCollected = 0;
+    let totalPending = 0;
+    let totalPaidCount = 0;
+    let totalDefaultersCount = 0;
+    let totalActiveStudents = 0;
+
+    const methodTotals: Record<string, number> = {};
+
+    targetDatasets.forEach((ds) => {
+      const schName = ds.school.name || 'School';
+      const schSemis = ds.school.semisCode || '';
+      const schDistrict = ds.school.district || '';
+
+      // Daily payments (by paymentDate YYYY-MM-DD)
+      let schDailyCollected = 0;
+      ds.feePayments.forEach((p) => {
+        if (p.status !== 'paid') return;
+        if (applyClassFilter && p.classId !== reportClassFilter) return;
+        const payDay = (p.paymentDate || p.createdAt || '').slice(0, 10);
+        if (payDay === reportDate) {
+          const amt = Number(p.paidAmount) || 0;
+          schDailyCollected += amt;
+          totalDailyCollected += amt;
+          const m = p.paymentMethod || 'Cash';
+          methodTotals[m] = (methodTotals[m] || 0) + amt;
+          dailyPayments.push({ ...p, schoolName: schName, semisCode: schSemis });
+        }
+      });
+
+      // Monthly payments (by month YYYY-MM)
+      let schMonthlyCollected = 0;
+      const paidStudentIdsForMonth = new Set<string>();
+      ds.feePayments.forEach((p) => {
+        if (p.status !== 'paid') return;
+        if (p.month !== reportMonth) return;
+        if (applyClassFilter && p.classId !== reportClassFilter) return;
+        const amt = Number(p.paidAmount) || 0;
+        schMonthlyCollected += amt;
+        totalMonthlyCollected += amt;
+        paidStudentIdsForMonth.add(p.studentId);
+        monthlyPayments.push({ ...p, schoolName: schName, semisCode: schSemis });
+      });
+
+      // Defaulters for reportMonth
+      const schActiveStudents = ds.students.filter((s) => {
+        if (s.status !== 'active') return false;
+        if (applyClassFilter && s.classId !== reportClassFilter) return false;
+        return true;
+      });
+
+      let schPending = 0;
+      let schDefaultersCount = 0;
+      schActiveStudents.forEach((s) => {
+        if (!paidStudentIdsForMonth.has(s.id)) {
+          const struct = ds.feeStructures.find((f) => f.classId === s.classId);
+          const customSum = (struct?.customCharges || []).reduce(
+            (sum, c) => sum + (Number(c.amount) || 0),
+            0
+          );
+          const expectedFee = (Number(struct?.monthlyTuitionFee) || 1500) + customSum;
+          schPending += expectedFee;
+          schDefaultersCount += 1;
+          defaulterRows.push({
+            schoolId: ds.school.id,
+            schoolName: schName,
+            semisCode: schSemis,
+            student: s,
+            expectedFee,
+          });
+        }
+      });
+
+      const schPaidCount = paidStudentIdsForMonth.size;
+      const schTotalCount = schActiveStudents.length;
+      const schRate = schTotalCount > 0 ? Math.round((schPaidCount / schTotalCount) * 100) : 0;
+
+      totalPending += schPending;
+      totalPaidCount += schPaidCount;
+      totalDefaultersCount += schDefaultersCount;
+      totalActiveStudents += schTotalCount;
+
+      schoolSummaries.push({
+        schoolId: ds.school.id,
+        schoolName: schName,
+        semisCode: schSemis,
+        district: schDistrict,
+        activeStudentsCount: schTotalCount,
+        paidCount: schPaidCount,
+        defaultersCount: schDefaultersCount,
+        dailyCollected: schDailyCollected,
+        monthlyCollected: schMonthlyCollected,
+        totalPending: schPending,
+        collectionRate: schRate,
+      });
+    });
+
+    const overallCollectionRate =
+      totalActiveStudents > 0 ? Math.round((totalPaidCount / totalActiveStudents) * 100) : 0;
+
+    return {
+      isAggregatedMultiSchool,
+      targetDatasets,
+      dailyPayments,
+      monthlyPayments,
+      defaulterRows,
+      schoolSummaries,
+      totals: {
+        totalDailyCollected,
+        totalMonthlyCollected,
+        totalPending,
+        totalPaidCount,
+        totalDefaultersCount,
+        totalActiveStudents,
+        overallCollectionRate,
+        methodTotals,
+      },
+    };
+  }, [
+    isSuperAdmin,
+    reportSchoolScope,
+    aggregatedDatasets,
+    activeSchool,
+    students,
+    feeStructures,
+    feePayments,
+    reportClassFilter,
+    reportDate,
+    reportMonth,
+  ]);
+
+  const reportScopeLabel = useMemo(() => {
+    if (isSuperAdmin && reportSchoolScope === 'ALL') {
+      return `All Registered Schools (${reportData.targetDatasets.length} Schools Aggregated)`;
+    }
+    const targetSchool =
+      registeredSchools.find((s) => s.id === reportSchoolScope) || activeSchool;
+    return `${targetSchool.name} (SEMIS: ${targetSchool.semisCode || 'N/A'})`;
+  }, [isSuperAdmin, reportSchoolScope, registeredSchools, activeSchool, reportData.targetDatasets.length]);
+
+  // Export Excel (CSV) handler
+  const handleExportReportCsv = () => {
+    const lines: string[][] = [];
+    const generatedAt = new Date().toLocaleString('en-GB');
+
+    if (reportType === 'daily') {
+      lines.push(['PakEdu Financial Report - Daily Fee Collection Report']);
+      lines.push(['Scope', reportScopeLabel]);
+      lines.push(['Collection Date', reportDate]);
+      lines.push(['Generated On', generatedAt]);
+      lines.push(['Total Collected (PKR)', String(reportData.totals.totalDailyCollected)]);
+      lines.push(['Total Pending for Month (PKR)', String(reportData.totals.totalPending)]);
+      lines.push([]);
+      lines.push([
+        'Receipt No',
+        'Payment Date',
+        'School',
+        'SEMIS',
+        'GR Number',
+        'Student Name',
+        'Class & Section',
+        'Fee Month',
+        'Payment Method',
+        'Discount (PKR)',
+        'Amount Paid (PKR)',
+        'Collected By',
+      ]);
+      reportData.dailyPayments.forEach((p) => {
+        lines.push([
+          p.receiptNumber || 'RCPT',
+          p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : reportDate,
+          p.schoolName,
+          p.semisCode,
+          p.grNumber,
+          p.studentName,
+          `${p.grade} - ${p.section || 'General'}`,
+          p.monthLabel,
+          p.paymentMethod || 'Cash',
+          String(p.discount || 0),
+          String(p.paidAmount || 0),
+          p.recordedByName || 'Accounts',
+        ]);
+      });
+      lines.push([]);
+      lines.push(['TOTAL COLLECTED (PKR)', '', '', '', '', '', '', '', '', '', String(reportData.totals.totalDailyCollected), '']);
+    } else if (reportType === 'monthly') {
+      lines.push(['PakEdu Financial Report - Monthly Fee Collection Report']);
+      lines.push(['Scope', reportScopeLabel]);
+      lines.push(['Billing Month', reportMonthLabel]);
+      lines.push(['Generated On', generatedAt]);
+      lines.push(['Total Collected (PKR)', String(reportData.totals.totalMonthlyCollected)]);
+      lines.push(['Total Pending (PKR)', String(reportData.totals.totalPending)]);
+      lines.push([]);
+      if (isSuperAdmin && reportSchoolScope === 'ALL') {
+        lines.push(['--- SCHOOL-WISE AGGREGATE SUMMARY ---']);
+        lines.push([
+          'School Name',
+          'SEMIS Code',
+          'District',
+          'Active Students',
+          'Paid Students',
+          'Pending Students',
+          'Total Collected (PKR)',
+          'Total Pending (PKR)',
+          'Collection Rate (%)',
+        ]);
+        reportData.schoolSummaries.forEach((s) => {
+          lines.push([
+            s.schoolName,
+            s.semisCode,
+            s.district,
+            String(s.activeStudentsCount),
+            String(s.paidCount),
+            String(s.defaultersCount),
+            String(s.monthlyCollected),
+            String(s.totalPending),
+            `${s.collectionRate}%`,
+          ]);
+        });
+        lines.push([]);
+      }
+      lines.push([
+        'Receipt No',
+        'Payment Date',
+        'School',
+        'SEMIS',
+        'GR Number',
+        'Student Name',
+        'Class & Section',
+        'Payment Method',
+        'Discount (PKR)',
+        'Amount Paid (PKR)',
+      ]);
+      reportData.monthlyPayments.forEach((p) => {
+        lines.push([
+          p.receiptNumber || 'RCPT',
+          p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : 'N/A',
+          p.schoolName,
+          p.semisCode,
+          p.grNumber,
+          p.studentName,
+          `${p.grade} - ${p.section || 'General'}`,
+          p.paymentMethod || 'Cash',
+          String(p.discount || 0),
+          String(p.paidAmount || 0),
+        ]);
+      });
+      lines.push([]);
+      lines.push(['TOTAL COLLECTED (PKR)', '', '', '', '', '', '', '', '', String(reportData.totals.totalMonthlyCollected)]);
+      lines.push(['TOTAL PENDING (PKR)', '', '', '', '', '', '', '', '', String(reportData.totals.totalPending)]);
+    } else {
+      lines.push(['PakEdu Financial Report - Fee Defaulters List']);
+      lines.push(['Scope', reportScopeLabel]);
+      lines.push(['Billing Month', reportMonthLabel]);
+      lines.push(['Generated On', generatedAt]);
+      lines.push(['Total Defaulters', String(reportData.totals.totalDefaultersCount)]);
+      lines.push(['Total Pending Dues (PKR)', String(reportData.totals.totalPending)]);
+      lines.push([]);
+      lines.push([
+        'School',
+        'SEMIS',
+        'GR Number',
+        'Student Name',
+        "Father's Name",
+        'Class & Section',
+        'Guardian Phone',
+        'Billing Month',
+        'Pending Due (PKR)',
+        'Status',
+      ]);
+      reportData.defaulterRows.forEach((row) => {
+        lines.push([
+          row.schoolName,
+          row.semisCode,
+          row.student.grNumber,
+          row.student.fullName,
+          row.student.fatherName,
+          `${row.student.grade} - ${row.student.section || 'General'}`,
+          row.student.guardianPhone || 'N/A',
+          reportMonthLabel,
+          String(row.expectedFee),
+          'Unpaid',
+        ]);
+      });
+      lines.push([]);
+      lines.push(['TOTAL PENDING DUES (PKR)', '', '', '', '', '', '', '', String(reportData.totals.totalPending), '']);
+    }
+
+    const csvContent = '\uFEFF' + lines.map((row) => row.map(escapeCsvCell).join(',')).join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const suffix = reportType === 'daily' ? reportDate : reportMonth;
+    link.href = url;
+    link.download = `PakEdu_${reportType}_fee_report_${suffix}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // Export PDF handler (opens A4 report view and invokes native print/save PDF)
+  const handleExportReportPdf = () => {
+    setShowReportPrintModal(true);
+    setTimeout(() => {
+      triggerPrintDocument();
+    }, 150);
+  };
+
+  if (!canAccessModule) {
+    return (
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center space-y-3 shadow-xs">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+          Fee Management Access Restricted
+        </h2>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          This module is restricted to the Portal Super Admin, School Administrators / Principals, and designated Admission Incharges.
+        </p>
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+          >
+            Return to Dashboard
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const isPrintModalOpen = Boolean(activeVoucherForPrint || showReportPrintModal);
+
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-200">
+      <div className={isPrintModalOpen ? 'no-print space-y-6' : 'space-y-6'}>
       {/* Top Banner / Breadcrumb & Header */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -528,17 +1074,17 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
                 <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                  Fee Management & Accounts
+                  Fee Management &amp; Accounts
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {activeSchool.name || 'School Accounts'}
                 </span>
                 <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  SEMIS: {activeSchool.semisCode || '403020101'}
+                  SEMIS: {activeSchool.semisCode || 'N/A'}
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Dynamic class fee structures, monthly fee collection, printable bank vouchers, and fee defaulters tracking.
+                Dynamic class fee structures, monthly fee collection, printable bank vouchers, financial reports, and fee defaulters tracking.
               </p>
             </div>
           </div>
@@ -562,7 +1108,11 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </select>
             </div>
 
-            {canManageFeeStructure ? (
+            {isSuperAdmin ? (
+              <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800/60">
+                Super Admin (Global)
+              </span>
+            ) : canManageFeeStructure ? (
               <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
                 School Admin (Full Access)
               </span>
@@ -573,6 +1123,58 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             )}
           </div>
         </div>
+
+        {/* Super Admin School Switcher Bar */}
+        {isSuperAdmin && (
+          <div className="mt-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs">
+              <Building className="w-4 h-4 text-rose-500 shrink-0" />
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white block">
+                  Super Admin Active School Context
+                </span>
+                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Select any registered school to load its classes, students, fee structures, and vouchers.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <label htmlFor="superadmin-fee-school-selector" className="sr-only">
+                Select School
+              </label>
+              <select
+                id="superadmin-fee-school-selector"
+                value={activeSchool.id}
+                onChange={(e) => handleSuperAdminSchoolSelect(e.target.value)}
+                className="flex-1 sm:w-80 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
+              >
+                {registeredSchools.length === 0 ? (
+                  <option value={activeSchool.id}>
+                    {activeSchool.name || 'No Registered Schools Found'}
+                  </option>
+                ) : (
+                  registeredSchools.map((sch) => (
+                    <option key={sch.id} value={sch.id}>
+                      {sch.name} — SEMIS: {sch.semisCode || 'N/A'}
+                    </option>
+                  ))
+                )}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => refreshActiveSchoolClasses(activeSchool.id)}
+                disabled={loadingClasses}
+                title="Reload Classes & Fee Data"
+                className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingClasses ? 'animate-spin' : ''}`} />
+                <span className="hidden md:inline">{loadingClasses ? 'Loading...' : `${classes.length} Classes`}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto no-scrollbar">
@@ -618,13 +1220,28 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
-            <span>3. Fee Defaulters &amp; Reports</span>
+            <span>3. Fee Defaulters</span>
             {kpiStats.defaultersCount > 0 && (
               <span className="px-1.5 py-0.5 text-[10px] bg-red-500 text-white rounded-full font-bold">
                 {kpiStats.defaultersCount}
               </span>
             )}
           </button>
+
+          {canAccessReports && (
+            <button
+              type="button"
+              onClick={() => setActiveTab('reports')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                activeTab === 'reports'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+            >
+              <BarChart3 className="w-4 h-4" />
+              <span>4. Reports</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -703,7 +1320,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
-                  {classes.map((cls) => {
+                  {classes.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                        {loadingClasses
+                          ? `Loading classes for ${activeSchool.name}...`
+                          : `No classes found for ${activeSchool.name}. Please add classes in Classes & Sections first.`}
+                      </td>
+                    </tr>
+                  ) : (
+                  classes.map((cls) => {
                     const struct = editingStructures[cls.id] || {
                       id: cls.id,
                       schoolId: activeSchool.id,
@@ -859,7 +1485,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         </td>
                       </tr>
                     );
-                  })}
+                  })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -899,12 +1526,20 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   <select
                     id="sms-fee-class-selector"
                     value={collectionClassId}
+                    disabled={loadingClasses}
                     onChange={(e) => {
                       setCollectionClassId(e.target.value);
                       setCollectionStudentId('');
                     }}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 cursor-pointer disabled:opacity-60"
                   >
+                    <option value="">
+                      {loadingClasses
+                        ? 'Loading classes...'
+                        : classes.length === 0
+                        ? '-- No Classes Found in Selected School --'
+                        : `-- Choose Class (${classes.length} available) --`}
+                    </option>
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.grade} - {c.section || 'General'} ({c.medium})
@@ -1436,10 +2071,477 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       )}
 
       {/* =================================================================== */}
+      {/* TAB 4: FINANCIAL REPORTS & EXPORTS (Daily, Monthly, Defaulters) */}
+      {/* =================================================================== */}
+      {activeTab === 'reports' && canAccessReports && (
+        <div className="space-y-6">
+          {/* Controls & Export Bar */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div>
+                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                  <span>Financial Collection &amp; Defaulters Reports</span>
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  {isSuperAdmin
+                    ? 'View aggregated metrics across all schools or filter by an individual school.'
+                    : `Filtered strictly for ${activeSchool.name} (SEMIS: ${activeSchool.semisCode || 'N/A'}).`}
+                </p>
+              </div>
+
+              {/* Export Buttons */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={loadAggregatedReportsData}
+                    disabled={loadingReports}
+                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingReports ? 'animate-spin' : ''}`} />
+                    <span>{loadingReports ? 'Syncing...' : 'Refresh All Schools'}</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleExportReportCsv}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Export Excel (CSV)</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportReportPdf}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Export / Print PDF</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Report Type Sub-Tabs + Filters */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+              {/* Report Type Switcher */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setReportType('daily')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    reportType === 'daily'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Daily Collection (Date-wise)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportType('monthly')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    reportType === 'monthly'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Monthly Collection (Month-wise)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReportType('defaulters')}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    reportType === 'defaulters'
+                      ? 'bg-rose-600 text-white shadow-xs'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  Defaulters List (Unpaid)
+                </button>
+              </div>
+
+              {/* Filter Controls */}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                {isSuperAdmin && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <Building className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <label htmlFor="report-school-scope" className="sr-only">School Scope</label>
+                    <select
+                      id="report-school-scope"
+                      value={reportSchoolScope}
+                      onChange={(e) => {
+                        setReportSchoolScope(e.target.value);
+                        setReportClassFilter('ALL');
+                      }}
+                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer max-w-[220px]"
+                    >
+                      <option value="ALL">All Schools (Aggregated)</option>
+                      {(registeredSchools.length > 0 ? registeredSchools : [activeSchool]).map((sch) => (
+                        <option key={sch.id} value={sch.id}>
+                          {sch.name} ({sch.semisCode || 'N/A'})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {reportType === 'daily' ? (
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <label htmlFor="report-date-picker" className="sr-only">Select Date</label>
+                    <input
+                      id="report-date-picker"
+                      type="date"
+                      value={reportDate}
+                      onChange={(e) => setReportDate(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <label htmlFor="report-month-picker" className="sr-only">Select Month</label>
+                    <select
+                      id="report-month-picker"
+                      value={reportMonth}
+                      onChange={(e) => setReportMonth(e.target.value)}
+                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer"
+                    >
+                      {monthOptions.map((opt) => (
+                        <option key={opt.val} value={opt.val} className="dark:bg-slate-900">
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Class filter (when viewing a single active school) */}
+                {(!isSuperAdmin || reportSchoolScope === activeSchool.id) && (
+                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <label htmlFor="report-class-filter" className="sr-only">Filter by Class</label>
+                    <select
+                      id="report-class-filter"
+                      value={reportClassFilter}
+                      onChange={(e) => setReportClassFilter(e.target.value)}
+                      className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden cursor-pointer"
+                    >
+                      <option value="ALL">All Classes ({classes.length})</option>
+                      {classes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.grade} - {c.section || 'General'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Summary KPI Strip */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                {reportType === 'daily' ? `Collected (${reportDate})` : `Total Collected (${reportMonthLabel})`}
+              </div>
+              <div className="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                Rs.{' '}
+                {(reportType === 'daily'
+                  ? reportData.totals.totalDailyCollected
+                  : reportData.totals.totalMonthlyCollected
+                ).toLocaleString()}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                {reportType === 'daily'
+                  ? `${reportData.dailyPayments.length} receipt(s) on date`
+                  : `${reportData.totals.totalPaidCount} student(s) paid`}
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Total Pending ({reportMonthLabel})
+              </div>
+              <div className="mt-2 text-xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                Rs. {reportData.totals.totalPending.toLocaleString()}
+              </div>
+              <div className="text-[11px] text-rose-500 mt-0.5">
+                {reportData.totals.totalDefaultersCount} unpaid student(s)
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Collection Rate
+              </div>
+              <div className="mt-2 text-xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+                {reportData.totals.overallCollectionRate}%
+              </div>
+              <div className="text-[11px] text-slate-500 mt-0.5">
+                Out of {reportData.totals.totalActiveStudents} active students
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                Report Scope
+              </div>
+              <div className="mt-2 text-sm font-bold text-slate-900 dark:text-white truncate" title={reportScopeLabel}>
+                {isSuperAdmin && reportSchoolScope === 'ALL'
+                  ? `${reportData.targetDatasets.length} Registered Schools`
+                  : activeSchool.name}
+              </div>
+              <div className="text-[11px] text-slate-500 mt-1">
+                {isSuperAdmin && reportSchoolScope === 'ALL' ? 'Super Admin Aggregated' : `SEMIS: ${activeSchool.semisCode || 'N/A'}`}
+              </div>
+            </div>
+          </div>
+
+          {/* Super Admin School-by-School Aggregated Summary Table */}
+          {isSuperAdmin && reportSchoolScope === 'ALL' && reportData.schoolSummaries.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+              <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                  School-Wise Aggregated Financial Breakdown ({reportType === 'daily' ? reportDate : reportMonthLabel})
+                </h3>
+                <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                  {reportData.schoolSummaries.length} Schools
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                      <th className="py-3 px-4">School &amp; SEMIS</th>
+                      <th className="py-3 px-4">District</th>
+                      <th className="py-3 px-4">Active Students</th>
+                      <th className="py-3 px-4">Paid</th>
+                      <th className="py-3 px-4">Pending</th>
+                      <th className="py-3 px-4 text-right">
+                        {reportType === 'daily' ? 'Daily Collected' : 'Monthly Collected'}
+                      </th>
+                      <th className="py-3 px-4 text-right">Total Pending</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {reportData.schoolSummaries.map((s) => (
+                      <tr key={s.schoolId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-900 dark:text-white">{s.schoolName}</div>
+                          <div className="text-[10px] font-mono text-slate-400">SEMIS: {s.semisCode || 'N/A'}</div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{s.district || 'Sindh'}</td>
+                        <td className="py-3 px-4 font-semibold">{s.activeStudentsCount}</td>
+                        <td className="py-3 px-4 text-emerald-600 dark:text-emerald-400 font-bold">{s.paidCount}</td>
+                        <td className="py-3 px-4 text-rose-600 dark:text-rose-400 font-bold">{s.defaultersCount}</td>
+                        <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                          Rs. {(reportType === 'daily' ? s.dailyCollected : s.monthlyCollected).toLocaleString()}
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-rose-600 dark:text-rose-400">
+                          Rs. {s.totalPending.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Detailed Report Table */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                {reportType === 'daily'
+                  ? `Daily Fee Collection Ledger — ${reportDate}`
+                  : reportType === 'monthly'
+                  ? `Monthly Fee Collection Ledger — ${reportMonthLabel}`
+                  : `Fee Defaulters List — ${reportMonthLabel}`}
+              </h3>
+              <span className="text-[11px] font-semibold text-slate-500">
+                {reportType === 'daily'
+                  ? `${reportData.dailyPayments.length} record(s)`
+                  : reportType === 'monthly'
+                  ? `${reportData.monthlyPayments.length} record(s)`
+                  : `${reportData.defaulterRows.length} student(s)`}
+              </span>
+            </div>
+
+            {/* 1. Daily Fee Collection Table */}
+            {reportType === 'daily' && (
+              reportData.dailyPayments.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  <Receipt className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                    No collections recorded on {reportDate}
+                  </p>
+                  <p className="text-slate-400 mt-1">
+                    Select another date above or record payments in "2. Collect Fee &amp; Vouchers".
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                        <th className="py-3 px-4">Receipt No</th>
+                        {isSuperAdmin && <th className="py-3 px-4">School</th>}
+                        <th className="py-3 px-4">GR No</th>
+                        <th className="py-3 px-4">Student Name</th>
+                        <th className="py-3 px-4">Class</th>
+                        <th className="py-3 px-4">Fee Month</th>
+                        <th className="py-3 px-4">Method</th>
+                        <th className="py-3 px-4 text-right">Amount Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {reportData.dailyPayments.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                            {p.receiptNumber || 'RCPT'}
+                          </td>
+                          {isSuperAdmin && (
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">
+                              {p.schoolName}
+                            </td>
+                          )}
+                          <td className="py-3 px-4 font-mono font-bold">{p.grNumber}</td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{p.studentName}</td>
+                          <td className="py-3 px-4">{p.grade} - {p.section || 'General'}</td>
+                          <td className="py-3 px-4">{p.monthLabel}</td>
+                          <td className="py-3 px-4">{p.paymentMethod || 'Cash'}</td>
+                          <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            Rs. {Number(p.paidAmount || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+
+            {/* 2. Monthly Fee Collection Table */}
+            {reportType === 'monthly' && (
+              reportData.monthlyPayments.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  <Calendar className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                    No fee collections found for {reportMonthLabel}
+                  </p>
+                  <p className="text-slate-400 mt-1">
+                    Try choosing a different billing month or collecting fees in Tab 2.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                        <th className="py-3 px-4">Receipt No</th>
+                        <th className="py-3 px-4">Date</th>
+                        {isSuperAdmin && <th className="py-3 px-4">School</th>}
+                        <th className="py-3 px-4">GR No</th>
+                        <th className="py-3 px-4">Student Name</th>
+                        <th className="py-3 px-4">Class</th>
+                        <th className="py-3 px-4">Method</th>
+                        <th className="py-3 px-4 text-right">Amount Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {reportData.monthlyPayments.map((p) => (
+                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                            {p.receiptNumber || 'RCPT'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-500">
+                            {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : 'N/A'}
+                          </td>
+                          {isSuperAdmin && (
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">
+                              {p.schoolName}
+                            </td>
+                          )}
+                          <td className="py-3 px-4 font-mono font-bold">{p.grNumber}</td>
+                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{p.studentName}</td>
+                          <td className="py-3 px-4">{p.grade} - {p.section || 'General'}</td>
+                          <td className="py-3 px-4">{p.paymentMethod || 'Cash'}</td>
+                          <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                            Rs. {Number(p.paidAmount || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+
+            {/* 3. Defaulters List Table */}
+            {reportType === 'defaulters' && (
+              reportData.defaulterRows.length === 0 ? (
+                <div className="py-12 text-center text-xs text-slate-500">
+                  <CheckCircle2 className="w-9 h-9 mx-auto text-emerald-500 mb-2" />
+                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                    Zero Defaulters for {reportMonthLabel}!
+                  </p>
+                  <p className="text-slate-400 mt-1">
+                    All active students in scope have cleared their dues.
+                  </p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                        {isSuperAdmin && <th className="py-3 px-4">School</th>}
+                        <th className="py-3 px-4">GR No</th>
+                        <th className="py-3 px-4">Student &amp; Father Name</th>
+                        <th className="py-3 px-4">Class &amp; Section</th>
+                        <th className="py-3 px-4">Guardian Phone</th>
+                        <th className="py-3 px-4 text-right">Pending Due (PKR)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {reportData.defaulterRows.map((row) => (
+                        <tr key={`${row.schoolId}_${row.student.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          {isSuperAdmin && (
+                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">
+                              {row.schoolName}
+                            </td>
+                          )}
+                          <td className="py-3 px-4 font-mono font-bold">{row.student.grNumber}</td>
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-900 dark:text-white">{row.student.fullName}</div>
+                            <div className="text-[10px] text-slate-400">s/o {row.student.fatherName}</div>
+                          </td>
+                          <td className="py-3 px-4">{row.student.grade} - {row.student.section || 'General'}</td>
+                          <td className="py-3 px-4 font-mono text-slate-500">{row.student.guardianPhone || 'N/A'}</td>
+                          <td className="py-3 px-4 text-right font-bold text-rose-600 dark:text-rose-400">
+                            Rs. {row.expectedFee.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      )}
+      </div>
+
+      {/* =================================================================== */}
       {/* MODAL: ADD CUSTOM FEE CHARGE */}
       {/* =================================================================== */}
       {customChargeModalClassId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
               <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -1675,6 +2777,213 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* PRINTABLE A4 REPORT PDF MODAL (.printable-a4-sheet) */}
+      {/* =================================================================== */}
+      {showReportPrintModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="w-full max-w-4xl bg-white text-slate-900 rounded-2xl shadow-2xl p-6 relative my-8">
+            <div className="no-print flex items-center justify-between pb-4 mb-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-indigo-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Official Financial Report — A4 PDF Preview
+                </h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={triggerPrintDocument}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Print / Save as PDF (A4)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowReportPrintModal(false)}
+                  className="p-2 hover:bg-slate-100 text-slate-500 rounded-xl transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="printable-a4-sheet bg-white text-slate-900 p-6 border border-slate-200 rounded-xl space-y-5">
+              {/* Official Letterhead */}
+              <div className="flex items-start justify-between border-b-2 border-slate-800 pb-3">
+                <div>
+                  <div className="text-[10px] font-bold tracking-widest text-emerald-800 uppercase">
+                    GOVERNMENT OF SINDH · SCHOOL EDUCATION &amp; LITERACY DEPARTMENT
+                  </div>
+                  <h2 className="text-lg font-black text-slate-900 uppercase">
+                    {reportType === 'daily'
+                      ? 'Daily Fee Collection Report'
+                      : reportType === 'monthly'
+                      ? 'Monthly Fee Collection Report'
+                      : 'Monthly Fee Defaulters List'}
+                  </h2>
+                  <div className="text-xs text-slate-600 font-medium">
+                    Scope: {reportScopeLabel}
+                  </div>
+                </div>
+                <div className="text-right text-xs">
+                  <div className="font-bold text-slate-800">
+                    {reportType === 'daily' ? `Date: ${reportDate}` : `Month: ${reportMonthLabel}`}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    Generated: {new Date().toLocaleString('en-GB')}
+                  </div>
+                </div>
+              </div>
+
+              {/* Totals Summary Box */}
+              <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-300 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">Total Collected</span>
+                  <strong className="text-sm text-emerald-800 font-mono">
+                    Rs.{' '}
+                    {(reportType === 'daily'
+                      ? reportData.totals.totalDailyCollected
+                      : reportData.totals.totalMonthlyCollected
+                    ).toLocaleString()}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">Total Pending</span>
+                  <strong className="text-sm text-rose-700 font-mono">
+                    Rs. {reportData.totals.totalPending.toLocaleString()}
+                  </strong>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 block uppercase font-bold">Collection Rate</span>
+                  <strong className="text-sm text-slate-900 font-mono">
+                    {reportData.totals.overallCollectionRate}% ({reportData.totals.totalPaidCount}/{reportData.totals.totalActiveStudents})
+                  </strong>
+                </div>
+              </div>
+
+              {/* A4 Report Table */}
+              {reportType === 'daily' && (
+                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
+                  <thead className="bg-slate-100 font-bold text-slate-800">
+                    <tr>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Receipt</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
+                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Method</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Paid (PKR)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.dailyPayments.map((p) => (
+                      <tr key={p.id}>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.receiptNumber || 'RCPT'}</td>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{p.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{p.studentName}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">{p.grade} - {p.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">{p.paymentMethod || 'Cash'}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold">
+                          {Number(p.paidAmount || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {reportType === 'monthly' && (
+                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
+                  <thead className="bg-slate-100 font-bold text-slate-800">
+                    <tr>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Receipt</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Date</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
+                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Paid (PKR)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.monthlyPayments.map((p) => (
+                      <tr key={p.id}>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.receiptNumber || 'RCPT'}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">
+                          {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : 'N/A'}
+                        </td>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{p.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{p.studentName}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">{p.grade} - {p.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold">
+                          {Number(p.paidAmount || 0).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {reportType === 'defaulters' && (
+                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
+                  <thead className="bg-slate-100 font-bold text-slate-800">
+                    <tr>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
+                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Student &amp; Father Name</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300">Guardian Phone</th>
+                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Due (PKR)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportData.defaulterRows.map((row) => (
+                      <tr key={`${row.schoolId}_${row.student.id}`}>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{row.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{row.student.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">
+                          {row.student.fullName} s/o {row.student.fatherName}
+                        </td>
+                        <td className="py-1.5 px-2.5 border border-slate-300">
+                          {row.student.grade} - {row.student.section || 'General'}
+                        </td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">
+                          {row.student.guardianPhone || 'N/A'}
+                        </td>
+                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">
+                          {row.expectedFee.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {/* Signatures Footer */}
+              <div className="flex items-end justify-between pt-8 text-xs">
+                <div className="text-[10px] text-slate-500">
+                  Prepared by: {currentUserProfile?.fullName || 'Accounts Office'}
+                </div>
+                <div className="flex items-center gap-12">
+                  <div className="text-center">
+                    <div className="w-28 border-b border-slate-400 mb-1"></div>
+                    <span className="text-[10px] text-slate-500">Accounts / Cashier</span>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-28 border-b border-slate-400 mb-1"></div>
+                    <span className="text-[10px] text-slate-500">Principal / DDO Sign</span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

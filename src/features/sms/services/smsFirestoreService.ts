@@ -136,7 +136,8 @@ export async function fetchSchoolsFromFirestore(): Promise<School[]> {
     const schools: School[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        schools.push(normalizeTimestamps(d.data() as School));
+        const data = d.data() as School;
+        schools.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
     return schools;
@@ -222,7 +223,8 @@ export async function fetchClassesFromFirestore(schoolId: string): Promise<Class
     const classes: ClassSection[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        classes.push(normalizeTimestamps(d.data() as ClassSection));
+        const data = d.data() as ClassSection;
+        classes.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
     return classes;
@@ -273,7 +275,8 @@ export async function fetchStudentsFromFirestore(schoolId: string): Promise<Stud
     const students: Student[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        students.push(normalizeTimestamps(d.data() as Student));
+        const data = d.data() as Student;
+        students.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
     return students;
@@ -442,7 +445,8 @@ export async function fetchTeachersFromFirestore(
     const teachers: TeacherInfo[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        teachers.push(normalizeTimestamps(d.data() as TeacherInfo));
+        const data = d.data() as TeacherInfo;
+        teachers.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
     return teachers;
@@ -488,7 +492,8 @@ export async function fetchFeeStructuresFromFirestore(
     const feeStructures: ClassFeeStructure[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        feeStructures.push(normalizeTimestamps(d.data() as ClassFeeStructure));
+        const data = d.data() as ClassFeeStructure;
+        feeStructures.push(normalizeTimestamps({ ...data, id: data.id || d.id, classId: data.classId || d.id }));
       }
     });
     return feeStructures;
@@ -548,7 +553,8 @@ export async function fetchFeePaymentsFromFirestore(
     const payments: FeePayment[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
-        payments.push(normalizeTimestamps(d.data() as FeePayment));
+        const data = d.data() as FeePayment;
+        payments.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
     return payments;

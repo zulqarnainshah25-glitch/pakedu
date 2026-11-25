@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Users,
   Plus,
@@ -39,6 +39,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const {
     userRole,
     classes,
+    loadingClasses,
+    refreshActiveSchoolClasses,
     students,
     filteredStudentsForUser,
     addStudent,
@@ -49,7 +51,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     canAdmitStudents,
   } = useSms();
 
-  const isAdmin = userRole === 'admin' || userRole === 'principal';
+  const isAdmin = userRole === 'admin' || userRole === 'principal' || userRole === 'super-admin';
   const canAdmitOrEdit = isAdmin || canAdmitStudents;
 
   // Filters & Search
@@ -81,6 +83,23 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
+  // Ensure classes for the active school are fetched from Firestore
+  useEffect(() => {
+    if (activeSchool?.id) {
+      refreshActiveSchoolClasses(activeSchool.id);
+    }
+  }, [activeSchool?.id]);
+
+  // Keep classId synced when classes load asynchronously while Admission modal is open
+  useEffect(() => {
+    if (isFormModalOpen && !editingStudent && classes.length > 0) {
+      const exists = classes.some((c) => c.id === classId);
+      if (!classId || !exists) {
+        setClassId(classes[0].id);
+      }
+    }
+  }, [isFormModalOpen, editingStudent, classes, classId]);
+
   // Suggest next GR number automatically
   const suggestNextGrNumber = (): string => {
     const grNumbers = students
@@ -94,6 +113,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   };
 
   const openAddModal = () => {
+    if (activeSchool?.id) {
+      refreshActiveSchoolClasses(activeSchool.id);
+    }
     setEditingStudent(null);
     setFullName('');
     setFatherName('');
@@ -104,13 +126,16 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setClassId(classes[0]?.id || '');
     setAdmissionDate(new Date().toISOString().split('T')[0]);
     setStatus('active');
-    setGuardianPhone('0300-');
+    setGuardianPhone('');
     setAddress('');
     setFormError(null);
     setIsFormModalOpen(true);
   };
 
   const openEditModal = (student: Student) => {
+    if (activeSchool?.id) {
+      refreshActiveSchoolClasses(activeSchool.id);
+    }
     setEditingStudent(student);
     setFullName(student.fullName);
     setFatherName(student.fatherName);
@@ -121,7 +146,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setClassId(student.classId);
     setAdmissionDate(student.admissionDate);
     setStatus(student.status);
-    setGuardianPhone(student.guardianPhone);
+    setGuardianPhone(student.guardianPhone || '');
     setAddress(student.address || '');
     setFormError(null);
     setIsFormModalOpen(true);
@@ -131,9 +156,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     e.preventDefault();
     setFormError(null);
 
-    // Basic Validation
+    // Mandatory Fields Validation
     if (!fullName.trim()) {
-      setFormError('Student Full Name is required.');
+      setFormError('Full Name is required.');
       return;
     }
     if (!fatherName.trim()) {
@@ -144,8 +169,23 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       setFormError('General Register (GR) Number is required.');
       return;
     }
-    if (!classId) {
-      setFormError('Please select a Class & Section.');
+    if (!classId.trim()) {
+      setFormError(
+        classes.length === 0
+          ? 'No classes found for this school. Please create a Class & Section first.'
+          : 'Please select a Class & Section.'
+      );
+      return;
+    }
+    const selectedClass = classes.find((c) => c.id === classId);
+    if (!selectedClass) {
+      setFormError('Selected Class & Section is invalid. Please choose a valid class.');
+      return;
+    }
+    const trimmedPhone = guardianPhone.trim();
+    const phoneDigits = trimmedPhone.replace(/\D/g, '');
+    if (!trimmedPhone || phoneDigits.length < 7) {
+      setFormError('Guardian Phone Number is required (enter at least 7 digits, e.g., 0300-1234567).');
       return;
     }
 
@@ -160,9 +200,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       return;
     }
 
-    const selectedClass = classes.find((c) => c.id === classId);
-    const grade = selectedClass ? selectedClass.grade : 'Class 9';
-    const section = selectedClass ? selectedClass.section : 'A';
+    const grade = selectedClass.grade;
+    const section = selectedClass.section;
 
     const payload = {
       fullName: fullName.trim(),
@@ -962,21 +1001,35 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                 {/* Class & Section */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="admission-class-select" className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Class &amp; Section <span className="text-rose-500">*</span>
                   </label>
                   <select
+                    id="admission-class-select"
                     value={classId}
                     onChange={(e) => setClassId(e.target.value)}
                     required
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    disabled={loadingClasses}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-60"
                   >
+                    <option value="">
+                      {loadingClasses
+                        ? 'Loading classes from school...'
+                        : classes.length === 0
+                        ? '-- No Classes Configured --'
+                        : '-- Select Class & Section --'}
+                    </option>
                     {classes.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.grade} - {c.section} ({c.medium})
                       </option>
                     ))}
                   </select>
+                  {!loadingClasses && classes.length === 0 && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5 block">
+                      No classes found in {activeSchool.name}. Add classes in Classes &amp; Sections first.
+                    </span>
+                  )}
                 </div>
 
                 {/* Gender */}
@@ -1040,11 +1093,12 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                 {/* Guardian Phone Number */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="admission-guardian-phone" className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Guardian Phone No. <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    type="text"
+                    id="admission-guardian-phone"
+                    type="tel"
                     required
                     value={guardianPhone}
                     onChange={(e) => setGuardianPhone(e.target.value)}

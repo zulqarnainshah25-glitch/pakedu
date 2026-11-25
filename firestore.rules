@@ -41,11 +41,14 @@ service cloud.firestore {
     }
 
     // Super Admin: Prefer custom claim request.auth.token.superAdmin == true (NOT an email check)
-    // with active user doc role 'super-admin' as fallback
+    // with user doc role 'super-admin' or isSuperAdmin == true as fallback
     function isSuperAdmin() {
       return isSignedIn() && (
         request.auth.token.get('superAdmin', false) == true ||
-        (hasUserDoc() && userDoc().get('role', '') == 'super-admin' && userDoc().get('status', '') == 'active')
+        (hasUserDoc() && (
+          userDoc().get('isSuperAdmin', false) == true ||
+          (userDoc().get('role', '') == 'super-admin' && userDoc().get('status', 'active') == 'active')
+        ))
       );
     }
 
@@ -80,7 +83,7 @@ service cloud.firestore {
     // =========================================================================
     function isValidClassSection(data) {
       return data.keys().hasAll(['id', 'grade', 'section', 'medium', 'academicYear']) &&
-        data.keys().hasOnly(['id', 'grade', 'section', 'medium', 'academicYear', 'classTeacherId', 'classTeacherName', 'roomNumber', 'totalStudents', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'grade', 'section', 'medium', 'academicYear', 'classTeacherId', 'classTeacherName', 'roomNumber', 'totalStudents', 'capacity', 'createdAt', 'updatedAt']) &&
         data.id is string && isValidId(data.id) &&
         data.grade is string && data.grade.size() >= 1 && data.grade.size() <= 50 &&
         data.section is string && data.section.size() >= 1 && data.section.size() <= 50 &&
@@ -89,15 +92,16 @@ service cloud.firestore {
     }
 
     function isValidStudent(data) {
-      return data.keys().hasAll(['id', 'grNumber', 'name', 'fatherName', 'gender', 'currentClassId', 'status']) &&
-        data.keys().hasOnly(['id', 'grNumber', 'name', 'fatherName', 'gender', 'dob', 'admissionDate', 'currentClassId', 'currentGrade', 'currentSection', 'bFormOrCnic', 'guardianPhone', 'address', 'status', 'createdAt', 'updatedAt']) &&
+      return data.keys().hasAll(['id', 'grNumber', 'fullName', 'fatherName', 'gender', 'classId', 'guardianPhone', 'status']) &&
+        data.keys().hasOnly(['id', 'grNumber', 'fullName', 'name', 'fatherName', 'gender', 'dob', 'admissionDate', 'classId', 'currentClassId', 'grade', 'currentGrade', 'section', 'currentSection', 'bFormNumber', 'bFormOrCnic', 'guardianPhone', 'address', 'status', 'createdAt', 'updatedAt']) &&
         data.id is string && isValidId(data.id) &&
         data.grNumber is string && data.grNumber.size() >= 1 && data.grNumber.size() <= 50 &&
-        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.fullName is string && data.fullName.size() >= 1 && data.fullName.size() <= 120 &&
         data.fatherName is string && data.fatherName.size() >= 1 && data.fatherName.size() <= 120 &&
+        data.guardianPhone is string && data.guardianPhone.size() >= 5 && data.guardianPhone.size() <= 30 &&
         data.gender is string && (data.gender == 'Male' || data.gender == 'Female' || data.gender == 'Other') &&
-        data.currentClassId is string && isValidId(data.currentClassId) &&
-        data.status is string && (data.status == 'Active' || data.status == 'Struck Off' || data.status == 'SLC Issued' || data.status == 'Passed Out');
+        data.classId is string && isValidId(data.classId) &&
+        data.status is string && (data.status in ['active', 'struck_off', 'transferred', 'graduated', 'Active', 'Struck Off', 'SLC Issued', 'Passed Out']);
     }
 
     function isValidAttendance(data) {
@@ -260,7 +264,12 @@ service cloud.firestore {
       // --- Subcollection: Students (/schools/{schoolId}/students/{studentId}) ---
       match /students/{studentId} {
         allow get, list: if isSchoolMember(schoolId);
-        allow create, update: if isSchoolAdmin(schoolId) && isValidId(studentId) && isValidStudent(incoming());
+        allow create, update: if isValidId(studentId) && isValidStudent(incoming()) && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('isAdmissionIncharge', false) == true
+          )
+        );
         allow delete: if isSchoolAdmin(schoolId);
       }
 

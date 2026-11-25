@@ -165,6 +165,8 @@ interface SmsContextType {
 
   // Classes & Students
   classes: ClassSection[];
+  loadingClasses: boolean;
+  refreshActiveSchoolClasses: (schoolId?: string) => Promise<ClassSection[]>;
   teachers: TeacherInfo[];
   students: Student[];
   addClass: (newClass: Omit<ClassSection, 'id' | 'createdAt'>) => void;
@@ -318,28 +320,6 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return INITIAL_MOCK_SCHOOL;
   });
 
-  // Synchronize activeSchool whenever registeredSchools or currentUserProfile updates
-  useEffect(() => {
-    if (registeredSchools && registeredSchools.length > 0) {
-      if (currentUserProfile?.schoolId) {
-        const matched = registeredSchools.find(
-          (s) =>
-            s.id === currentUserProfile.schoolId ||
-            (currentUserProfile.semisCode && s.semisCode === currentUserProfile.semisCode)
-        );
-        if (matched && activeSchool.id !== matched.id) {
-          setActiveSchool(matched);
-          return;
-        }
-      }
-      if (!activeSchool.id || activeSchool.id === '' || activeSchool.id === 'sch_seld_khi_01') {
-        setActiveSchool(registeredSchools[0]);
-      }
-    } else if (!activeSchool.id || activeSchool.id === '') {
-      setActiveSchool(INITIAL_MOCK_SCHOOL);
-    }
-  }, [registeredSchools, currentUserProfile?.schoolId, currentUserProfile?.semisCode]);
-
   // Super Admin & Impersonation State
   const [isImpersonating, setIsImpersonating] = useState(false);
   const [impersonationOriginalRole, setImpersonationOriginalRole] = useState<UserRole | null>(null);
@@ -353,6 +333,42 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       userRole === 'super-admin'
     );
   }, [currentUserProfile, userRole]);
+
+  // Synchronize activeSchool whenever registeredSchools or currentUserProfile updates
+  useEffect(() => {
+    if (registeredSchools && registeredSchools.length > 0) {
+      const currentExistsInDirectory = Boolean(
+        activeSchool.id && registeredSchools.some((s) => s.id === activeSchool.id)
+      );
+
+      // Preserve explicit Super Admin selection or active impersonation if valid
+      if (isImpersonating && currentExistsInDirectory) {
+        return;
+      }
+      if (isSuperAdmin && currentExistsInDirectory) {
+        return;
+      }
+
+      if (currentUserProfile?.schoolId) {
+        const matched = registeredSchools.find(
+          (s) =>
+            s.id === currentUserProfile.schoolId ||
+            (currentUserProfile.semisCode && s.semisCode === currentUserProfile.semisCode)
+        );
+        if (matched && activeSchool.id !== matched.id) {
+          setActiveSchool(matched);
+          return;
+        }
+      }
+
+      // If activeSchool is empty, mock placeholder, or no longer in registeredSchools, bind to first live school
+      if (!currentExistsInDirectory) {
+        setActiveSchool(registeredSchools[0]);
+      }
+    } else if (!activeSchool.id || activeSchool.id === '') {
+      setActiveSchool(INITIAL_MOCK_SCHOOL);
+    }
+  }, [registeredSchools, currentUserProfile?.schoolId, currentUserProfile?.semisCode, isImpersonating, isSuperAdmin]);
 
   // Cloud Sync Resilience & Error Diagnostics State
   const [syncError, setSyncError] = useState<SyncErrorInfo | null>(null);
@@ -545,6 +561,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ignore
     }
   }, [teachers]);
+
+  const [loadingClasses, setLoadingClasses] = useState<boolean>(false);
 
   const [classes, setClasses] = useState<ClassSection[]>(() => {
     try {
@@ -788,105 +806,132 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Cloud Firestore Sync when not in demo mode
+  const refreshActiveSchoolClasses = async (overrideSchoolId?: string): Promise<ClassSection[]> => {
+    const targetId = overrideSchoolId || activeSchool.id;
+    if (!targetId || targetId === 'sch_seld_khi_01') return classes;
+    if (demoMode) return classes;
+
+    setLoadingClasses(true);
+    try {
+      const remoteClasses = await fetchClassesFromFirestore(targetId);
+      setClasses(remoteClasses);
+      return remoteClasses;
+    } catch (err) {
+      console.warn('[Firestore] Notice: Classes refresh error:', err);
+      return classes;
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  // Sync Schools Directory & Registration Requests on mount / mode change
   useEffect(() => {
     if (demoMode) return;
+    let cancelled = false;
 
-    // 1. Sync registered schools
     fetchSchoolsFromFirestore()
       .then((remoteSchools) => {
+        if (cancelled) return;
         if (remoteSchools && remoteSchools.length > 0) {
-          setRegisteredSchools((prev) => {
-            const map = new Map<string, School>();
-            prev.forEach((s) => {
-              if (s.id && s.id !== 'sch_seld_khi_01') map.set(s.id, s);
-            });
-            remoteSchools.forEach((s) => {
-              if (s.id && s.id !== 'sch_seld_khi_01') map.set(s.id, s);
-            });
-            const merged = Array.from(map.values());
-            if (!activeSchool.id && merged.length > 0) {
-              setActiveSchool(merged[0]);
-            }
-            return merged;
-          });
+          setRegisteredSchools(remoteSchools.filter((s) => s.id && s.id !== 'sch_seld_khi_01'));
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: School fetch error:', err));
 
-    // 1b. Sync school registration requests (for Super Admin review)
     fetchSchoolRegistrationRequestsFromFirestore()
       .then((remoteReqs) => {
+        if (cancelled) return;
         if (remoteReqs && remoteReqs.length > 0) {
           setSchoolRegistrationRequests(remoteReqs);
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: School requests fetch error:', err));
 
+    return () => {
+      cancelled = true;
+    };
+  }, [demoMode]);
+
+  // Cloud Firestore Sync for active school subcollections when not in demo mode
+  useEffect(() => {
+    if (demoMode) return;
     if (!activeSchool.id || activeSchool.id === 'sch_seld_khi_01') return;
 
+    let cancelled = false;
+    const schoolId = activeSchool.id;
+
+    // Reset school-scoped collections before loading when switching schools so stale data doesn't linger
+    setLoadingClasses(true);
+
     // 2. Sync classes for active school
-    fetchClassesFromFirestore(activeSchool.id)
+    fetchClassesFromFirestore(schoolId)
       .then((remoteClasses) => {
-        if (remoteClasses && remoteClasses.length > 0) {
-          setClasses(remoteClasses);
+        if (!cancelled) {
+          setClasses(remoteClasses || []);
         }
       })
-      .catch((err) => console.warn('[Firestore] Notice: Classes fetch error:', err));
+      .catch((err) => console.warn('[Firestore] Notice: Classes fetch error:', err))
+      .finally(() => {
+        if (!cancelled) setLoadingClasses(false);
+      });
 
     // 2b. Sync teachers for active school
-    fetchTeachersFromFirestore(activeSchool.id)
+    fetchTeachersFromFirestore(schoolId)
       .then((remoteTeachers) => {
-        if (remoteTeachers && remoteTeachers.length > 0) {
-          setTeachers(remoteTeachers);
+        if (!cancelled) {
+          setTeachers(remoteTeachers || []);
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Teachers fetch error:', err));
 
     // 3. Sync students for active school
-    fetchStudentsFromFirestore(activeSchool.id)
+    fetchStudentsFromFirestore(schoolId)
       .then((remoteStudents) => {
-        if (remoteStudents && remoteStudents.length > 0) {
-          setStudents(remoteStudents);
+        if (!cancelled) {
+          setStudents(remoteStudents || []);
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Students fetch error:', err));
 
     // 4. Sync attendance for active school
-    fetchAttendanceFromFirestore(activeSchool.id)
+    fetchAttendanceFromFirestore(schoolId)
       .then((remoteAttendance) => {
-        if (remoteAttendance && Object.keys(remoteAttendance).length > 0) {
-          setAttendanceRegisters(remoteAttendance);
+        if (!cancelled) {
+          setAttendanceRegisters(remoteAttendance || {});
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Attendance fetch error:', err));
 
     // 5. Sync join requests for active school
-    fetchJoinRequestsFromFirestore(activeSchool.id)
+    fetchJoinRequestsFromFirestore(schoolId)
       .then((remoteRequests) => {
-        if (remoteRequests && remoteRequests.length > 0) {
-          setJoinRequests(remoteRequests);
+        if (!cancelled) {
+          setJoinRequests(remoteRequests || []);
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Join requests fetch error:', err));
 
     // 6. Sync fee structures for active school
-    fetchFeeStructuresFromFirestore(activeSchool.id)
+    fetchFeeStructuresFromFirestore(schoolId)
       .then((remoteStructures) => {
-        if (remoteStructures && remoteStructures.length > 0) {
-          setFeeStructures(remoteStructures);
+        if (!cancelled) {
+          setFeeStructures(remoteStructures || []);
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee structures fetch error:', err));
 
     // 7. Sync fee payments for active school
-    fetchFeePaymentsFromFirestore(activeSchool.id)
+    fetchFeePaymentsFromFirestore(schoolId)
       .then((remotePayments) => {
-        if (remotePayments && remotePayments.length > 0) {
-          setFeePayments(remotePayments);
+        if (!cancelled) {
+          setFeePayments(remotePayments || []);
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee payments fetch error:', err));
+
+    return () => {
+      cancelled = true;
+    };
   }, [demoMode, activeSchool.id]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
@@ -1661,9 +1706,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [students, classes, teachers]);
 
-  // Permission Guard: Only School Admin or designated Admission Incharge can admit/edit students
+  // Permission Guard: Only School Admin, Super Admin, or designated Admission Incharge can admit/edit students
   const canAdmitStudents = useMemo(() => {
-    if (effectiveRole === 'admin' || effectiveRole === 'principal') return true;
+    if (effectiveRole === 'admin' || effectiveRole === 'principal' || effectiveRole === 'super-admin') return true;
     if (effectiveRole === 'teacher') {
       const currentTeacher = teachers.find(
         (t) => t.email === currentUserProfile?.email || t.id === currentUserProfile?.uid
@@ -1789,6 +1834,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         approveJoinRequest,
         rejectJoinRequest,
         classes,
+        loadingClasses,
+        refreshActiveSchoolClasses,
         teachers,
         students,
         addClass,
