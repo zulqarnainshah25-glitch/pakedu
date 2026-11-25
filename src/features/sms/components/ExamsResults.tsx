@@ -79,19 +79,19 @@ const ReportPrintModalShell: React.FC<ReportPrintModalShellProps> = ({
       aria-label={title}
     >
       <div
-        className="w-full max-w-4xl max-h-[92vh] bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:overflow-visible print:block"
+        className="w-full max-w-4xl max-h-[92vh] bg-[#FFFDF9] text-[#1C1917] rounded-2xl shadow-2xl flex flex-col overflow-hidden print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:overflow-visible print:block"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-200 bg-white">
+        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-[#E7E0D4] bg-[#FFFDF9]">
           <div className="flex items-center gap-2.5 min-w-0">
-            <Award className="w-5 h-5 text-indigo-600 shrink-0" />
-            <h3 className="text-base font-bold text-slate-900 truncate">{title}</h3>
+            <Award className="w-5 h-5 text-[#7F1D1D] shrink-0" />
+            <h3 className="text-base font-bold text-[#1C1917] truncate">{title}</h3>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               type="button"
               onClick={onPrint}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>{printLabel}</span>
@@ -100,7 +100,7 @@ const ReportPrintModalShell: React.FC<ReportPrintModalShellProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Close preview"
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] text-[#44403C] font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
             >
               <X className="w-4 h-4" />
               <span>Close</span>
@@ -112,22 +112,22 @@ const ReportPrintModalShell: React.FC<ReportPrintModalShellProps> = ({
           {children}
         </div>
 
-        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-t border-slate-200 bg-slate-50">
-          <span className="text-[11px] text-slate-500">
+        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-t border-[#E7E0D4] bg-[#FAF8F5]">
+          <span className="text-[11px] text-[#57534E]">
             A4 Print &amp; PDF Ready · Press Esc or Close to return
           </span>
           <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+              className="px-4 py-2 bg-[#FFFDF9] hover:bg-[#F3EFEA] border border-[#D6CCC2] text-[#44403C] font-semibold text-xs rounded-xl transition cursor-pointer"
             >
               Close / Cancel
             </button>
             <button
               type="button"
               onClick={onPrint}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
               <Printer className="w-4 h-4" />
               <span>{printLabel}</span>
@@ -699,18 +699,18 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
       {/* Main Screen Content (hidden cleanly on print when modal is open) */}
       <div className={reportStudentsForPrint ? 'no-print space-y-6' : 'space-y-6'}>
         {/* Header Banner */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-500/20">
+              <div className="w-12 h-12 rounded-2xl bg-[#7F1D1D]/10 dark:bg-[#C2410C]/20 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center shrink-0 border border-[#7F1D1D]/20">
                 <Award className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                  <h1 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                     Exams &amp; Student Results
                   </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FEE2E2] dark:bg-[#3F1014]/70 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60">
                     {activeSchool.name || 'School Academics'}
                   </span>
                   {!canManageExams && (
@@ -720,7 +720,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                   Configure examinations, record student marks per subject, compute class positions, and print official A4 Report Cards.
                 </p>
               </div>
@@ -730,7 +730,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               <button
                 type="button"
                 onClick={onBack}
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                className="px-3.5 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-semibold transition cursor-pointer"
               >
                 ← Back to Command Center
               </button>
@@ -739,9 +739,9 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
 
           {/* Super Admin School Switcher */}
           {isSuperAdmin && registeredSchools.length > 0 && (
-            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
-                <Building className="w-4 h-4 text-indigo-500 shrink-0" />
+            <div className="mt-4 pt-4 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs text-[#57534E] dark:text-[#E7E0D4]">
+                <Building className="w-4 h-4 text-[#7F1D1D] shrink-0" />
                 <span className="font-semibold">Super Admin School Context:</span>
               </div>
               <select
@@ -753,7 +753,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     refreshActiveSchoolClasses(chosen.id);
                   }
                 }}
-                className="sm:w-96 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                className="sm:w-96 px-3 py-2 text-xs rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] font-semibold"
               >
                 {registeredSchools.map((s) => (
                   <option key={s.id} value={s.id}>
@@ -799,8 +799,8 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 onClick={() => setActiveTab('setup')}
                 className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
                   activeTab === 'setup'
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-[#7F1D1D] text-white shadow-sm'
+                    : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
@@ -812,8 +812,8 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               onClick={() => setActiveTab('marks')}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
                 activeTab === 'marks'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-[#7F1D1D] text-white shadow-sm'
+                  : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
               }`}
             >
               <ClipboardCheck className="w-4 h-4" />
@@ -824,8 +824,8 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               onClick={() => setActiveTab('reports')}
               className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
                 activeTab === 'reports'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-[#7F1D1D] text-white shadow-sm'
+                  : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -839,12 +839,12 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
         {/* ================================================================= */}
         {activeTab === 'setup' && (
           !canManageExams ? (
-            <div className="bg-white dark:bg-slate-900 border border-rose-200 dark:border-rose-800 rounded-2xl p-8 text-center space-y-2">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-rose-200 dark:border-rose-800 rounded-2xl p-8 text-center space-y-2">
               <ShieldAlert className="w-8 h-8 text-rose-500 mx-auto" />
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 Administrator Access Required
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                 Only School Administrators or Principals can create or modify exams. Teachers can enter marks for assigned classes under &ldquo;Enter Class Marks&rdquo;.
               </p>
             </div>
@@ -853,14 +853,14 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               {/* Left Column: Create / Edit Exam Form */}
               <form
                 onSubmit={handleSaveExam}
-                className="lg:col-span-7 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5 shadow-xs"
+                className="lg:col-span-7 bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 space-y-5 shadow-xs"
               >
-                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div className="flex items-center justify-between border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-3">
                   <div>
-                    <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       {editingExamId ? 'Edit Examination Scheme' : 'Create New Examination'}
                     </h2>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                       Define term title, participating classes, and subject marks breakdown.
                     </p>
                   </div>
@@ -868,7 +868,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     <button
                       type="button"
                       onClick={resetExamForm}
-                      className="text-xs font-semibold text-slate-500 hover:text-slate-800 dark:hover:text-white cursor-pointer"
+                      className="text-xs font-semibold text-[#57534E] hover:text-[#1C1917] dark:hover:text-[#FAF8F5] cursor-pointer"
                     >
                       Cancel Edit
                     </button>
@@ -878,7 +878,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 {/* Title & Term */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Exam Title <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -886,18 +886,18 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                       value={examTitle}
                       onChange={(e) => setExamTitle(e.target.value)}
                       placeholder="e.g., First Term 2026"
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Exam Term / Category
                     </label>
                     <select
                       value={termType}
                       onChange={(e) => setTermType(e.target.value as ExamTermType)}
-                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                     >
                       <option value="First Term">First Term</option>
                       <option value="Mid Term">Mid Term</option>
@@ -911,7 +911,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 {/* Year, Status & Dates */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Academic Year
                     </label>
                     <input
@@ -919,17 +919,17 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                       value={academicYear}
                       onChange={(e) => setAcademicYear(e.target.value)}
                       placeholder="2025-2026"
-                      className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-xs font-mono rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Exam Status
                     </label>
                     <select
                       value={examStatus}
                       onChange={(e) => setExamStatus(e.target.value as ExamStatus)}
-                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                     >
                       <option value="published">Published (Active Marks Entry)</option>
                       <option value="draft">Draft (Setup Only)</option>
@@ -937,14 +937,14 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Start Date (Optional)
                     </label>
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                      className="w-full px-3 py-2 text-xs rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                     />
                   </div>
                 </div>
@@ -952,29 +952,29 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 {/* Class Selector Checkboxes */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label className="text-xs font-bold text-[#44403C] dark:text-[#E7E0D4]">
                       Select Classes Included in Exam <span className="text-rose-500">*</span>
                     </label>
                     <div className="flex items-center gap-2 text-[11px]">
                       <button
                         type="button"
                         onClick={() => setSelectedExamClassIds(classes.map((c) => c.id))}
-                        className="text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
+                        className="text-[#7F1D1D] dark:text-[#FCA5A5] font-semibold hover:underline cursor-pointer"
                       >
                         Select All ({classes.length})
                       </button>
-                      <span className="text-slate-300">|</span>
+                      <span className="text-[#E7E0D4]">|</span>
                       <button
                         type="button"
                         onClick={() => setSelectedExamClassIds([])}
-                        className="text-slate-500 hover:underline cursor-pointer"
+                        className="text-[#57534E] hover:underline cursor-pointer"
                       >
                         Clear
                       </button>
                     </div>
                   </div>
                   {loadingClasses ? (
-                    <p className="text-xs text-slate-400">Loading classes...</p>
+                    <p className="text-xs text-[#78716C]">Loading classes...</p>
                   ) : classes.length === 0 ? (
                     <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
                       No classes found in {activeSchool.name}. Please add classes in &ldquo;Classes &amp; Sections&rdquo; first.
@@ -990,8 +990,8 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                             onClick={() => handleToggleExamClass(cls.id)}
                             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer ${
                               checked
-                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                                : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                                ? 'bg-[#7F1D1D] text-white border-[#7F1D1D] shadow-xs'
+                                : 'bg-[#FAF8F5] dark:bg-[#2C1215] text-[#44403C] dark:text-[#E7E0D4] border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]'
                             }`}
                           >
                             {cls.grade} - {cls.section}
@@ -1003,15 +1003,15 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 </div>
 
                 {/* Subjects & Total Marks Builder */}
-                <div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div className="space-y-3 pt-2 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div>
-                      <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                      <h3 className="text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] uppercase tracking-wider">
                         Subjects &amp; Maximum Marks ({examSubjects.length})
                       </h3>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">
                         Total Combined Marks:{' '}
-                        <strong className="text-indigo-600 dark:text-indigo-400">
+                        <strong className="text-[#7F1D1D] dark:text-[#FCA5A5]">
                           {examSubjects.reduce((sum, s) => sum + (Number(s.totalMarks) || 0), 0)}
                         </strong>
                       </p>
@@ -1031,7 +1031,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     {examSubjects.map((subj, idx) => (
                       <div
                         key={subj.id}
-                        className="grid grid-cols-12 gap-2 items-center bg-slate-50 dark:bg-slate-800/70 p-2 rounded-xl border border-slate-200 dark:border-slate-700"
+                        className="grid grid-cols-12 gap-2 items-center bg-[#FAF8F5] dark:bg-[#2C1215]/70 p-2 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]"
                       >
                         <div className="col-span-6">
                           <input
@@ -1044,7 +1044,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               );
                             }}
                             placeholder="Subject Name"
-                            className="w-full px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white"
+                            className="w-full px-2.5 py-1.5 text-xs font-semibold rounded-lg border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#211415] text-[#1C1917] dark:text-[#FAF8F5]"
                           />
                         </div>
                         <div className="col-span-2">
@@ -1062,9 +1062,9 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               );
                             }}
                             title="Total Marks"
-                            className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center"
+                            className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#211415] text-[#1C1917] dark:text-[#FAF8F5] text-center"
                           />
-                          <span className="text-[9px] text-slate-400 block text-center">Max</span>
+                          <span className="text-[9px] text-[#78716C] block text-center">Max</span>
                         </div>
                         <div className="col-span-2">
                           <input
@@ -1081,9 +1081,9 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               );
                             }}
                             title="Passing Marks"
-                            className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-center"
+                            className="w-full px-2 py-1.5 text-xs font-mono rounded-lg border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#211415] text-[#1C1917] dark:text-[#FAF8F5] text-center"
                           />
-                          <span className="text-[9px] text-slate-400 block text-center">Pass</span>
+                          <span className="text-[9px] text-[#78716C] block text-center">Pass</span>
                         </div>
                         <div className="col-span-2 flex justify-end">
                           <button
@@ -1104,7 +1104,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                   {/* Quick Add Subject Row */}
                   <div className="grid grid-cols-12 gap-2 items-end pt-1">
                     <div className="col-span-6">
-                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                      <label className="text-[10px] font-semibold text-[#57534E] block mb-1">
                         Add Subject
                       </label>
                       <input
@@ -1112,11 +1112,11 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                         value={newSubjName}
                         onChange={(e) => setNewSubjName(e.target.value)}
                         placeholder="e.g., Chemistry / Computer Science"
-                        className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                      <label className="text-[10px] font-semibold text-[#57534E] block mb-1">
                         Total Marks
                       </label>
                       <input
@@ -1125,11 +1125,11 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                         max={1000}
                         value={newSubjTotal}
                         onChange={(e) => setNewSubjTotal(Number(e.target.value))}
-                        className="w-full px-2 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-center"
+                        className="w-full px-2 py-2 text-xs font-mono rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] text-center"
                       />
                     </div>
                     <div className="col-span-2">
-                      <label className="text-[10px] font-semibold text-slate-500 block mb-1">
+                      <label className="text-[10px] font-semibold text-[#57534E] block mb-1">
                         Pass Marks
                       </label>
                       <input
@@ -1138,14 +1138,14 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                         max={newSubjTotal}
                         value={newSubjPassing}
                         onChange={(e) => setNewSubjPassing(Number(e.target.value))}
-                        className="w-full px-2 py-2 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white text-center"
+                        className="w-full px-2 py-2 text-xs font-mono rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] text-center"
                       />
                     </div>
                     <div className="col-span-2">
                       <button
                         type="button"
                         onClick={handleAddSubjectRow}
-                        className="w-full py-2 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                        className="w-full py-2 bg-[#3F1014] hover:bg-[#58181D] dark:bg-[#3F1014] dark:hover:bg-slate-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Add</span>
@@ -1157,7 +1157,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 <button
                   type="submit"
                   disabled={isSavingExam}
-                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  className="w-full py-3 bg-[#7F1D1D] hover:bg-[#651414] text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
                 >
                   <Save className="w-4 h-4" />
                   <span>
@@ -1172,16 +1172,16 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
 
               {/* Right Column: Configured Exams List */}
               <div className="lg:col-span-5 space-y-4">
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
+                <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 space-y-4 shadow-xs">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h2 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       Configured Exams ({exams.length})
                     </h2>
-                    <span className="text-[11px] text-slate-500">Multi-tenant isolated</span>
+                    <span className="text-[11px] text-[#57534E]">Multi-tenant isolated</span>
                   </div>
 
                   {exams.length === 0 ? (
-                    <div className="p-8 text-center text-xs text-slate-400 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl">
+                    <div className="p-8 text-center text-xs text-[#78716C] border border-dashed border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl">
                       No exams configured yet. Create your first exam (e.g., &ldquo;First Term 2026&rdquo;) on the left.
                     </div>
                   ) : (
@@ -1194,12 +1194,12 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                         return (
                           <div
                             key={ex.id}
-                            className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/50 space-y-2.5"
+                            className="p-4 rounded-2xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5]/70 dark:bg-[#2C1215]/50 space-y-2.5"
                           >
                             <div className="flex items-start justify-between gap-2">
                               <div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                                  <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                                     {ex.title}
                                   </h3>
                                   <span
@@ -1212,7 +1212,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                     {ex.status}
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                                <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                                   {ex.termType} · Session {ex.academicYear} · {ex.subjects.length} Subjects ({maxSum} Marks)
                                 </div>
                               </div>
@@ -1221,7 +1221,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                   type="button"
                                   onClick={() => handleEditExam(ex)}
                                   title="Edit Exam"
-                                  className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-950/60 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-[#57534E] hover:text-[#651414] hover:bg-[#FEE2E2] dark:hover:bg-[#58181D]/60 rounded-lg transition cursor-pointer"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1234,7 +1234,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                     }
                                   }}
                                   title="Delete Exam"
-                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition cursor-pointer"
+                                  className="p-1.5 text-[#78716C] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/60 rounded-lg transition cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -1246,7 +1246,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               {ex.subjects.map((s) => (
                                 <span
                                   key={s.id}
-                                  className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[10px] font-medium text-slate-700 dark:text-slate-300"
+                                  className="px-2 py-0.5 rounded-md bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[10px] font-medium text-[#44403C] dark:text-[#E7E0D4]"
                                 >
                                   {s.name} ({s.totalMarks})
                                 </span>
@@ -1260,7 +1260,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                   setSelectedExamId(ex.id);
                                   setActiveTab('marks');
                                 }}
-                                className="flex-1 py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold rounded-xl transition cursor-pointer"
+                                className="flex-1 py-1.5 px-3 bg-[#FEF2F2] hover:bg-[#FEE2E2] dark:bg-[#3F1014]/60 dark:hover:bg-[#58181D]/60 text-[#7F1D1D] dark:text-[#FCA5A5] text-xs font-bold rounded-xl transition cursor-pointer"
                               >
                                 Enter Marks →
                               </button>
@@ -1290,17 +1290,17 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
         {/* TAB 2: MARKS ENTRY (TEACHERS ASSIGNED CLASSES + ADMIN) */}
         {/* ================================================================= */}
         {activeTab === 'marks' && (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5 shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 space-y-5 shadow-xs">
             {/* Selector Strip */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border-b border-slate-100 dark:border-slate-800 pb-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-5">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   Select Examination
                 </label>
                 <select
                   value={selectedExamId}
                   onChange={(e) => setSelectedExamId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                 >
                   {exams.length === 0 && <option value="">No exams created yet</option>}
                   {exams.map((ex) => (
@@ -1312,13 +1312,13 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   Select Class &amp; Section {userRole === 'teacher' && '(Assigned Only)'}
                 </label>
                 <select
                   value={selectedClassId}
                   onChange={(e) => setSelectedClassId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                 >
                   {accessibleClassesForExam.length === 0 && (
                     <option value="">No eligible classes assigned</option>
@@ -1336,7 +1336,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                   type="button"
                   onClick={handleAutoFillRemarks}
                   disabled={!activeExam || studentsInSelectedClass.length === 0}
-                  className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                  className="px-3.5 py-2.5 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-semibold transition cursor-pointer disabled:opacity-50"
                 >
                   Auto-Fill Remarks
                 </button>
@@ -1367,7 +1367,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
 
             {/* Guard messages */}
             {!activeExam ? (
-              <div className="p-10 text-center text-xs text-slate-400">
+              <div className="p-10 text-center text-xs text-[#78716C]">
                 No exams configured yet. {canManageExams ? 'Go to "1. Exam Setup" to create an exam.' : 'Ask your School Administrator to create an exam schedule.'}
               </div>
             ) : accessibleClassesForExam.length === 0 ? (
@@ -1381,20 +1381,20 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 </p>
               </div>
             ) : studentsInSelectedClass.length === 0 ? (
-              <div className="p-10 text-center text-xs text-slate-400">
+              <div className="p-10 text-center text-xs text-[#78716C]">
                 No active enrolled students found in {selectedClassObj?.grade} - {selectedClassObj?.section}.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
-                    <tr className="border-b-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300">
+                    <tr className="border-b-2 border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/80 text-[#57534E] dark:text-[#E7E0D4]">
                       <th className="py-3 px-3 font-bold whitespace-nowrap">GR #</th>
                       <th className="py-3 px-3 font-bold min-w-[160px]">Student Name</th>
                       {activeExam.subjects.map((subj) => (
                         <th key={subj.id} className="py-3 px-2 font-bold text-center min-w-[105px]">
                           <div>{subj.name}</div>
-                          <div className="text-[10px] font-normal text-slate-400">
+                          <div className="text-[10px] font-normal text-[#78716C]">
                             Max {subj.totalMarks} · Pass {subj.passingMarks}
                           </div>
                         </th>
@@ -1406,7 +1406,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                       <th className="py-3 px-2 font-bold text-right">Card</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                     {studentsInSelectedClass.map((stu) => {
                       const entry = marksDraft[stu.id] || {
                         subjectMarks: {},
@@ -1425,16 +1425,16 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                       return (
                         <tr
                           key={stu.id}
-                          className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition-colors"
+                          className="hover:bg-[#FAF8F5]/70 dark:hover:bg-[#3F1014]/40 transition-colors"
                         >
-                          <td className="py-2.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          <td className="py-2.5 px-3 font-mono font-bold text-[#44403C] dark:text-[#E7E0D4] whitespace-nowrap">
                             {stu.grNumber}
                           </td>
                           <td className="py-2.5 px-3">
-                            <div className="font-bold text-slate-900 dark:text-white">
+                            <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                               {stu.fullName}
                             </div>
-                            <div className="text-[10px] text-slate-400">S/D/o {stu.fatherName}</div>
+                            <div className="text-[10px] text-[#78716C]">S/D/o {stu.fatherName}</div>
                           </td>
                           {activeExam.subjects.map((subj) => {
                             const isAbsent = entry.absentSubjects.includes(subj.id);
@@ -1461,7 +1461,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                         ? 'bg-rose-50 dark:bg-rose-950/50 border-rose-300 dark:border-rose-700 text-rose-600'
                                         : isFailMark
                                         ? 'bg-rose-50/60 dark:bg-rose-950/40 border-rose-400 text-rose-700 dark:text-rose-300'
-                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
+                                        : 'bg-[#FFFDF9] dark:bg-[#2C1215] border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#1C1917] dark:text-[#FAF8F5]'
                                     }`}
                                   />
                                   <button
@@ -1472,7 +1472,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                     className={`px-1.5 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
                                       isAbsent
                                         ? 'bg-rose-600 text-white border-rose-600'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:bg-slate-200'
+                                        : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] hover:bg-[#E7E0D4]'
                                     }`}
                                   >
                                     AB
@@ -1482,7 +1482,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                             );
                           })}
 
-                          <td className="py-2.5 px-3 text-center font-mono font-bold whitespace-nowrap text-slate-900 dark:text-white">
+                          <td className="py-2.5 px-3 text-center font-mono font-bold whitespace-nowrap text-[#1C1917] dark:text-[#FAF8F5]">
                             {computed.hasEnteredAnyMarks
                               ? `${computed.totalObtained} / ${computed.totalMax}`
                               : '—'}
@@ -1490,7 +1490,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                           <td className="py-2.5 px-2 text-center whitespace-nowrap">
                             {computed.hasEnteredAnyMarks ? (
                               <div className="inline-flex flex-col items-center">
-                                <span className="font-mono font-bold text-slate-900 dark:text-white">
+                                <span className="font-mono font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                                   {computed.percentage.toFixed(1)}%
                                 </span>
                                 <span
@@ -1499,17 +1499,17 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                       ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                       : computed.resultStatus === 'Fail'
                                       ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                                      : 'bg-slate-100 text-slate-600'
+                                      : 'bg-[#F3EFEA] text-[#57534E]'
                                   }`}
                                 >
                                   {computed.overallGrade} · {computed.resultStatus}
                                 </span>
                               </div>
                             ) : (
-                              <span className="text-slate-400">—</span>
+                              <span className="text-[#78716C]">—</span>
                             )}
                           </td>
-                          <td className="py-2.5 px-2 text-center font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                          <td className="py-2.5 px-2 text-center font-bold text-[#7F1D1D] dark:text-[#FCA5A5] whitespace-nowrap">
                             {standing?.positionLabel || '—'}
                           </td>
                           <td className="py-2 px-2">
@@ -1519,7 +1519,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               disabled={!isTeacherAuthorizedForSelectedClass || isParentOnly}
                               onChange={(e) => handleRemarksChange(stu.id, e.target.value)}
                               placeholder="Teacher's remarks..."
-                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                              className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                             />
                           </td>
                           <td className="py-2 px-2 text-right">
@@ -1527,7 +1527,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               type="button"
                               onClick={() => setReportStudentsForPrint([stu])}
                               title="Preview Report Card"
-                              className="p-1.5 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-lg transition cursor-pointer"
+                              className="p-1.5 bg-[#FEF2F2] hover:bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] rounded-lg transition cursor-pointer"
                             >
                               <Printer className="w-4 h-4" />
                             </button>
@@ -1548,16 +1548,16 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
         {activeTab === 'reports' && (
           <div className="space-y-5">
             {/* Controls & Logo Uploader */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 space-y-4 shadow-xs">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                     Select Examination
                   </label>
                   <select
                     value={selectedExamId}
                     onChange={(e) => setSelectedExamId(e.target.value)}
-                    className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   >
                     {exams.length === 0 && <option value="">No exams available</option>}
                     {exams.map((ex) => (
@@ -1569,13 +1569,13 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                     Select Class &amp; Section
                   </label>
                   <select
                     value={selectedClassId}
                     onChange={(e) => setSelectedClassId(e.target.value)}
-                    className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   >
                     {accessibleClassesForExam.length === 0 && (
                       <option value="">No classes accessible</option>
@@ -1589,13 +1589,13 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                     Sort Result Gazette By
                   </label>
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as 'position' | 'gr')}
-                    className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2.5 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   >
                     <option value="position">Class Position (1st, 2nd, 3rd...)</option>
                     <option value="gr">GR / Admission Number</option>
@@ -1604,7 +1604,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
 
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {canManageExams && (
-                    <label className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition">
+                    <label className="px-3 py-2.5 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition">
                       <Upload className="w-3.5 h-3.5" />
                       <span>{activeSchool.logoUrl ? 'Change Logo' : 'School Logo'}</span>
                       <input
@@ -1619,7 +1619,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     type="button"
                     disabled={!activeExam || sortedReportStudents.length === 0}
                     onClick={() => setReportStudentsForPrint(sortedReportStudents)}
-                    className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                    className="px-4 py-2.5 bg-[#7F1D1D] hover:bg-[#651414] text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
                   >
                     <Printer className="w-4 h-4" />
                     <span>Print All Report Cards ({sortedReportStudents.length})</span>
@@ -1633,12 +1633,12 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
 
               {/* Summary KPIs */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 pt-2">
-                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase">
+                <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#57534E] uppercase">
                     <span>Results Entered</span>
-                    <Users className="w-4 h-4 text-indigo-500" />
+                    <Users className="w-4 h-4 text-[#7F1D1D]" />
                   </div>
-                  <div className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                  <div className="text-xl font-black text-[#1C1917] dark:text-[#FAF8F5] mt-1">
                     {gazetteSummary.entered} / {sortedReportStudents.length}
                   </div>
                 </div>
@@ -1651,12 +1651,12 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     {gazetteSummary.passRate}% ({gazetteSummary.passed} Passed)
                   </div>
                 </div>
-                <div className="p-3.5 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800">
-                  <div className="flex items-center justify-between text-[11px] font-bold text-sky-700 dark:text-sky-400 uppercase">
+                <div className="p-3.5 rounded-xl bg-[#FFF7ED]/70 dark:bg-[#7C2D12]/30 border border-[#FED7AA] dark:border-[#C2410C]/50">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-[#C2410C] dark:text-[#FDBA74] uppercase">
                     <span>Class Average</span>
-                    <TrendingUp className="w-4 h-4 text-sky-600" />
+                    <TrendingUp className="w-4 h-4 text-[#C2410C]" />
                   </div>
-                  <div className="text-xl font-black text-sky-700 dark:text-sky-300 mt-1">
+                  <div className="text-xl font-black text-[#C2410C] dark:text-[#FDBA74] mt-1">
                     {gazetteSummary.avgPct}%
                   </div>
                 </div>
@@ -1676,16 +1676,16 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
             </div>
 
             {/* Results Table */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
               {!activeExam || sortedReportStudents.length === 0 ? (
-                <div className="p-10 text-center text-xs text-slate-400">
+                <div className="p-10 text-center text-xs text-[#78716C]">
                   Select an exam and class with students to view results and print Report Cards.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/80 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4]">
                         <th className="py-3 px-4 font-bold">Pos</th>
                         <th className="py-3 px-4 font-bold">GR #</th>
                         <th className="py-3 px-4 font-bold">Student Name</th>
@@ -1697,7 +1697,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                         <th className="py-3 px-4 font-bold text-right">Report Card</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                       {sortedReportStudents.map((stu) => {
                         const standing = reportStandings.get(stu.id);
                         const result = standing?.result;
@@ -1705,28 +1705,28 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                           standing?.marksRecord?.remarks || result?.suggestedRemark || '—';
 
                         return (
-                          <tr key={stu.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40">
-                            <td className="py-3 px-4 font-black text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                          <tr key={stu.id} className="hover:bg-[#FAF8F5]/70 dark:hover:bg-[#3F1014]/40">
+                            <td className="py-3 px-4 font-black text-[#7F1D1D] dark:text-[#FCA5A5] whitespace-nowrap">
                               {standing?.position ? (
-                                <span className="px-2.5 py-1 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-[11px]">
+                                <span className="px-2.5 py-1 rounded-full bg-[#FEF2F2] dark:bg-[#3F1014]/60 border border-[#FECACA] dark:border-[#7F1D1D]/60 text-[11px]">
                                   {standing.positionLabel}
                                 </span>
                               ) : (
                                 '—'
                               )}
                             </td>
-                            <td className="py-3 px-4 font-mono font-bold text-slate-700 dark:text-slate-300">
+                            <td className="py-3 px-4 font-mono font-bold text-[#44403C] dark:text-[#E7E0D4]">
                               {stu.grNumber}
                             </td>
                             <td className="py-3 px-4">
-                              <div className="font-bold text-slate-900 dark:text-white">
+                              <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                                 {stu.fullName}
                               </div>
-                              <div className="text-[11px] text-slate-400">
+                              <div className="text-[11px] text-[#78716C]">
                                 Father: {stu.fatherName}
                               </div>
                             </td>
-                            <td className="py-3 px-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                            <td className="py-3 px-4 text-right font-mono font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                               {result?.hasEnteredAnyMarks
                                 ? `${result.totalObtained} / ${result.totalMax}`
                                 : '—'}
@@ -1735,7 +1735,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               {result?.hasEnteredAnyMarks ? `${result.percentage.toFixed(2)}%` : '—'}
                             </td>
                             <td className="py-3 px-4 text-center">
-                              <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 font-bold text-slate-800 dark:text-slate-200">
+                              <span className="px-2 py-0.5 rounded bg-[#F3EFEA] dark:bg-[#2C1215] font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                                 {result?.overallGrade || '—'}
                               </span>
                             </td>
@@ -1746,20 +1746,20 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                                     ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
                                     : result?.resultStatus === 'Fail'
                                     ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-                                    : 'bg-slate-100 text-slate-500'
+                                    : 'bg-[#F3EFEA] text-[#57534E]'
                                 }`}
                               >
                                 {result?.resultStatus || 'Pending'}
                               </span>
                             </td>
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-xs truncate">
+                            <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] max-w-xs truncate">
                               {remarks}
                             </td>
                             <td className="py-3 px-4 text-right">
                               <button
                                 type="button"
                                 onClick={() => setReportStudentsForPrint([stu])}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[11px] rounded-xl transition cursor-pointer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7F1D1D] hover:bg-[#651414] text-white font-bold text-[11px] rounded-xl transition cursor-pointer"
                               >
                                 <Printer className="w-3.5 h-3.5" />
                                 <span>Print Card</span>
@@ -1795,7 +1795,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
           onPrint={triggerPrintDocument}
           onClose={() => setReportStudentsForPrint(null)}
         >
-          <div className="printable-a4-sheet bg-white text-slate-900 space-y-8">
+          <div className="printable-a4-sheet bg-white text-[#1C1917] space-y-8">
             {reportStudentsForPrint.map((stu, idx) => {
               const standing =
                 liveClassStandings.get(stu.id) || reportStandings.get(stu.id);
@@ -1815,18 +1815,18 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               return (
                 <div
                   key={stu.id}
-                  className={`bg-white text-slate-900 p-6 sm:p-8 border-2 border-slate-800 rounded-xl print-break-inside-avoid ${
+                  className={`bg-white text-[#1C1917] p-6 sm:p-8 border-2 border-[#1C1917] rounded-xl print-break-inside-avoid ${
                     idx < reportStudentsForPrint.length - 1 ? 'print-page-break-after mb-8' : ''
                   }`}
                 >
                   {/* School Letterhead Header */}
-                  <div className="flex items-center justify-between gap-4 border-b-2 border-slate-900 pb-4">
+                  <div className="flex items-center justify-between gap-4 border-b-2 border-[#1C1917] pb-4">
                     <div className="flex items-center gap-4">
                       {activeSchool.logoUrl ? (
                         <img
                           src={activeSchool.logoUrl}
                           alt="School Logo"
-                          className="w-16 h-16 object-contain rounded-xl border border-slate-300 bg-white p-1 shrink-0"
+                          className="w-16 h-16 object-contain rounded-xl border border-[#D6CCC2] bg-white p-1 shrink-0"
                         />
                       ) : (
                         <DefaultSchoolCrest />
@@ -1835,11 +1835,11 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                         <div className="text-[10px] font-bold tracking-widest text-emerald-800 uppercase">
                           GOVERNMENT OF SINDH · SCHOOL EDUCATION &amp; LITERACY DEPARTMENT
                         </div>
-                        <h2 className="text-xl font-black text-slate-900 uppercase leading-tight">
+                        <h2 className="text-xl font-black text-[#1C1917] uppercase leading-tight">
                           {activeSchool.name || 'Govt. Comprehensive High School'}
                         </h2>
-                        <div className="text-xs text-slate-600 font-medium mt-0.5">
-                          SEMIS Code: <strong className="font-mono text-slate-900">{activeSchool.semisCode || '403020101'}</strong> ·{' '}
+                        <div className="text-xs text-[#57534E] font-medium mt-0.5">
+                          SEMIS Code: <strong className="font-mono text-[#1C1917]">{activeSchool.semisCode || '403020101'}</strong> ·{' '}
                           {activeSchool.taluka ? `${activeSchool.taluka}, ` : ''}
                           {activeSchool.district || 'Sindh'}
                         </div>
@@ -1847,90 +1847,90 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                     </div>
 
                     <div className="text-right shrink-0">
-                      <div className="px-3 py-1 rounded-md bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider inline-block">
+                      <div className="px-3 py-1 rounded-md bg-[#2C1215] text-white text-[10px] font-black uppercase tracking-wider inline-block">
                         PROGRESS REPORT CARD
                       </div>
-                      <div className="text-sm font-black text-indigo-800 mt-1">
+                      <div className="text-sm font-black text-[#7F1D1D] mt-1">
                         {activeExam.title}
                       </div>
-                      <div className="text-[11px] text-slate-500">
+                      <div className="text-[11px] text-[#57534E]">
                         Session: {activeExam.academicYear} · Issued: {new Date().toLocaleDateString('en-GB')}
                       </div>
                     </div>
                   </div>
 
                   {/* Student Profile Block */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5 p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-5 p-4 bg-slate-50 rounded-xl border border-[#E7E0D4] text-xs">
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Student Name
                       </span>
-                      <strong className="text-sm text-slate-900">{stu.fullName}</strong>
+                      <strong className="text-sm text-[#1C1917]">{stu.fullName}</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Father&apos;s Name
                       </span>
-                      <strong className="text-slate-900">{stu.fatherName}</strong>
+                      <strong className="text-[#1C1917]">{stu.fatherName}</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         GR Number
                       </span>
-                      <strong className="font-mono text-slate-900">{stu.grNumber}</strong>
+                      <strong className="font-mono text-[#1C1917]">{stu.grNumber}</strong>
                     </div>
                     <div>
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Class &amp; Section
                       </span>
-                      <strong className="text-slate-900">
+                      <strong className="text-[#1C1917]">
                         {stu.grade || selectedClassObj?.grade} - {stu.section || selectedClassObj?.section || 'General'}
                       </strong>
                     </div>
                   </div>
 
                   {/* Subject-Wise Marks Breakdown Table */}
-                  <table className="w-full text-xs border-collapse border border-slate-400">
+                  <table className="w-full text-xs border-collapse border border-[#C2B7A8]">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-900">
-                        <th className="py-2 px-3 border border-slate-400 text-left">#</th>
-                        <th className="py-2 px-3 border border-slate-400 text-left">Subject</th>
-                        <th className="py-2 px-3 border border-slate-400 text-center">Total Marks</th>
-                        <th className="py-2 px-3 border border-slate-400 text-center">Passing Marks</th>
-                        <th className="py-2 px-3 border border-slate-400 text-center">Marks Obtained</th>
-                        <th className="py-2 px-3 border border-slate-400 text-center">Percentage</th>
-                        <th className="py-2 px-3 border border-slate-400 text-center">Status</th>
+                      <tr className="bg-slate-100 text-[#1C1917]">
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-left">#</th>
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-left">Subject</th>
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-center">Total Marks</th>
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-center">Passing Marks</th>
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-center">Marks Obtained</th>
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-center">Percentage</th>
+                        <th className="py-2 px-3 border border-[#C2B7A8] text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {result.subjectRows.map((row, rIdx) => (
                         <tr key={row.subjectId}>
-                          <td className="py-2 px-3 border border-slate-300 font-mono text-slate-500">
+                          <td className="py-2 px-3 border border-[#D6CCC2] font-mono text-[#57534E]">
                             {rIdx + 1}
                           </td>
-                          <td className="py-2 px-3 border border-slate-300 font-bold text-slate-900">
+                          <td className="py-2 px-3 border border-[#D6CCC2] font-bold text-[#1C1917]">
                             {row.subjectName}
                           </td>
-                          <td className="py-2 px-3 border border-slate-300 text-center font-mono">
+                          <td className="py-2 px-3 border border-[#D6CCC2] text-center font-mono">
                             {row.totalMarks}
                           </td>
-                          <td className="py-2 px-3 border border-slate-300 text-center font-mono text-slate-600">
+                          <td className="py-2 px-3 border border-[#D6CCC2] text-center font-mono text-[#57534E]">
                             {row.passingMarks}
                           </td>
-                          <td className="py-2 px-3 border border-slate-300 text-center font-mono font-bold text-slate-900">
+                          <td className="py-2 px-3 border border-[#D6CCC2] text-center font-mono font-bold text-[#1C1917]">
                             {row.isAbsent ? 'AB (Absent)' : row.obtainedMarks !== null ? row.obtainedMarks : '—'}
                           </td>
-                          <td className="py-2 px-3 border border-slate-300 text-center font-mono">
+                          <td className="py-2 px-3 border border-[#D6CCC2] text-center font-mono">
                             {row.isEntered ? `${row.percentage.toFixed(1)}%` : '—'}
                           </td>
-                          <td className="py-2 px-3 border border-slate-300 text-center font-bold uppercase text-[10px]">
+                          <td className="py-2 px-3 border border-[#D6CCC2] text-center font-bold uppercase text-[10px]">
                             <span
                               className={
                                 row.status === 'Pass'
                                   ? 'text-emerald-700'
                                   : row.status === 'Fail' || row.status === 'Absent'
                                   ? 'text-rose-700'
-                                  : 'text-slate-500'
+                                  : 'text-[#57534E]'
                               }
                             >
                               {row.status}
@@ -1938,21 +1938,21 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                           </td>
                         </tr>
                       ))}
-                      <tr className="bg-slate-900 text-white font-bold">
-                        <td colSpan={2} className="py-2.5 px-3 border border-slate-900 uppercase text-[11px]">
+                      <tr className="bg-[#2C1215] text-white font-bold">
+                        <td colSpan={2} className="py-2.5 px-3 border border-[#1C1917] uppercase text-[11px]">
                           Grand Aggregate
                         </td>
-                        <td className="py-2.5 px-3 border border-slate-900 text-center font-mono">
+                        <td className="py-2.5 px-3 border border-[#1C1917] text-center font-mono">
                           {result.totalMax}
                         </td>
-                        <td className="py-2.5 px-3 border border-slate-900 text-center">—</td>
-                        <td className="py-2.5 px-3 border border-slate-900 text-center font-mono">
+                        <td className="py-2.5 px-3 border border-[#1C1917] text-center">—</td>
+                        <td className="py-2.5 px-3 border border-[#1C1917] text-center font-mono">
                           {result.hasEnteredAnyMarks ? result.totalObtained : '—'}
                         </td>
-                        <td className="py-2.5 px-3 border border-slate-900 text-center font-mono">
+                        <td className="py-2.5 px-3 border border-[#1C1917] text-center font-mono">
                           {result.hasEnteredAnyMarks ? `${result.percentage.toFixed(2)}%` : '—'}
                         </td>
-                        <td className="py-2.5 px-3 border border-slate-900 text-center uppercase">
+                        <td className="py-2.5 px-3 border border-[#1C1917] text-center uppercase">
                           {result.resultStatus}
                         </td>
                       </tr>
@@ -1961,32 +1961,32 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
 
                   {/* Key Outcome Boxes */}
                   <div className="grid grid-cols-4 gap-3 mt-5 text-center text-xs">
-                    <div className="p-3 rounded-xl border border-slate-300 bg-slate-50">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                    <div className="p-3 rounded-xl border border-[#D6CCC2] bg-slate-50">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Percentage
                       </span>
-                      <strong className="text-base font-black text-slate-900">
+                      <strong className="text-base font-black text-[#1C1917]">
                         {result.hasEnteredAnyMarks ? `${result.percentage.toFixed(2)}%` : '—'}
                       </strong>
                     </div>
-                    <div className="p-3 rounded-xl border border-slate-300 bg-slate-50">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                    <div className="p-3 rounded-xl border border-[#D6CCC2] bg-slate-50">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Grade
                       </span>
-                      <strong className="text-base font-black text-indigo-800">
+                      <strong className="text-base font-black text-[#7F1D1D]">
                         {result.overallGrade}
                       </strong>
                     </div>
-                    <div className="p-3 rounded-xl border border-slate-300 bg-slate-50">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                    <div className="p-3 rounded-xl border border-[#D6CCC2] bg-slate-50">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Class Position
                       </span>
                       <strong className="text-base font-black text-emerald-800">
                         {standing?.positionLabel || '—'}
                       </strong>
                     </div>
-                    <div className="p-3 rounded-xl border border-slate-300 bg-slate-50">
-                      <span className="text-[10px] font-bold uppercase text-slate-500 block">
+                    <div className="p-3 rounded-xl border border-[#D6CCC2] bg-slate-50">
+                      <span className="text-[10px] font-bold uppercase text-[#57534E] block">
                         Final Result
                       </span>
                       <strong
@@ -1995,7 +1995,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                             ? 'text-emerald-700'
                             : result.resultStatus === 'Fail'
                             ? 'text-rose-700'
-                            : 'text-slate-600'
+                            : 'text-[#57534E]'
                         }`}
                       >
                         {result.resultStatus}
@@ -2004,30 +2004,30 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                   </div>
 
                   {/* Teacher Remarks */}
-                  <div className="mt-4 p-3.5 rounded-xl border border-slate-300 bg-slate-50 text-xs">
-                    <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                  <div className="mt-4 p-3.5 rounded-xl border border-[#D6CCC2] bg-slate-50 text-xs">
+                    <span className="text-[10px] font-bold uppercase text-[#57534E] block mb-1">
                       Class Teacher&apos;s Remarks
                     </span>
-                    <p className="font-medium text-slate-900 italic">&ldquo;{teacherRemarks}&rdquo;</p>
+                    <p className="font-medium text-[#1C1917] italic">&ldquo;{teacherRemarks}&rdquo;</p>
                   </div>
 
                   {/* Signature Footer */}
                   <div className="flex items-end justify-between pt-12 text-xs">
                     <div className="text-center">
                       <div className="w-36 border-b border-slate-600 mb-1"></div>
-                      <span className="text-[10px] font-bold text-slate-600 uppercase">
+                      <span className="text-[10px] font-bold text-[#57534E] uppercase">
                         Class Teacher Signature
                       </span>
                     </div>
                     <div className="text-center">
                       <div className="w-36 border-b border-slate-600 mb-1"></div>
-                      <span className="text-[10px] font-bold text-slate-600 uppercase">
+                      <span className="text-[10px] font-bold text-[#57534E] uppercase">
                         Controller of Exams
                       </span>
                     </div>
                     <div className="text-center">
                       <div className="w-36 border-b border-slate-600 mb-1"></div>
-                      <span className="text-[10px] font-bold text-slate-600 uppercase">
+                      <span className="text-[10px] font-bold text-[#57534E] uppercase">
                         Principal / Headmaster
                       </span>
                     </div>

@@ -1,9 +1,9 @@
 /**
  * Applies the `printing-mode` CSS class to document.body which hides the sidebar,
  * header, input forms, and action buttons, leaving ONLY the A4 printable document container visible,
- * then triggers window.print().
+ * then triggers Desktop Electron IPC printDocument (when running in Electron) or window.print().
  */
-export function triggerPrintDocument() {
+export function triggerPrintDocument(): void {
   document.body.classList.add('printing-mode');
 
   const cleanup = () => {
@@ -11,9 +11,26 @@ export function triggerPrintDocument() {
     window.removeEventListener('afterprint', cleanup);
   };
 
-  window.addEventListener('afterprint', cleanup);
+  setTimeout(async () => {
+    if (typeof window !== 'undefined' && typeof window.electronAPI?.printDocument === 'function') {
+      try {
+        const result = await window.electronAPI.printDocument({
+          silent: false,
+          printBackground: true,
+        });
+        if (result && !result.success && result.error && result.error !== 'cancelled') {
+          console.warn('[printDocument] Electron print failed:', result.error);
+        }
+      } catch (err) {
+        console.warn('[printDocument] Electron print IPC error:', err);
+      } finally {
+        cleanup();
+      }
+      return;
+    }
 
-  setTimeout(() => {
+    window.addEventListener('afterprint', cleanup);
+
     try {
       window.print();
     } finally {

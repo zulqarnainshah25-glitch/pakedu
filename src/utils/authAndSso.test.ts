@@ -68,8 +68,11 @@ import {
   parseServerEnv,
 } from './envConfig';
 import { PORTAL_VERSION } from './appVersion';
+import { saveFileUniversal } from '../features/cv-builder/lib/mobileFileSaver';
+import { triggerPrintDocument } from './printDocument';
+import type { ElectronAPI } from '../types/electron';
 
-function runAllUnitTests() {
+async function runAllUnitTests() {
   console.log('=== Running PakEdu & AtlierCV Unit & Security Test Suite ===\n');
 
   // 1. XSS & Input Sanitization Tests
@@ -1574,7 +1577,250 @@ function runAllUnitTests() {
     console.log('✅ PASS: Email-Free Student Signup, GR/ID Login & Admin/Parent Dashboard Invite Code Tests');
   }
 
+  // 24. Windows Desktop Electron Shell, Preload IPC, Frontend File Saver & Print Integration Tests
+  {
+    const root = process.cwd();
+    const electronTypesSrc = fs.readFileSync(path.resolve(root, 'src/types/electron.d.ts'), 'utf-8');
+    const fileSaverSrc = fs.readFileSync(path.resolve(root, 'src/features/cv-builder/lib/mobileFileSaver.ts'), 'utf-8');
+    const printDocSrc = fs.readFileSync(path.resolve(root, 'src/utils/printDocument.ts'), 'utf-8');
+    const mainJsSrc = fs.readFileSync(path.resolve(root, 'electron/main.js'), 'utf-8');
+    const preloadCjsSrc = fs.readFileSync(path.resolve(root, 'electron/preload.cjs'), 'utf-8');
+    const builderJson = JSON.parse(fs.readFileSync(path.resolve(root, 'electron-builder.json'), 'utf-8'));
+    const pkgJson = JSON.parse(fs.readFileSync(path.resolve(root, 'package.json'), 'utf-8'));
+    const viteConfigSrc = fs.readFileSync(path.resolve(root, 'vite.config.ts'), 'utf-8');
+    const gitignoreSrc = fs.readFileSync(path.resolve(root, '.gitignore'), 'utf-8');
+    const winWorkflowSrc = fs.readFileSync(path.resolve(root, '.github/workflows/windows-build.yml'), 'utf-8');
+
+    // 1. TypeScript declarations contract
+    assert.equal(electronTypesSrc.includes('export interface ElectronSaveFileResult'), true);
+    assert.equal(electronTypesSrc.includes('export interface ElectronPrintResult'), true);
+    assert.equal(electronTypesSrc.includes('export interface ElectronAPI'), true);
+    assert.equal(electronTypesSrc.includes('interface Window'), true);
+    assert.equal(electronTypesSrc.includes('electronAPI?: ElectronAPI'), true);
+
+    // 2. mobileFileSaver.ts Strategy 0 precedes Strategy 1 (Capacitor) & preserves Web fallbacks
+    const electronIdx = fileSaverSrc.indexOf('window.electronAPI?.saveFile');
+    const capacitorIdx = fileSaverSrc.indexOf('isNativePlatform');
+    assert.equal(electronIdx > -1 && capacitorIdx > electronIdx, true, 'Electron Strategy 0 must run before Capacitor Strategy 1');
+    assert.equal(fileSaverSrc.includes('blob.arrayBuffer()'), true);
+    assert.equal(fileSaverSrc.includes('new Uint8Array'), true);
+    assert.equal(fileSaverSrc.includes('if (result?.canceled)'), true);
+    assert.equal(fileSaverSrc.includes('if (result?.error)'), true);
+    assert.equal(fileSaverSrc.includes('navigator.share'), true);
+    assert.equal(fileSaverSrc.includes('URL.createObjectURL(blob)'), true);
+
+    // 3. printDocument.ts preserves printing-mode isolation & routes to Electron IPC or window.print()
+    assert.equal(printDocSrc.includes("document.body.classList.add('printing-mode')"), true);
+    assert.equal(printDocSrc.includes("document.body.classList.remove('printing-mode')"), true);
+    assert.equal(printDocSrc.includes('window.electronAPI?.printDocument'), true);
+    assert.equal(printDocSrc.includes('silent: false'), true);
+    assert.equal(printDocSrc.includes('printBackground: true'), true);
+    assert.equal(printDocSrc.includes('window.print()'), true);
+
+    // 4. Electron main process security, navigation guards, and IPC channels
+    assert.equal(mainJsSrc.includes('contextIsolation: true'), true);
+    assert.equal(mainJsSrc.includes('nodeIntegration: false'), true);
+    assert.equal(mainJsSrc.includes('sandbox: true'), true);
+    assert.equal(mainJsSrc.includes('preload.cjs'), true);
+    assert.equal(mainJsSrc.includes("ipcMain.handle('save-file'"), true);
+    assert.equal(mainJsSrc.includes("ipcMain.handle('print-document'"), true);
+    assert.equal(mainJsSrc.includes('dialog.showSaveDialog'), true);
+    assert.equal(mainJsSrc.includes('event.sender.print('), true);
+    assert.equal(mainJsSrc.includes('http://localhost:3000'), true);
+    assert.equal(mainJsSrc.includes('../dist/index.html'), true);
+    assert.equal(mainJsSrc.includes('setWindowOpenHandler'), true);
+    assert.equal(mainJsSrc.includes('shell.openExternal'), true);
+
+    // 5. Electron preload bridge matches ElectronAPI contract
+    assert.equal(preloadCjsSrc.includes("contextBridge.exposeInMainWorld('electronAPI'"), true);
+    assert.equal(preloadCjsSrc.includes('isElectron: true'), true);
+    assert.equal(preloadCjsSrc.includes("ipcRenderer.invoke('save-file'"), true);
+    assert.equal(preloadCjsSrc.includes("ipcRenderer.invoke('print-document'"), true);
+
+    // 6. Packaging & CI workflow configuration
+    assert.equal(builderJson.appId, 'pk.pakedu.portal');
+    assert.equal(builderJson.productName, 'PakEdu Portal');
+    assert.equal(builderJson.directories?.output, 'release');
+    assert.equal(Array.isArray(builderJson.files) && builderJson.files.includes('dist/**/*'), true);
+    assert.equal(Array.isArray(builderJson.files) && builderJson.files.includes('electron/**/*'), true);
+    assert.equal(builderJson.win?.signAndEditExecutable, false);
+    assert.equal(
+      Array.isArray(builderJson.win?.target) &&
+        builderJson.win.target.some((t: { target?: string; arch?: string[] }) => t.target === 'nsis' && t.arch?.includes('x64')),
+      true
+    );
+
+    assert.equal(pkgJson.main, 'electron/main.js');
+    assert.equal(typeof pkgJson.scripts?.['electron:dev'] === 'string' && pkgJson.scripts['electron:dev'].includes('electron'), true);
+    assert.equal(
+      typeof pkgJson.scripts?.['electron:build'] === 'string' &&
+        pkgJson.scripts['electron:build'].includes('vite build') &&
+        pkgJson.scripts['electron:build'].includes('electron-builder'),
+      true
+    );
+    assert.equal(Boolean(pkgJson.devDependencies?.electron), true);
+    assert.equal(Boolean(pkgJson.devDependencies?.['electron-builder']), true);
+    assert.equal(Boolean(pkgJson.devDependencies?.concurrently), true);
+
+    assert.equal(viteConfigSrc.includes("base: './'"), true);
+    assert.equal(gitignoreSrc.includes('release/'), true);
+    assert.equal(winWorkflowSrc.includes('windows-latest'), true);
+    assert.equal(winWorkflowSrc.includes('npm install --legacy-peer-deps'), true);
+    assert.equal(winWorkflowSrc.includes('npm run build'), true);
+    assert.equal(winWorkflowSrc.includes('npx electron-builder --win --x64 --publish never'), true);
+    assert.equal(winWorkflowSrc.includes('release/*.exe'), true);
+
+    // 7. Runtime mock test for saveFileUniversal & triggerPrintDocument via window.electronAPI
+    const g = globalThis as unknown as {
+      window?: Record<string, unknown>;
+      document?: Record<string, unknown>;
+    };
+    const hadWindow = Object.prototype.hasOwnProperty.call(globalThis, 'window');
+    const hadDocument = Object.prototype.hasOwnProperty.call(globalThis, 'document');
+    const prevWindow = g.window;
+    const prevDocument = g.document;
+
+    try {
+      let capturedSavePayload: { data: Uint8Array; fileName: string; mimeType?: string } | null = null;
+      let capturedPrintOpts: { silent?: boolean; printBackground?: boolean } | undefined;
+      const bodyClasses = new Set<string>();
+
+      g.document = {
+        createElement: () => {
+          throw new Error('Web anchor fallback must not run when Electron IPC handles saveFile');
+        },
+        body: {
+          classList: {
+            add: (cls: string) => bodyClasses.add(cls),
+            remove: (cls: string) => bodyClasses.delete(cls),
+          },
+        },
+      };
+
+      const happyElectronApi: ElectronAPI = {
+        isElectron: true,
+        saveFile: async (payload) => {
+          capturedSavePayload = payload;
+          return { canceled: false, filePath: 'C:\\Users\\PakEdu\\Documents\\Challan.pdf' };
+        },
+        printDocument: async (options) => {
+          capturedPrintOpts = options;
+          return { success: true };
+        },
+      };
+
+      g.window = {
+        electronAPI: happyElectronApi,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+      };
+
+      // Happy path: Blob bytes converted to Uint8Array and passed to Electron IPC
+      await saveFileUniversal(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), 'Challan.pdf', 'application/pdf');
+      assert.notEqual(capturedSavePayload, null);
+      assert.equal(capturedSavePayload!.fileName, 'Challan.pdf');
+      assert.equal(capturedSavePayload!.mimeType, 'application/pdf');
+      assert.equal(capturedSavePayload!.data instanceof Uint8Array, true);
+      assert.equal(new TextDecoder().decode(capturedSavePayload!.data), '%PDF-1.4');
+
+      // Cancel path: must resolve cleanly without falling through to Web anchor download
+      g.window.electronAPI = {
+        ...happyElectronApi,
+        saveFile: async () => ({ canceled: true }),
+      };
+      await saveFileUniversal(new Blob(['cancel-data'], { type: 'text/plain' }), 'Canceled.txt', 'text/plain');
+
+      // Error path: must surface IPC write failure rather than silently swallowing it
+      g.window.electronAPI = {
+        ...happyElectronApi,
+        saveFile: async () => ({ canceled: false, error: 'Write permission denied' }),
+      };
+      await assert.rejects(
+        () => saveFileUniversal(new Blob(['err-data'], { type: 'application/pdf' }), 'Fail.pdf', 'application/pdf'),
+        /Write permission denied/
+      );
+
+      // Print IPC path: applies printing-mode, invokes printDocument inside 80ms timeout, cleans up in finally
+      g.window.electronAPI = happyElectronApi;
+      triggerPrintDocument();
+      assert.equal(bodyClasses.has('printing-mode'), true, 'printing-mode must be applied immediately');
+      await new Promise((resolve) => setTimeout(resolve, 140));
+      assert.deepEqual(capturedPrintOpts, { silent: false, printBackground: true });
+      assert.equal(bodyClasses.has('printing-mode'), false, 'printing-mode must be removed in finally after Electron print');
+    } finally {
+      if (hadWindow) {
+        g.window = prevWindow;
+      } else {
+        delete g.window;
+      }
+      if (hadDocument) {
+        g.document = prevDocument;
+      } else {
+        delete g.document;
+      }
+    }
+
+    console.log('✅ PASS: Windows Desktop Electron Shell, IPC Save/Print & Packaging Tests');
+  }
+
+  // 25. Warm Ivory, Terracotta & Deep Burgundy Editorial Theme + Print Isolation Tests
+  {
+    const root = process.cwd();
+    const indexCss = fs.readFileSync(path.resolve(root, 'src/index.css'), 'utf-8');
+    const authModalSrc = fs.readFileSync(path.resolve(root, 'src/components/AuthModal.tsx'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(root, 'src/App.tsx'), 'utf-8');
+    const superAdminSrc = fs.readFileSync(path.resolve(root, 'src/features/sms/components/SuperAdminDashboard.tsx'), 'utf-8');
+
+    // Core CSS tokens & print isolation
+    assert.equal(indexCss.includes('#FAF8F5'), true);
+    assert.equal(indexCss.includes('#FFFDF9'), true);
+    assert.equal(indexCss.includes('#E7E0D4'), true);
+    assert.equal(indexCss.includes('#2C1215'), true);
+    assert.equal(indexCss.includes('#58181D'), true);
+    assert.equal(indexCss.includes('#7F1D1D'), true);
+    assert.equal(indexCss.includes('#C2410C'), true);
+    assert.equal(indexCss.includes('background: #ffffff !important;'), true);
+    assert.equal(indexCss.includes('color: #000000 !important;'), true);
+
+    // Flagship screen tokens
+    assert.equal(authModalSrc.includes('bg-[#F3EFEA]'), true);
+    assert.equal(authModalSrc.includes('#58181D'), true);
+    assert.equal(authModalSrc.includes('rgba(255, 253, 249, 0.06)'), true);
+    assert.equal(authModalSrc.includes('bg-[#7F1D1D]'), true);
+    assert.equal(authModalSrc.includes('bg-[#C2410C]'), true);
+    assert.equal(appSrc.includes('bg-[#2C1215]'), true);
+    assert.equal(appSrc.includes('bg-[#FFFDF9]'), true);
+    assert.equal(appSrc.includes('#58181D'), true);
+    assert.equal(superAdminSrc.includes('#58181D'), true);
+    assert.equal(superAdminSrc.includes('bg-[#C2410C]'), true);
+
+    // Zero leftover indigo-*, violet-*, purple-*, or UI blue-* brand classes across .tsx/.css UI
+    const walkUi = (dir: string): string[] => {
+      const out: string[] = [];
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) out.push(...walkUi(full));
+        else if (full.endsWith('.tsx') || full.endsWith('.css')) out.push(full);
+      }
+      return out;
+    };
+    const bannedPattern = /\b(?:indigo|violet|purple|blue)-(?:50|100|200|300|400|500|600|700|800|900|950)\b/;
+    for (const file of walkUi(path.resolve(root, 'src'))) {
+      const content = fs.readFileSync(file, 'utf-8');
+      assert.equal(
+        bannedPattern.test(content),
+        false,
+        `Leftover cool brand class found in ${path.relative(root, file)}`
+      );
+    }
+
+    console.log('✅ PASS: Warm Ivory, Terracotta & Deep Burgundy Editorial Theme & Print Isolation Tests');
+  }
+
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
 }
 
-runAllUnitTests();
+runAllUnitTests().catch((err) => {
+  console.error('❌ Test suite failed:', err);
+  process.exit(1);
+});

@@ -110,11 +110,11 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
   };
 
   return (
-    <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70">
+    <div className="border border-[#E7E0D4] rounded-xl p-4 bg-[#FAF8F5]/70">
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
         {/* 35x45mm Ratio Preview Slot */}
         <div
-          className="relative shrink-0 bg-white border border-slate-300 rounded-md overflow-hidden flex items-center justify-center shadow-xs"
+          className="relative shrink-0 bg-[#FFFDF9] border border-[#D6CCC2] rounded-md overflow-hidden flex items-center justify-center shadow-xs"
           style={{ width: '70px', height: '90px' }}
         >
           {currentPhotoDataUrl ? (
@@ -125,8 +125,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="flex flex-col items-center justify-center text-slate-400 p-1 text-center">
-              <Camera className="w-5 h-5 mb-1 text-slate-400" />
+            <div className="flex flex-col items-center justify-center text-[#78716C] p-1 text-center">
+              <Camera className="w-5 h-5 mb-1 text-[#78716C]" />
               <span className="text-[10px] font-mono leading-tight">35×45mm</span>
             </div>
           )}
@@ -134,7 +134,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <label className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 cursor-pointer transition-colors whitespace-nowrap shrink-0">
+            <label className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold text-white bg-[#2C1215] rounded-lg hover:bg-[#58181D] cursor-pointer transition-colors whitespace-nowrap shrink-0">
               <Upload className="w-3.5 h-3.5" />
               <span>{currentPhotoDataUrl ? 'Change Photo' : 'Upload Passport Photo'}</span>
               <input
@@ -160,10 +160,10 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
             )}
           </div>
 
-          <p className="text-xs text-slate-600 leading-relaxed">
+          <p className="text-xs text-[#57534E] leading-relaxed">
             Behtar nateeje ke liye blue/white background wali passport-size photo upload karein.
           </p>
-          <p className="text-[11px] text-slate-400 mt-0.5 font-mono">
+          <p className="text-[11px] text-[#78716C] mt-0.5 font-mono">
             JPG/PNG · Max 5MB · Min 300×300px · 35×45mm aspect ratio (No AI alteration)
           </p>
 
@@ -185,21 +185,21 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
 
       {/* Crop Modal using react-easy-crop */}
       {isCropModalOpen && rawImageSrc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4">
-          <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full overflow-hidden shadow-xl">
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C1215]/70 backdrop-blur-xs p-4">
+          <div className="bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl max-w-lg w-full overflow-hidden shadow-xl">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E7E0D4]">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-[#1C1917]">
                   Crop Passport Photo (35×45mm Ratio)
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-[#57534E]">
                   Drag to position and use slider to zoom. Original photo quality is preserved.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsCropModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg"
+                className="p-1.5 text-[#78716C] hover:text-[#1C1917] rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -212,7 +212,7 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               </div>
             )}
 
-            <div className="relative w-full h-80 bg-slate-950 my-3">
+            <div className="relative w-full h-80 bg-[#2C1215] my-3">
               <Cropper
                 image={rawImageSrc}
                 crop={crop}
@@ -224,9 +224,9 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
               />
             </div>
 
-            <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex flex-col gap-3">
+            <div className="px-5 py-3 bg-[#FAF8F5] border-t border-[#E7E0D4] flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <ZoomOut className="w-4 h-4 text-slate-500" />
+                <ZoomOut className="w-4 h-4 text-[#57534E]" />
                 <input
                   type="range"
                   min={1}
@@ -236,8 +236,8 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                   onChange={(e) => setZoom(Number(e.target.value))}
                   className="w-full accent-slate-900 cursor-pointer"
                 />
-                <ZoomIn className="w-4 h-4 text-slate-500" />
-                <span className="text-xs font-mono text-slate-600 w-12 text-right tabular-nums">
+                <ZoomIn className="w-4 h-4 text-[#57534E]" />
+                <span className="text-xs font-mono text-[#57534E] w-12 text-right tabular-nums">
                   {Math.round(zoom * 100)}%
                 </span>
               </div>
@@ -246,14 +246,14 @@ export const PhotoUploader: React.FC<PhotoUploaderProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsCropModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 whitespace-nowrap shrink-0"
+                  className="px-4 py-2 text-xs font-medium text-[#44403C] bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg hover:bg-[#FAF8F5] whitespace-nowrap shrink-0"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmCrop}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 whitespace-nowrap shrink-0"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C1215] rounded-lg hover:bg-[#58181D] whitespace-nowrap shrink-0"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Apply 35×45mm Crop</span>

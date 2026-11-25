@@ -173,25 +173,25 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
   return (
     <div className="space-y-6">
       {/* School Header Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-indigo-600/10 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-xl bg-[#7F1D1D]/10 dark:bg-[#C2410C]/20 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center shrink-0">
               <SchoolIcon className="w-6 h-6" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-lg sm:text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   {activeSchool.name}
                 </h1>
                 <span className="text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 px-2.5 py-0.5 rounded-full">
                   SEMIS: {activeSchool.semisCode}
                 </span>
-                <span className="text-[11px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
+                <span className="text-[11px] font-medium bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] px-2 py-0.5 rounded">
                   {activeSchool.district} · {activeSchool.activeAcademicYear}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">
                 Classes &amp; Sections Management · Role-Based Section Allocations &amp; Academic Rosters
               </p>
             </div>
@@ -202,7 +202,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
               <button
                 type="button"
                 onClick={openAddModal}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-[#7F1D1D] hover:bg-[#651414] active:scale-95 text-white text-xs font-semibold rounded-xl shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Class / Section</span>
@@ -248,23 +248,23 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
 
       {/* Stats KPI Overview */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#D6CCC2]">
             <span>Total Sections</span>
-            <GraduationCap className="w-4 h-4 text-indigo-500" />
+            <GraduationCap className="w-4 h-4 text-[#7F1D1D]" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-1.5 tabular-nums">
             {stats.totalClasses}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Active grade sections</div>
+          <div className="text-[11px] text-[#57534E] mt-0.5">Active grade sections</div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#D6CCC2]">
             <span>Enrolled Students</span>
             <Users className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-1.5 tabular-nums">
             {stats.totalStudents}
           </div>
           <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5">
@@ -272,24 +272,24 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#D6CCC2]">
             <span>Faculty Members</span>
-            <UserCheck className="w-4 h-4 text-sky-500" />
+            <UserCheck className="w-4 h-4 text-[#C2410C]" />
           </div>
-          <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1.5 tabular-nums">
+          <div className="text-2xl font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-1.5 tabular-nums">
             {stats.totalTeachers}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Assigned class teachers</div>
+          <div className="text-[11px] text-[#57534E] mt-0.5">Assigned class teachers</div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
-          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl p-4 shadow-sm">
+          <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#D6CCC2]">
             <span>Language Mediums</span>
             <BookOpen className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-2 flex flex-wrap gap-1.5">
-            <span className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] rounded font-mono">
+          <div className="text-sm font-semibold text-[#1C1917] dark:text-[#FAF8F5] mt-2 flex flex-wrap gap-1.5">
+            <span className="px-1.5 py-0.5 bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] text-[10px] rounded font-mono">
               English
             </span>
             <span className="px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] rounded font-mono">
@@ -303,15 +303,15 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl p-3.5 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by Class, Section, Teacher or Room..."
-            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="w-full pl-9 pr-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
           />
         </div>
 
@@ -323,8 +323,8 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
               onClick={() => setSelectedMedium(m)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
                 selectedMedium === m
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-[#7F1D1D] text-white shadow-sm'
+                  : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
               }`}
             >
               {m === 'All' ? 'All Mediums' : `${m} Medium`}
@@ -344,21 +344,21 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
           return (
             <div
               key={cls.id}
-              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+              className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
             >
               <div>
                 {/* Card Top Badges */}
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                       <span>{cls.grade}</span>
-                      <span className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                      <span className="text-sm font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
                         § {cls.section}
                       </span>
                     </h3>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5">
+                    <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] flex items-center gap-2 mt-0.5">
                       <span className="flex items-center gap-1">
-                        <DoorOpen className="w-3.5 h-3.5 text-slate-400" />
+                        <DoorOpen className="w-3.5 h-3.5 text-[#78716C]" />
                         {cls.roomNumber || 'Room Unassigned'}
                       </span>
                       <span>·</span>
@@ -369,7 +369,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                   <span
                     className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
                       cls.medium === 'English'
-                        ? 'bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                        ? 'bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border-[#FECACA] dark:border-[#7F1D1D]/60'
                         : cls.medium === 'Urdu'
                         ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                         : 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
@@ -380,28 +380,28 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                 </div>
 
                 {/* Class Teacher Assignment */}
-                <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-3 border border-slate-100 dark:border-slate-800 mb-4">
-                  <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                <div className="bg-[#FAF8F5] dark:bg-[#2C1215]/50 rounded-xl p-3 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] mb-4">
+                  <div className="text-[11px] font-medium text-[#78716C] dark:text-[#D6CCC2] uppercase tracking-wider">
                     Class Incharge / Teacher
                   </div>
-                  <div className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-0.5 flex items-center gap-1.5">
-                    <UserCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <div className="text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-0.5 flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-[#7F1D1D] shrink-0" />
                     <span>{cls.classTeacherName || 'Not Assigned'}</span>
                   </div>
                 </div>
 
                 {/* Enrollment Bar */}
                 <div className="space-y-1.5 mb-4">
-                  <div className="flex items-center justify-between text-xs font-medium text-slate-600 dark:text-slate-300">
+                  <div className="flex items-center justify-between text-xs font-medium text-[#57534E] dark:text-[#E7E0D4]">
                     <span className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-slate-400" />
+                      <Users className="w-3.5 h-3.5 text-[#78716C]" />
                       <span>Enrollment</span>
                     </span>
                     <span className="font-mono tabular-nums">
                       {cls.totalStudents} / {cls.capacity || 50} Students
                     </span>
                   </div>
-                  <div className="w-full h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="w-full h-2 bg-[#F3EFEA] dark:bg-[#2C1215] rounded-full overflow-hidden">
                     <div
                       className={`h-full transition-all duration-300 rounded-full ${
                         capPercent >= 90
@@ -417,12 +417,12 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div className="pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => onNavigateToStudents?.(cls.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 hover:bg-sky-100 dark:hover:bg-sky-900/60 rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#C2410C] dark:text-[#FDBA74] bg-[#FFF7ED] dark:bg-[#7C2D12]/60 hover:bg-[#FFEDD5] dark:hover:bg-[#9A3412]/40 rounded-lg transition-colors cursor-pointer"
                   >
                     <Users className="w-3.5 h-3.5" />
                     <span>Students</span>
@@ -431,7 +431,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                   <button
                     type="button"
                     onClick={() => onNavigateToAttendance?.(cls.id)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 rounded-lg transition-colors cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2] dark:bg-[#3F1014]/60 hover:bg-[#FEE2E2] dark:hover:bg-[#58181D]/60 rounded-lg transition-colors cursor-pointer"
                   >
                     <span>Attendance</span>
                   </button>
@@ -444,7 +444,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                         type="button"
                         onClick={() => openEditModal(cls)}
                         title="Edit Class Information"
-                        className="p-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-[#57534E] hover:text-[#1C1917] dark:hover:text-[#FAF8F5] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-lg transition-colors cursor-pointer"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
@@ -452,7 +452,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                         type="button"
                         onClick={() => handleDeleteClass(cls.id, `${cls.grade} - ${cls.section}`)}
                         title="Delete Class"
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-[#78716C] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -466,19 +466,19 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
       </div>
 
       {displayedClasses.length === 0 && (
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-12 text-center">
-          <GraduationCap className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-12 text-center">
+          <GraduationCap className="w-12 h-12 text-[#E7E0D4] dark:text-[#44403C] mx-auto mb-3" />
+          <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
             No classes found matching your filter
           </h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-[#57534E] mt-1 max-w-sm mx-auto">
             Try adjusting your search keywords or clear medium filters.
           </p>
           {isAdmin && (
             <button
               type="button"
               onClick={openAddModal}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl cursor-pointer"
+              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-semibold rounded-xl cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Create New Class</span>
@@ -489,19 +489,19 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
 
       {/* Add / Edit Class Modal (Admin Only) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
-            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+        <div className="fixed inset-0 z-50 bg-[#2C1215]/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
+            <div className="px-5 py-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between bg-[#FAF8F5] dark:bg-[#2C1215]/50">
               <div className="flex items-center gap-2">
-                <GraduationCap className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <GraduationCap className="w-5 h-5 text-[#7F1D1D] dark:text-[#FCA5A5]" />
+                <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   {editingClass ? 'Edit Class / Section' : 'Add New Class / Section'}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-lg cursor-pointer"
+                className="text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] p-1 rounded-lg cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -517,13 +517,13 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Grade Level
                   </label>
                   <select
                     value={grade}
                     onChange={(e) => setGrade(e.target.value)}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   >
                     {GRADE_OPTIONS.map((g) => (
                       <option key={g} value={g}>
@@ -534,7 +534,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Section Name
                   </label>
                   <input
@@ -543,20 +543,20 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                     onChange={(e) => setSection(e.target.value)}
                     placeholder="e.g. A, Rose, Science"
                     required
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Instruction Medium
                   </label>
                   <select
                     value={medium}
                     onChange={(e) => setMedium(e.target.value as 'English' | 'Urdu' | 'Sindhi')}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   >
                     <option value="English">English Medium</option>
                     <option value="Urdu">Urdu Medium</option>
@@ -565,7 +565,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Academic Year
                   </label>
                   <input
@@ -573,19 +573,19 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                     value={academicYear}
                     onChange={(e) => setAcademicYear(e.target.value)}
                     placeholder="2025-2026"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Assign Class Teacher / Incharge
                 </label>
                 <select
                   value={classTeacherId}
                   onChange={(e) => setClassTeacherId(e.target.value)}
-                  className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                 >
                   {teachers.map((t) => (
                     <option key={t.id} value={t.id}>
@@ -597,7 +597,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Room No.
                   </label>
                   <input
@@ -605,12 +605,12 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                     value={roomNumber}
                     onChange={(e) => setRoomNumber(e.target.value)}
                     placeholder="Room 14"
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Capacity
                   </label>
                   <input
@@ -619,12 +619,12 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                     max={150}
                     value={capacity}
                     onChange={(e) => setCapacity(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Students
                   </label>
                   <input
@@ -633,22 +633,22 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                     max={capacity}
                     value={totalStudents}
                     onChange={(e) => setTotalStudents(Number(e.target.value))}
-                    className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-3.5 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl cursor-pointer"
+                  className="px-3.5 py-2 text-xs font-semibold text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-xl shadow-sm cursor-pointer transition"
+                  className="px-4 py-2 text-xs font-semibold text-white bg-[#7F1D1D] hover:bg-[#651414] active:scale-95 rounded-xl shadow-sm cursor-pointer transition"
                 >
                   {editingClass ? 'Save Changes' : 'Create Class'}
                 </button>

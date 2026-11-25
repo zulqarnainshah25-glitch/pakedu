@@ -112,10 +112,10 @@ const PrintPreviewModalShell: React.FC<PrintPreviewModalShellProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const iconColor = accent === 'indigo' ? 'text-indigo-600' : 'text-emerald-600';
+  const iconColor = accent === 'indigo' ? 'text-[#7F1D1D]' : 'text-emerald-600';
   const printBtnClass =
     accent === 'indigo'
-      ? 'bg-indigo-600 hover:bg-indigo-500 text-white'
+      ? 'bg-[#7F1D1D] hover:bg-[#651414] text-white'
       : 'bg-emerald-600 hover:bg-emerald-500 text-white';
 
   return (
@@ -127,14 +127,14 @@ const PrintPreviewModalShell: React.FC<PrintPreviewModalShellProps> = ({
       aria-label={title}
     >
       <div
-        className="w-full max-w-4xl max-h-[92vh] bg-white text-slate-900 rounded-2xl shadow-2xl flex flex-col overflow-hidden print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:overflow-visible print:block"
+        className="w-full max-w-4xl max-h-[92vh] bg-[#FFFDF9] text-[#1C1917] rounded-2xl shadow-2xl flex flex-col overflow-hidden print:max-w-none print:max-h-none print:shadow-none print:rounded-none print:overflow-visible print:block"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Sticky Header Controls (Hidden only when printing) */}
-        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-slate-200 bg-white">
+        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-4 border-b border-[#E7E0D4] bg-[#FFFDF9]">
           <div className="flex items-center gap-2.5 min-w-0">
             <Printer className={`w-5 h-5 shrink-0 ${iconColor}`} />
-            <h3 className="text-base font-bold text-slate-900 truncate">{title}</h3>
+            <h3 className="text-base font-bold text-[#1C1917] truncate">{title}</h3>
           </div>
           <div className="flex items-center gap-2.5 shrink-0">
             <button
@@ -149,7 +149,7 @@ const PrintPreviewModalShell: React.FC<PrintPreviewModalShellProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Close preview"
-              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] text-[#44403C] font-semibold text-xs rounded-xl transition flex items-center gap-1.5 cursor-pointer"
             >
               <X className="w-4 h-4" />
               <span>Close</span>
@@ -163,15 +163,15 @@ const PrintPreviewModalShell: React.FC<PrintPreviewModalShellProps> = ({
         </div>
 
         {/* Sticky Bottom Action Bar */}
-        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-t border-slate-200 bg-slate-50">
-          <span className="text-[11px] text-slate-500">
+        <div className="print:hidden shrink-0 flex flex-wrap items-center justify-between gap-3 px-6 py-3.5 border-t border-[#E7E0D4] bg-[#FAF8F5]">
+          <span className="text-[11px] text-[#57534E]">
             A4 Print &amp; PDF Ready · Press Esc or Close to return
           </span>
           <div className="flex items-center gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+              className="px-4 py-2 bg-[#FFFDF9] hover:bg-[#F3EFEA] border border-[#D6CCC2] text-[#44403C] font-semibold text-xs rounded-xl transition cursor-pointer"
             >
               Close / Cancel
             </button>
@@ -1838,21 +1838,21 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
   if (!canAccessModule) {
     return (
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-10 text-center space-y-3 shadow-xs">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-10 text-center space-y-3 shadow-xs">
         <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
           <ShieldAlert className="w-7 h-7" />
         </div>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+        <h2 className="text-lg font-bold text-[#1C1917] dark:text-[#FAF8F5]">
           Fee Management Access Restricted
         </h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+        <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] max-w-md mx-auto">
           This module is restricted to the Portal Super Admin, School Administrators / Principals, and designated Admission Incharges.
         </p>
         {onBack && (
           <button
             type="button"
             onClick={onBack}
-            className="mt-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+            className="mt-2 px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-bold rounded-xl transition cursor-pointer"
           >
             Return to Dashboard
           </button>
@@ -1867,7 +1867,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     <div className="w-full space-y-6 animate-in fade-in duration-200">
       <div className={isPrintModalOpen ? 'no-print space-y-6' : 'space-y-6'}>
       {/* Top Banner / Breadcrumb & Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
@@ -1875,17 +1875,17 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Fee Management &amp; Accounts
                 </h1>
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {activeSchool.name || 'School Accounts'}
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4]">
                   SEMIS: {activeSchool.semisCode || 'N/A'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">
                 Dynamic class fee structures, monthly fee collection, printable bank vouchers, financial reports, and fee defaulters tracking.
               </p>
             </div>
@@ -1893,17 +1893,17 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           {/* Month Selector & Role Badge */}
           <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
-            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-              <Calendar className="w-4 h-4 text-slate-500 shrink-0" />
+            <div className="flex items-center gap-2 bg-[#FAF8F5] dark:bg-[#2C1215]/80 px-3 py-1.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+              <Calendar className="w-4 h-4 text-[#57534E] shrink-0" />
               <label htmlFor="sms-fee-month-selector" className="sr-only">Billing Month</label>
               <select
                 id="sms-fee-month-selector"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
-                className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer"
+                className="bg-transparent text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden cursor-pointer"
               >
                 {monthOptions.map((opt) => (
-                  <option key={opt.val} value={opt.val} className="dark:bg-slate-900">
+                  <option key={opt.val} value={opt.val} className="dark:bg-[#211415]">
                     {opt.label}
                   </option>
                 ))}
@@ -1915,7 +1915,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 Super Admin (Global)
               </span>
             ) : canManageFeeStructure ? (
-              <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+              <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60">
                 School Admin (Full Access)
               </span>
             ) : (
@@ -1928,14 +1928,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
         {/* Super Admin School Switcher Bar */}
         {isSuperAdmin && (
-          <div className="mt-4 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="mt-4 p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-xs">
               <Building className="w-4 h-4 text-rose-500 shrink-0" />
               <div>
-                <span className="font-bold text-slate-900 dark:text-white block">
+                <span className="font-bold text-[#1C1917] dark:text-[#FAF8F5] block">
                   Super Admin Active School Context
                 </span>
-                <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                <span className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">
                   Select any registered school to load its classes, students, fee structures, and vouchers.
                 </span>
               </div>
@@ -1949,7 +1949,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 id="superadmin-fee-school-selector"
                 value={activeSchool.id}
                 onChange={(e) => handleSuperAdminSchoolSelect(e.target.value)}
-                className="flex-1 sm:w-80 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
+                className="flex-1 sm:w-80 bg-[#FFFDF9] dark:bg-[#211415] border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.22)] rounded-xl px-3 py-2 text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-emerald-500/30 cursor-pointer"
               >
                 {registeredSchools.length === 0 ? (
                   <option value={activeSchool.id}>
@@ -1969,7 +1969,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 onClick={() => refreshActiveSchoolClasses(activeSchool.id)}
                 disabled={loadingClasses}
                 title="Reload Classes & Fee Data"
-                className="px-3 py-2 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
+                className="px-3 py-2 bg-[#FFFDF9] dark:bg-[#211415] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.22)] rounded-xl text-xs font-semibold text-[#44403C] dark:text-[#FAF8F5] flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingClasses ? 'animate-spin' : ''}`} />
                 <span className="hidden md:inline">{loadingClasses ? 'Loading...' : `${classes.length} Classes`}</span>
@@ -1979,7 +1979,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         )}
 
         {/* Navigation Tabs */}
-        <div className="flex items-center gap-2 mt-5 pt-4 border-t border-slate-100 dark:border-slate-800/80 overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-2 mt-5 pt-4 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] overflow-x-auto no-scrollbar">
           {/* Fee Structure Tab: Visible to Admin; Read-only notice for Admission Incharge */}
           <button
             type="button"
@@ -1987,13 +1987,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeTab === 'structure'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
             }`}
           >
             <Layers className="w-4 h-4" />
             <span>1. Fee Structure</span>
             {!canManageFeeStructure && (
-              <span className="px-1.5 py-0.2 text-[9px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded font-normal">
+              <span className="px-1.5 py-0.2 text-[9px] bg-[#E7E0D4] dark:bg-[#3F1014] text-[#57534E] dark:text-[#E7E0D4] rounded font-normal">
                 Read Only
               </span>
             )}
@@ -2005,7 +2005,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeTab === 'collect'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
             }`}
           >
             <CreditCard className="w-4 h-4" />
@@ -2018,7 +2018,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeTab === 'bulk'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
             }`}
           >
             <FileCheck2 className="w-4 h-4" />
@@ -2032,7 +2032,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
                 activeTab === 'concessions'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
               }`}
             >
               <Tag className="w-4 h-4" />
@@ -2051,7 +2051,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
               activeTab === 'defaulters'
                 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
             }`}
           >
             <AlertTriangle className="w-4 h-4" />
@@ -2070,7 +2070,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
                 activeTab === 'reports'
                   ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
               }`}
             >
               <BarChart3 className="w-4 h-4" />
@@ -2102,16 +2102,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       {activeTab === 'structure' && (
         <div className="space-y-6">
           {/* Header Card with description & Save All */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-xs">
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                   <span>Class-Wise Fee Matrix</span>
                   <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
                     Fully Variable &amp; Editable
                   </span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">
                   Configure monthly tuition fees, admission charges, exam fees, and custom funds (e.g., Science Lab, Sports, Red Crescent) for each class.
                 </p>
               </div>
@@ -2140,11 +2140,11 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           </div>
 
           {/* Table / Matrix of Classes */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider">
+                  <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[11px] tracking-wider">
                     <th className="py-3.5 px-4">Class &amp; Section</th>
                     <th className="py-3.5 px-4">Monthly Tuition (PKR)</th>
                     <th className="py-3.5 px-4">Admission Fee (PKR)</th>
@@ -2154,10 +2154,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     <th className="py-3.5 px-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)] text-[#44403C] dark:text-[#E7E0D4]">
                   {classes.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="py-10 px-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                      <td colSpan={7} className="py-10 px-4 text-center text-xs text-[#57534E] dark:text-[#D6CCC2]">
                         {loadingClasses
                           ? `Loading classes for ${activeSchool.name}...`
                           : `No classes found for ${activeSchool.name}. Please add classes in Classes & Sections first.`}
@@ -2186,15 +2186,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     return (
                       <tr
                         key={cls.id}
-                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                        className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40 transition-colors"
                       >
                         {/* Class Info */}
-                        <td className="py-4 px-4 font-semibold text-slate-900 dark:text-white">
+                        <td className="py-4 px-4 font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                           <div className="flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
                             <div>
                               <div className="font-bold text-sm">{cls.grade}</div>
-                              <div className="text-[11px] text-slate-500 dark:text-slate-400 font-normal">
+                              <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] font-normal">
                                 {cls.section || 'General'} · {cls.medium}
                               </div>
                             </div>
@@ -2203,8 +2203,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
                         {/* Monthly Tuition */}
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 w-32">
-                            <span className="text-slate-400 font-semibold text-xs">Rs.</span>
+                          <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-2.5 py-1.5 w-32">
+                            <span className="text-[#78716C] font-semibold text-xs">Rs.</span>
                             <input
                               type="number"
                               min="0"
@@ -2217,15 +2217,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                                   parseInt(e.target.value, 10)
                                 )
                               }
-                              className="w-full bg-transparent font-bold text-slate-900 dark:text-white focus:outline-hidden text-xs disabled:opacity-60"
+                              className="w-full bg-transparent font-bold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden text-xs disabled:opacity-60"
                             />
                           </div>
                         </td>
 
                         {/* Admission Fee */}
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 w-28">
-                            <span className="text-slate-400 font-semibold text-xs">Rs.</span>
+                          <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-2.5 py-1.5 w-28">
+                            <span className="text-[#78716C] font-semibold text-xs">Rs.</span>
                             <input
                               type="number"
                               min="0"
@@ -2238,15 +2238,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                                   parseInt(e.target.value, 10)
                                 )
                               }
-                              className="w-full bg-transparent font-medium text-slate-900 dark:text-white focus:outline-hidden text-xs disabled:opacity-60"
+                              className="w-full bg-transparent font-medium text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden text-xs disabled:opacity-60"
                             />
                           </div>
                         </td>
 
                         {/* Exam Fee */}
                         <td className="py-4 px-4">
-                          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 w-28">
-                            <span className="text-slate-400 font-semibold text-xs">Rs.</span>
+                          <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-2.5 py-1.5 w-28">
+                            <span className="text-[#78716C] font-semibold text-xs">Rs.</span>
                             <input
                               type="number"
                               min="0"
@@ -2259,7 +2259,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                                   parseInt(e.target.value, 10)
                                 )
                               }
-                              className="w-full bg-transparent font-medium text-slate-900 dark:text-white focus:outline-hidden text-xs disabled:opacity-60"
+                              className="w-full bg-transparent font-medium text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden text-xs disabled:opacity-60"
                             />
                           </div>
                         </td>
@@ -2270,7 +2270,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                             {(struct.customCharges || []).map((chg) => (
                               <span
                                 key={chg.id}
-                                className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-[10px] font-bold px-2 py-0.5 rounded-lg"
+                                className="inline-flex items-center gap-1 bg-[#FEF2F2] dark:bg-[#3F1014]/60 border border-[#FECACA] dark:border-[#7F1D1D]/60 text-[#7F1D1D] dark:text-[#FCA5A5] text-[10px] font-bold px-2 py-0.5 rounded-lg"
                               >
                                 <span>{chg.title}: Rs.{chg.amount}</span>
                                 {canManageFeeStructure && (
@@ -2290,7 +2290,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setCustomChargeModalClassId(cls.id)}
-                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition border border-dashed border-slate-300 dark:border-slate-600 cursor-pointer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#E7E0D4] rounded-lg transition border border-dashed border-[#D6CCC2] dark:border-[rgba(255,253,249,0.22)] cursor-pointer"
                               >
                                 <Plus className="w-3 h-3" />
                                 <span>Add Charge</span>
@@ -2311,7 +2311,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                               type="button"
                               onClick={() => handleSaveClassStructure(cls.id)}
                               disabled={savingClassId === cls.id}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-emerald-600 hover:text-white dark:bg-slate-800 dark:hover:bg-emerald-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ml-auto cursor-pointer disabled:opacity-50"
+                              className="px-3 py-1.5 bg-[#F3EFEA] hover:bg-emerald-600 hover:text-white dark:bg-[#2C1215] dark:hover:bg-emerald-600 text-[#44403C] dark:text-[#FAF8F5] rounded-lg text-xs font-bold transition flex items-center gap-1.5 ml-auto cursor-pointer disabled:opacity-50"
                             >
                               <Save className="w-3.5 h-3.5" />
                               <span>{savingClassId === cls.id ? 'Saving...' : 'Save'}</span>
@@ -2336,14 +2336,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Collection Form (7 cols) */}
           <div className="lg:col-span-7 space-y-6">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-5">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-xs space-y-5">
+              <div className="flex items-center justify-between border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-4">
                 <div>
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                     <Receipt className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                     <span>Fee Collection &amp; Voucher Generator</span>
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                     Select a student, adjust discount/concession, and issue official payment voucher.
                   </p>
                 </div>
@@ -2355,7 +2355,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               {/* Class & Student Selection */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="sms-fee-class-selector" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="sms-fee-class-selector" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                     1. Select Class
                   </label>
                   <select
@@ -2366,7 +2366,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       setCollectionClassId(e.target.value);
                       setCollectionStudentId('');
                     }}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 cursor-pointer disabled:opacity-60"
+                    className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 cursor-pointer disabled:opacity-60"
                   >
                     <option value="">
                       {loadingClasses
@@ -2384,14 +2384,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
 
                 <div>
-                  <label htmlFor="sms-fee-student-selector" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  <label htmlFor="sms-fee-student-selector" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                     2. Select Student
                   </label>
                   <select
                     id="sms-fee-student-selector"
                     value={collectionStudentId}
                     onChange={(e) => setCollectionStudentId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20"
                   >
                     <option value="">-- Choose Student ({classStudents.length} enrolled) --</option>
                     {classStudents.map((s) => (
@@ -2405,12 +2405,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
               {/* Fee Breakdown & Calculation Card */}
               {selectedStudent ? (
-                <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-4 border border-slate-200 dark:border-slate-700 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-slate-800 dark:text-slate-200 pb-2 border-b border-slate-200 dark:border-slate-700">
+                <div className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 rounded-xl p-4 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] pb-2 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                     <span>Fee Component Breakdown</span>
                     <div className="flex items-center gap-2">
                       {(Number(selectedStudent.advanceBalance) || 0) > 0 && (
-                        <span className="px-2 py-0.5 rounded bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#7C2D12]/70 text-[#C2410C] dark:text-[#FDBA74] text-[10px]">
                           Student Advance Credit: Rs. {(selectedStudent.advanceBalance || 0).toLocaleString()}
                         </span>
                       )}
@@ -2433,7 +2433,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           const rule = feeConcessions.find((r) => r.id === e.target.value) || null;
                           applyStudentConcession(selectedStudent.id, rule);
                         }}
-                        className="px-2.5 py-1.5 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                        className="px-2.5 py-1.5 bg-[#FFFDF9] dark:bg-[#211415] border border-amber-300 dark:border-amber-700 rounded-lg text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] cursor-pointer"
                       >
                         <option value="">No Permanent Discount</option>
                         {feeConcessions
@@ -2459,9 +2459,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   ) : null}
 
                   <div className="space-y-2 text-xs">
-                    <div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                    <div className="flex items-center justify-between text-[#57534E] dark:text-[#D6CCC2]">
                       <span>Monthly Tuition Fee:</span>
-                      <span className="font-semibold text-slate-900 dark:text-white">
+                      <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                         Rs. {baseMonthlyTuition.toLocaleString()}
                       </span>
                     </div>
@@ -2469,19 +2469,19 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     {(activeClassFeeStructure.customCharges || []).map((chg) => (
                       <div
                         key={chg.id}
-                        className="flex items-center justify-between text-slate-600 dark:text-slate-400"
+                        className="flex items-center justify-between text-[#57534E] dark:text-[#D6CCC2]"
                       >
                         <span className="flex items-center gap-1.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#7F1D1D]"></span>
                           <span>{chg.title}:</span>
                         </span>
-                        <span className="font-semibold text-slate-900 dark:text-white">
+                        <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                           Rs. {Number(chg.amount).toLocaleString()}
                         </span>
                       </div>
                     ))}
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 font-semibold text-slate-800 dark:text-slate-200">
+                    <div className="flex items-center justify-between pt-2 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                       <span>Gross Monthly Base:</span>
                       <span>Rs. {grossMonthlyFee.toLocaleString()}</span>
                     </div>
@@ -2498,8 +2498,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           :
                         </span>
                       </span>
-                      <div className="flex items-center gap-1 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-lg px-2 py-1 w-32">
-                        <span className="text-slate-400 text-xs">Rs.</span>
+                      <div className="flex items-center gap-1 bg-[#FFFDF9] dark:bg-[#211415] border border-amber-300 dark:border-amber-700 rounded-lg px-2 py-1 w-32">
+                        <span className="text-[#78716C] text-xs">Rs.</span>
                         <input
                           type="number"
                           min="0"
@@ -2512,7 +2512,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     </div>
 
                     {/* Final Net Due */}
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-800 dark:text-slate-100">
+                    <div className="flex items-center justify-between pt-2 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       <span>Net Monthly Payable Fee:</span>
                       <span>Rs. {netPayable.toLocaleString()}</span>
                     </div>
@@ -2530,20 +2530,20 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-700 text-sm font-bold text-emerald-700 dark:text-emerald-400">
+                    <div className="flex items-center justify-between pt-2 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-sm font-bold text-emerald-700 dark:text-emerald-400">
                       <span>Remaining Balance Due ({currentMonthLabel}):</span>
                       <span className="text-base">Rs. {remainingDueThisMonth.toLocaleString()}</span>
                     </div>
 
                     {/* Exact Amount Received (Partial & Advance Fee Tracking) */}
-                    <div className="mt-2 p-3 bg-white dark:bg-slate-900 border-2 border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2.5">
+                    <div className="mt-2 p-3 bg-[#FFFDF9] dark:bg-[#211415] border-2 border-emerald-200 dark:border-emerald-800 rounded-xl space-y-2.5">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                         <div>
-                          <label htmlFor="sms-exact-amount-received" className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <label htmlFor="sms-exact-amount-received" className="text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-1.5">
                             <Wallet className="w-4 h-4 text-emerald-600" />
                             <span>Exact Amount Received (PKR):</span>
                           </label>
-                          <p className="text-[10px] text-slate-500">
+                          <p className="text-[10px] text-[#57534E]">
                             Enter less than due for Partial payment, or more for Next Month Advance.
                           </p>
                         </div>
@@ -2571,10 +2571,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       )}
 
                       {surplusAmount > 0 && (
-                        <div className="p-2.5 rounded-lg bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-[11px] text-sky-900 dark:text-sky-200 space-y-1.5">
+                        <div className="p-2.5 rounded-lg bg-[#FFF7ED] dark:bg-[#7C2D12]/40 border border-[#FED7AA] dark:border-[#C2410C]/50 text-[11px] text-[#C2410C] dark:text-[#FDBA74] space-y-1.5">
                           <div className="flex items-center justify-between font-bold">
                             <span>Overpayment Surplus Detected:</span>
-                            <span className="font-mono text-sky-700 dark:text-sky-300">
+                            <span className="font-mono text-[#C2410C] dark:text-[#FDBA74]">
                               + Rs. {surplusAmount.toLocaleString()}
                             </span>
                           </div>
@@ -2583,7 +2583,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                               type="checkbox"
                               checked={allocateSurplusToNextMonth}
                               onChange={(e) => setAllocateSurplusToNextMonth(e.target.checked)}
-                              className="rounded border-sky-400 text-sky-600 focus:ring-sky-500"
+                              className="rounded border-[#FED7AA] text-[#C2410C] focus:ring-[#C2410C]"
                             />
                             <span>
                               Allocate Rs. {surplusAmount.toLocaleString()} as Advance to{' '}
@@ -2603,10 +2603,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </div>
                 </div>
               ) : (
-                <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-xs text-slate-500">
-                  <UserCheck className="w-8 h-8 mx-auto text-slate-400 mb-2 opacity-60" />
+                <div className="p-8 text-center bg-[#FAF8F5] dark:bg-[#2C1215]/40 rounded-xl border border-dashed border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-xs text-[#57534E]">
+                  <UserCheck className="w-8 h-8 mx-auto text-[#78716C] mb-2 opacity-60" />
                   <p className="font-semibold">No student selected</p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
+                  <p className="text-[11px] text-[#78716C] mt-0.5">
                     Select a class and student above to calculate monthly fees and generate voucher.
                   </p>
                 </div>
@@ -2623,14 +2623,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               {selectedStudent && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                   <div>
-                    <label htmlFor="sms-payment-method-selector" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label htmlFor="sms-payment-method-selector" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                       Payment Mode
                     </label>
                     <select
                       id="sms-payment-method-selector"
                       value={paymentMethod}
                       onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                      className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden"
                     >
                       <option value="Cash">Cash Counter</option>
                       <option value="EasyPaisa">EasyPaisa</option>
@@ -2641,7 +2641,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </div>
 
                   <div>
-                    <label htmlFor="sms-fee-notes-input" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label htmlFor="sms-fee-notes-input" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                       Remarks / Notes (Optional)
                     </label>
                     <input
@@ -2650,7 +2650,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       placeholder="e.g. Paid in full by father"
                       value={paymentNotes}
                       onChange={(e) => setPaymentNotes(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                      className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2 text-xs font-medium text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -2662,9 +2662,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   <button
                     type="button"
                     onClick={handleGenerateVoucherPreview}
-                    className="w-full sm:w-1/2 flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-xl text-xs transition cursor-pointer"
+                    className="w-full sm:w-1/2 flex items-center justify-center gap-2 px-4 py-3 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#1C1917] dark:text-[#FAF8F5] font-bold rounded-xl text-xs transition cursor-pointer"
                   >
-                    <Printer className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    <Printer className="w-4 h-4 text-[#57534E] dark:text-[#D6CCC2]" />
                     <span>Print Fee Voucher / Challan</span>
                   </button>
 
@@ -2694,34 +2694,34 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           {/* Right Column: Recent Payments Log (5 cols) */}
           <div className="lg:col-span-5 space-y-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
+              <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                   <Clock className="w-4 h-4 text-emerald-600" />
                   <span>Recent Fee Transactions</span>
                 </h3>
-                <span className="text-[11px] font-semibold text-slate-500">
+                <span className="text-[11px] font-semibold text-[#57534E]">
                   {feePayments.length} recorded
                 </span>
               </div>
 
               {feePayments.length === 0 ? (
-                <div className="py-10 text-center text-xs text-slate-400">
+                <div className="py-10 text-center text-xs text-[#78716C]">
                   No payment vouchers recorded yet.
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[500px] overflow-y-auto no-scrollbar">
+                <div className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)] max-h-[500px] overflow-y-auto no-scrollbar">
                   {feePayments.slice(0, 12).map((pay) => (
                     <div
                       key={pay.id}
-                      className="py-3 flex items-center justify-between text-xs hover:bg-slate-50 dark:hover:bg-slate-800/40 px-2 rounded-xl transition"
+                      className="py-3 flex items-center justify-between text-xs hover:bg-[#FAF8F5] dark:hover:bg-[#3F1014]/40 px-2 rounded-xl transition"
                     >
                       <div>
-                        <div className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-1.5">
                           <span>{pay.studentName}</span>
-                          <span className="text-[10px] text-slate-400">({pay.grNumber})</span>
+                          <span className="text-[10px] text-[#78716C]">({pay.grNumber})</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                        <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                           {pay.monthLabel} · {pay.paymentMethod || 'Cash'} · {pay.receiptNumber || 'RCPT'}
                         </div>
                         {(pay.pendingBalance || 0) > 0 && pay.status === 'partial' && (
@@ -2730,7 +2730,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           </div>
                         )}
                         {(pay.advanceGenerated || 0) > 0 && (
-                          <div className="text-[10px] font-semibold text-sky-600 dark:text-sky-400">
+                          <div className="text-[10px] font-semibold text-[#C2410C] dark:text-[#FDBA74]">
                             +Rs. {(pay.advanceGenerated || 0).toLocaleString()} Advance ({pay.allocatedNextMonth})
                           </div>
                         )}
@@ -2756,7 +2756,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           type="button"
                           onClick={() => setActiveVoucherForPrint(pay)}
                           title="Print Receipt"
-                          className="p-1.5 bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950 text-slate-600 hover:text-emerald-700 dark:text-slate-300 rounded-lg transition cursor-pointer"
+                          className="p-1.5 bg-[#F3EFEA] hover:bg-emerald-100 dark:bg-[#2C1215] dark:hover:bg-emerald-950 text-[#57534E] hover:text-emerald-700 dark:text-[#E7E0D4] rounded-lg transition cursor-pointer"
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
@@ -2775,14 +2775,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       {/* =================================================================== */}
       {activeTab === 'bulk' && (
         <div className="space-y-6">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-5">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-xs space-y-5">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-4">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                   <FileCheck2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   <span>Bulk Class Fee Voucher Generator</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                   Select a Class &amp; Section and Billing Month to generate fee vouchers for all enrolled students simultaneously with permanent concessions applied.
                 </p>
               </div>
@@ -2792,7 +2792,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   type="button"
                   onClick={handleSaveUnpaidBulkVouchers}
                   disabled={isSavingBulk || generatedBulkVouchers.length === 0}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
+                  className="px-4 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#1C1917] dark:text-[#FAF8F5] rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer disabled:opacity-50"
                 >
                   <Save className="w-4 h-4" />
                   <span>{isSavingBulk ? 'Saving...' : 'Save Batch to Register'}</span>
@@ -2820,7 +2820,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             {/* Controls */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div>
-                <label htmlFor="bulk-class-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label htmlFor="bulk-class-select" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   1. Select Class &amp; Section
                 </label>
                 <select
@@ -2828,7 +2828,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   value={bulkClassId}
                   disabled={loadingClasses}
                   onChange={(e) => setBulkClassId(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] cursor-pointer"
                 >
                   <option value="">
                     {loadingClasses
@@ -2846,14 +2846,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </div>
 
               <div>
-                <label htmlFor="bulk-month-select" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label htmlFor="bulk-month-select" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   2. Billing Month
                 </label>
                 <select
                   id="bulk-month-select"
                   value={bulkMonth}
                   onChange={(e) => setBulkMonth(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200 cursor-pointer"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] cursor-pointer"
                 >
                   {monthOptions.map((opt) => (
                     <option key={opt.val} value={opt.val}>
@@ -2864,7 +2864,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </div>
 
               <div>
-                <label htmlFor="bulk-due-date" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label htmlFor="bulk-due-date" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   3. Challan Due Date
                 </label>
                 <input
@@ -2872,12 +2872,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   type="date"
                   value={bulkDueDate}
                   onChange={(e) => setBulkDueDate(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 dark:text-slate-200"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2.5 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5]"
                 />
               </div>
 
               <div>
-                <label htmlFor="bulk-voucher-note" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label htmlFor="bulk-voucher-note" className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   4. Voucher Notice
                 </label>
                 <input
@@ -2885,20 +2885,20 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   type="text"
                   value={bulkVoucherNote}
                   onChange={(e) => setBulkVoucherNote(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-800 dark:text-slate-200"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2.5 text-xs font-medium text-[#1C1917] dark:text-[#FAF8F5]"
                 />
               </div>
             </div>
 
             {/* Batch KPI Strip */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-bold uppercase text-slate-500 block">Vouchers Ready</span>
-                <strong className="text-lg font-bold text-slate-900 dark:text-white">{generatedBulkVouchers.length} Students</strong>
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                <span className="text-[10px] font-bold uppercase text-[#57534E] block">Vouchers Ready</span>
+                <strong className="text-lg font-bold text-[#1C1917] dark:text-[#FAF8F5]">{generatedBulkVouchers.length} Students</strong>
               </div>
-              <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-bold uppercase text-slate-500 block">Gross Batch Amount</span>
-                <strong className="text-lg font-bold text-slate-900 dark:text-white font-mono">Rs. {bulkSummary.totalGross.toLocaleString()}</strong>
+              <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                <span className="text-[10px] font-bold uppercase text-[#57534E] block">Gross Batch Amount</span>
+                <strong className="text-lg font-bold text-[#1C1917] dark:text-[#FAF8F5] font-mono">Rs. {bulkSummary.totalGross.toLocaleString()}</strong>
               </div>
               <div className="p-3.5 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60">
                 <span className="text-[10px] font-bold uppercase text-amber-700 dark:text-amber-400 block">Concessions ({bulkSummary.discountedCount})</span>
@@ -2912,18 +2912,18 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           </div>
 
           {/* Generated Vouchers Table */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
             {generatedBulkVouchers.length === 0 ? (
-              <div className="py-12 text-center text-xs text-slate-500">
-                <FileCheck2 className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No Active Students in Selected Class</p>
-                <p className="text-slate-400 mt-1">Select a class with active enrolled students to generate batch vouchers.</p>
+              <div className="py-12 text-center text-xs text-[#57534E]">
+                <FileCheck2 className="w-9 h-9 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">No Active Students in Selected Class</p>
+                <p className="text-[#78716C] mt-1">Select a class with active enrolled students to generate batch vouchers.</p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                    <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                       <th className="py-3 px-4">Voucher #</th>
                       <th className="py-3 px-4">GR No</th>
                       <th className="py-3 px-4">Student Name</th>
@@ -2934,12 +2934,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       <th className="py-3 px-4 text-right">Preview</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                     {generatedBulkVouchers.map((v) => (
-                      <tr key={v.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                        <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{v.receiptNumber}</td>
+                      <tr key={v.id} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
+                        <td className="py-3 px-4 font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">{v.receiptNumber}</td>
                         <td className="py-3 px-4 font-mono font-bold">{v.grNumber}</td>
-                        <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{v.studentName}</td>
+                        <td className="py-3 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">{v.studentName}</td>
                         <td className="py-3 px-4 font-mono">Rs. {(v.baseAmount + v.customChargesAmount).toLocaleString()}</td>
                         <td className="py-3 px-4">
                           {v.discount > 0 ? (
@@ -2947,7 +2947,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                               {v.concessionTitle ? `${v.concessionTitle}: ` : ''}-Rs. {v.discount.toLocaleString()}
                             </span>
                           ) : (
-                            <span className="text-slate-400">-</span>
+                            <span className="text-[#78716C]">-</span>
                           )}
                         </td>
                         <td className="py-3 px-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -2972,7 +2972,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           <button
                             type="button"
                             onClick={() => setActiveVoucherForPrint(v)}
-                            className="px-2.5 py-1 bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1 bg-[#F3EFEA] hover:bg-emerald-100 dark:bg-[#2C1215] dark:hover:bg-emerald-950 text-[#44403C] dark:text-[#FAF8F5] rounded-lg text-[11px] font-bold inline-flex items-center gap-1 cursor-pointer"
                           >
                             <Printer className="w-3 h-3" />
                             <span>View</span>
@@ -2996,20 +2996,20 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Left 5 Cols: Create / Edit Rule + Quick Presets */}
             <div className="lg:col-span-5 space-y-6">
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-3">
+                  <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                     <Tag className="w-5 h-5 text-amber-500" />
                     <span>{editingRuleId ? 'Edit Fee Concession Rule' : 'Create Fee Discount Rule'}</span>
                   </h2>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                     Define institutional scholarship and fee concession categories for students.
                   </p>
                 </div>
 
                 {/* Quick 1-Click Standard Presets */}
                 <div className="space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#78716C] block">
                     Quick SELD Presets
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -3030,16 +3030,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     <button
                       type="button"
                       onClick={() => handleAddPresetConcession('Merit Scholarship', 'percentage', 25, '25% academic merit scholarship')}
-                      className="px-2.5 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/50 text-indigo-800 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold cursor-pointer"
+                      className="px-2.5 py-1 rounded-lg bg-[#FEF2F2] hover:bg-[#FEE2E2] dark:bg-[#3F1014]/50 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60 text-[11px] font-bold cursor-pointer"
                     >
                       + Merit Scholarship (25%)
                     </button>
                   </div>
                 </div>
 
-                <form onSubmit={handleSaveConcessionForm} className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <form onSubmit={handleSaveConcessionForm} className="space-y-3 pt-2 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Discount Rule Title <span className="text-rose-500">*</span>
                     </label>
                     <input
@@ -3048,19 +3048,19 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       placeholder="e.g., Orphan Discount or Sibling Waiver"
                       value={ruleTitle}
                       onChange={(e) => setRuleTitle(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden"
+                      className="w-full px-3.5 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                         Discount Type
                       </label>
                       <select
                         value={ruleType}
                         onChange={(e) => setRuleType(e.target.value as ConcessionDiscountType)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
+                        className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5]"
                       >
                         <option value="percentage">Percentage (%)</option>
                         <option value="fixed">Fixed Amount (PKR)</option>
@@ -3068,7 +3068,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                         {ruleType === 'percentage' ? 'Percentage (%)' : 'Amount (PKR)'}
                       </label>
                       <input
@@ -3078,13 +3078,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         required
                         value={ruleValue}
                         onChange={(e) => setRuleValue(parseInt(e.target.value, 10) || 0)}
-                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-900 dark:text-white font-mono"
+                        className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] font-mono"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Policy Description (Optional)
                     </label>
                     <input
@@ -3092,7 +3092,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       placeholder="e.g., Applicable upon Principal verification"
                       value={ruleDescription}
                       onChange={(e) => setRuleDescription(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                      className="w-full px-3.5 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5]"
                     />
                   </div>
 
@@ -3106,7 +3106,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           setRuleValue(50);
                           setRuleDescription('');
                         }}
-                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold cursor-pointer"
+                        className="px-4 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] text-[#44403C] dark:text-[#E7E0D4] rounded-xl text-xs font-bold cursor-pointer"
                       >
                         Cancel
                       </button>
@@ -3123,27 +3123,27 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </div>
 
               {/* Assign Concession Permanently to a Student */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
-                <div className="border-b border-slate-100 dark:border-slate-800 pb-3">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-indigo-500" />
+              <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-xs space-y-4">
+                <div className="border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-3">
+                  <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-[#7F1D1D]" />
                     <span>Assign Permanent Discount to Student</span>
                   </h3>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
+                  <p className="text-[11px] text-[#57534E] mt-0.5">
                     Select a student and link a concession rule permanently to auto-calculate future vouchers.
                   </p>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Filter by Class</label>
+                    <label className="block font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">Filter by Class</label>
                     <select
                       value={assignClassFilter}
                       onChange={(e) => {
                         setAssignClassFilter(e.target.value);
                         setAssignStudentId('');
                       }}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl font-semibold"
                     >
                       <option value="ALL">All Classes ({classes.length})</option>
                       {classes.map((c) => (
@@ -3155,7 +3155,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Select Student</label>
+                    <label className="block font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">Select Student</label>
                     <select
                       value={assignStudentId}
                       onChange={(e) => {
@@ -3163,7 +3163,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         const stu = students.find((s) => s.id === e.target.value);
                         setAssignRuleId(stu?.concessionId || '');
                       }}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl font-semibold"
                     >
                       <option value="">-- Choose Enrolled Student --</option>
                       {students
@@ -3177,11 +3177,11 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </div>
 
                   <div>
-                    <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1">Discount Rule</label>
+                    <label className="block font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">Discount Rule</label>
                     <select
                       value={assignRuleId}
                       onChange={(e) => setAssignRuleId(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-semibold"
+                      className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl font-semibold"
                     >
                       <option value="">-- No Discount (Remove Concession) --</option>
                       {feeConcessions
@@ -3198,7 +3198,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     type="button"
                     onClick={handleAssignConcessionToStudent}
                     disabled={!assignStudentId}
-                    className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
+                    className="w-full py-2.5 bg-[#7F1D1D] hover:bg-[#651414] text-white font-bold rounded-xl transition cursor-pointer disabled:opacity-50"
                   >
                     Apply Permanent Concession
                   </button>
@@ -3215,38 +3215,38 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
               )}
 
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-                <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
+                <div className="px-5 py-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                     <Percent className="w-4 h-4 text-emerald-600" />
                     <span>Configured Discount Rules ({feeConcessions.length})</span>
                   </h3>
                 </div>
 
                 {feeConcessions.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-slate-500">
-                    <Tag className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">No Concession Rules Created Yet</p>
-                    <p className="text-slate-400 mt-1">Use the presets or create a custom discount rule on the left.</p>
+                  <div className="py-12 text-center text-xs text-[#57534E]">
+                    <Tag className="w-9 h-9 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                    <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">No Concession Rules Created Yet</p>
+                    <p className="text-[#78716C] mt-1">Use the presets or create a custom discount rule on the left.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <div className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                     {feeConcessions.map((rule) => {
                       const assignedCount = students.filter((s) => s.concessionId === rule.id).length;
                       return (
-                        <div key={rule.id} className="p-4 flex items-center justify-between gap-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <div key={rule.id} className="p-4 flex items-center justify-between gap-4 hover:bg-[#FAF8F5]/50 dark:hover:bg-[#3F1014]/30">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-sm text-slate-900 dark:text-white">{rule.title}</span>
+                              <span className="font-bold text-sm text-[#1C1917] dark:text-[#FAF8F5]">{rule.title}</span>
                               <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 font-mono">
                                 {rule.discountType === 'fixed' ? `Rs. ${rule.value} OFF` : `${rule.value}% OFF`}
                               </span>
-                              <span className="text-[10px] font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded">
+                              <span className="text-[10px] font-semibold text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2] dark:bg-[#3F1014]/60 px-2 py-0.5 rounded">
                                 {assignedCount} student{assignedCount !== 1 ? 's' : ''}
                               </span>
                             </div>
                             {rule.description && (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{rule.description}</p>
+                              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">{rule.description}</p>
                             )}
                           </div>
 
@@ -3260,7 +3260,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                                 setRuleValue(rule.value);
                                 setRuleDescription(rule.description || '');
                               }}
-                              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                              className="p-2 text-[#78716C] hover:text-[#651414] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-lg transition cursor-pointer"
                               title="Edit Rule"
                             >
                               <Edit2 className="w-4 h-4" />
@@ -3268,7 +3268,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                             <button
                               type="button"
                               onClick={() => deleteFeeConcessionRule(rule.id)}
-                              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                              className="p-2 text-[#78716C] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
                               title="Delete Rule"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -3282,9 +3282,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </div>
 
               {/* List of Students Currently Receiving Permanent Concessions */}
-              <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-                <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+              <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
+                <div className="px-5 py-3.5 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[#44403C] dark:text-[#FAF8F5]">
                     Students With Active Permanent Concessions
                   </h3>
                   <span className="text-[11px] font-semibold text-amber-600">
@@ -3293,7 +3293,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 </div>
                 <div className="overflow-x-auto max-h-72">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 font-bold uppercase text-[10px]">
+                    <thead className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 text-[#57534E] font-bold uppercase text-[10px]">
                       <tr>
                         <th className="py-2.5 px-4">GR No</th>
                         <th className="py-2.5 px-4">Student Name</th>
@@ -3302,10 +3302,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-2.5 px-4 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                       {students.filter((s) => s.concessionTitle && (s.concessionValue || 0) > 0).length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-8 text-center text-xs text-slate-400">
+                          <td colSpan={5} className="py-8 text-center text-xs text-[#78716C]">
                             No students currently have permanent fee concessions assigned.
                           </td>
                         </tr>
@@ -3313,9 +3313,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         students
                           .filter((s) => s.concessionTitle && (s.concessionValue || 0) > 0)
                           .map((stu) => (
-                            <tr key={stu.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
+                            <tr key={stu.id} className="hover:bg-[#FAF8F5]/50 dark:hover:bg-[#3F1014]/40">
                               <td className="py-2.5 px-4 font-mono font-bold">{stu.grNumber}</td>
-                              <td className="py-2.5 px-4 font-bold text-slate-900 dark:text-white">{stu.fullName}</td>
+                              <td className="py-2.5 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">{stu.fullName}</td>
                               <td className="py-2.5 px-4">{stu.grade} - {stu.section}</td>
                               <td className="py-2.5 px-4">
                                 <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-bold text-[10px]">
@@ -3351,16 +3351,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           {/* Top KPI Summary Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* KPI 1: Total Collected */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                   Total Collected
                 </span>
                 <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <Receipt className="w-4 h-4" />
                 </div>
               </div>
-              <div className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
+              <div className="mt-2 text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 Rs. {kpiStats.totalCollected.toLocaleString()}
               </div>
               <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 font-medium">
@@ -3369,9 +3369,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             </div>
 
             {/* KPI 2: Total Pending Due */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                   Pending Dues
                 </span>
                 <div className="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center">
@@ -3387,44 +3387,44 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             </div>
 
             {/* KPI 3: Collection Rate */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                   Collection Rate
                 </span>
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center">
                   <TrendingUp className="w-4 h-4" />
                 </div>
               </div>
-              <div className="mt-2 text-xl font-bold text-indigo-600 dark:text-indigo-400">
+              <div className="mt-2 text-xl font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                 {kpiStats.collectionRate}%
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+              <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] mt-0.5 font-medium">
                 {currentMonthLabel}
               </div>
             </div>
 
             {/* KPI 4: Active Enrollment */}
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <span className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                   Enrolled Students
                 </span>
-                <div className="w-8 h-8 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center">
                   <UserCheck className="w-4 h-4" />
                 </div>
               </div>
-              <div className="mt-2 text-xl font-bold text-slate-900 dark:text-white">
+              <div className="mt-2 text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 {kpiStats.totalStudentsCount}
               </div>
-              <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium">
+              <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] mt-0.5 font-medium">
                 Active SIS Records
               </div>
             </div>
           </div>
 
           {/* Filter Bar & Sub-Tabs (Defaulters vs Paid) */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2 w-full md:w-auto">
               <button
                 type="button"
@@ -3432,7 +3432,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   defaulterViewMode === 'defaulters'
                     ? 'bg-red-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4]'
                 }`}
               >
                 Defaulters List ({defaultersList.length})
@@ -3444,7 +3444,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                   defaulterViewMode === 'paid'
                     ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                    : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4]'
                 }`}
               >
                 Paid Roster ({paidList.length})
@@ -3453,14 +3453,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
             <div className="flex items-center gap-3 w-full md:w-auto">
               {/* Class Filter */}
-              <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-auto">
-                <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] px-3 py-1.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] w-full sm:w-auto">
+                <Filter className="w-3.5 h-3.5 text-[#78716C] shrink-0" />
                 <label htmlFor="sms-fee-defaulter-class-filter" className="sr-only">Filter by Class</label>
                 <select
                   id="sms-fee-defaulter-class-filter"
                   value={defaulterClassFilter}
                   onChange={(e) => setDefaulterClassFilter(e.target.value)}
-                  className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden cursor-pointer"
+                  className="bg-transparent text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] focus:outline-hidden cursor-pointer"
                 >
                   <option value="ALL">All Classes</option>
                   {classes.map((c) => (
@@ -3473,13 +3473,13 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
               {/* Search */}
               <div className="relative w-full sm:w-60">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#78716C]" />
                 <input
                   type="text"
                   placeholder="Search GR or Name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl pl-8 pr-3 py-1.5 text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden"
                 />
               </div>
             </div>
@@ -3487,14 +3487,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           {/* Table: Defaulters View */}
           {defaulterViewMode === 'defaulters' && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
               {defaultersList.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
+                <div className="py-12 text-center text-xs text-[#57534E]">
                   <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2 opacity-80" />
-                  <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                  <p className="font-bold text-sm text-[#1C1917] dark:text-[#FAF8F5]">
                     No Fee Defaulters!
                   </p>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-[#78716C] mt-1">
                     All students in the selected class have paid their dues for {currentMonthLabel}.
                   </p>
                 </div>
@@ -3502,7 +3502,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[11px] tracking-wider">
                         <th className="py-3 px-4">GR Number</th>
                         <th className="py-3 px-4">Student &amp; Parent</th>
                         <th className="py-3 px-4">Class &amp; Section</th>
@@ -3512,7 +3512,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-3 px-4 text-right">Quick Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)] text-[#44403C] dark:text-[#E7E0D4]">
                       {defaultersList.map(({ student, expectedFee }) => {
                         const partialRec = paymentsInMonth.find(
                           (p) => p.studentId === student.id && p.status === 'partial'
@@ -3520,23 +3520,23 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         return (
                         <tr
                           key={student.id}
-                          className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                          className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40 transition-colors"
                         >
-                          <td className="py-3.5 px-4 font-mono font-bold text-slate-900 dark:text-white">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                             {student.grNumber}
                           </td>
                           <td className="py-3.5 px-4">
-                            <div className="font-bold text-slate-900 dark:text-white">
+                            <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                               {student.fullName}
                             </div>
-                            <div className="text-[11px] text-slate-400">
+                            <div className="text-[11px] text-[#78716C]">
                               s/o {student.fatherName}
                             </div>
                           </td>
                           <td className="py-3.5 px-4 font-semibold">
                             {student.grade} - {student.section || 'General'}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-500">
+                          <td className="py-3.5 px-4 text-[#57534E]">
                             {student.guardianPhone || 'N/A'}
                           </td>
                           <td className="py-3.5 px-4 font-bold text-red-600 dark:text-red-400">
@@ -3575,14 +3575,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           {/* Table: Paid Roster View */}
           {defaulterViewMode === 'paid' && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
               {paidList.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  <AlertCircle className="w-10 h-10 text-slate-400 mx-auto mb-2 opacity-60" />
-                  <p className="font-bold text-sm text-slate-800 dark:text-slate-200">
+                <div className="py-12 text-center text-xs text-[#57534E]">
+                  <AlertCircle className="w-10 h-10 text-[#78716C] mx-auto mb-2 opacity-60" />
+                  <p className="font-bold text-sm text-[#1C1917] dark:text-[#FAF8F5]">
                     No Paid Records for {currentMonthLabel}
                   </p>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-[#78716C] mt-1">
                     Collect fees using the "Collect Fee &amp; Vouchers" tab.
                   </p>
                 </div>
@@ -3590,7 +3590,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[11px] tracking-wider">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[11px] tracking-wider">
                         <th className="py-3 px-4">Receipt No</th>
                         <th className="py-3 px-4">GR Number</th>
                         <th className="py-3 px-4">Student Name</th>
@@ -3601,19 +3601,19 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-3 px-4 text-right">Receipt</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)] text-[#44403C] dark:text-[#E7E0D4]">
                       {paidList.map((pay) => (
                         <tr
                           key={pay.id}
-                          className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors"
+                          className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40 transition-colors"
                         >
-                          <td className="py-3.5 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                             {pay.receiptNumber || 'RCPT'}
                           </td>
-                          <td className="py-3.5 px-4 font-mono font-bold text-slate-900 dark:text-white">
+                          <td className="py-3.5 px-4 font-mono font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                             {pay.grNumber}
                           </td>
-                          <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white">
+                          <td className="py-3.5 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                             {pay.studentName}
                           </td>
                           <td className="py-3.5 px-4 font-semibold">
@@ -3622,10 +3622,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           <td className="py-3.5 px-4 font-bold text-emerald-600 dark:text-emerald-400">
                             Rs. {pay.paidAmount.toLocaleString()}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-600 dark:text-slate-300">
+                          <td className="py-3.5 px-4 text-[#57534E] dark:text-[#E7E0D4]">
                             {pay.paymentMethod || 'Cash'}
                           </td>
-                          <td className="py-3.5 px-4 text-slate-400">
+                          <td className="py-3.5 px-4 text-[#78716C]">
                             {pay.paymentDate
                               ? new Date(pay.paymentDate).toLocaleDateString('en-GB')
                               : 'N/A'}
@@ -3634,7 +3634,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                             <button
                               type="button"
                               onClick={() => setActiveVoucherForPrint(pay)}
-                              className="px-2.5 py-1.5 bg-slate-100 hover:bg-emerald-100 dark:bg-slate-800 dark:hover:bg-emerald-950 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer"
+                              className="px-2.5 py-1.5 bg-[#F3EFEA] hover:bg-emerald-100 dark:bg-[#2C1215] dark:hover:bg-emerald-950 text-[#44403C] dark:text-[#E7E0D4] rounded-lg text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer"
                             >
                               <Printer className="w-3.5 h-3.5" />
                               <span>Voucher</span>
@@ -3657,14 +3657,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       {activeTab === 'reports' && canAccessReports && (
         <div className="space-y-6">
           {/* Controls & Export Bar */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-4">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   <span>Financial Collection &amp; Defaulters Reports</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                   {isSuperAdmin
                     ? 'View aggregated metrics across all schools or filter by an individual school.'
                     : `Filtered strictly for ${activeSchool.name} (SEMIS: ${activeSchool.semisCode || 'N/A'}).`}
@@ -3678,7 +3678,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     type="button"
                     onClick={loadAggregatedReportsData}
                     disabled={loadingReports}
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
+                    className="px-3 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${loadingReports ? 'animate-spin' : ''}`} />
                     <span>{loadingReports ? 'Syncing...' : 'Refresh All Schools'}</span>
@@ -3697,7 +3697,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <button
                   type="button"
                   onClick={handleExportReportPdf}
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition cursor-pointer"
+                  className="px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Export / Print PDF</span>
@@ -3715,7 +3715,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     reportType === 'daily'
                       ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
                   }`}
                 >
                   Daily Collection
@@ -3726,7 +3726,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     reportType === 'monthly'
                       ? 'bg-emerald-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
                   }`}
                 >
                   Monthly Collection
@@ -3737,7 +3737,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     reportType === 'defaulters'
                       ? 'bg-rose-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
                   }`}
                 >
                   Defaulters List
@@ -3748,7 +3748,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     reportType === 'discounts'
                       ? 'bg-amber-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
                   }`}
                 >
                   Discount Summary
@@ -3758,8 +3758,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   onClick={() => setReportType('partial')}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
                     reportType === 'partial'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      ? 'bg-[#7F1D1D] text-white shadow-xs'
+                      : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
                   }`}
                 >
                   Partial Payments Report
@@ -3769,7 +3769,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               {/* Filter Controls */}
               <div className="flex items-center gap-2.5 flex-wrap">
                 {isSuperAdmin && (
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] px-3 py-1.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                     <Building className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                     <label htmlFor="report-school-scope" className="sr-only">School Scope</label>
                     <select
@@ -3779,7 +3779,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         setReportSchoolScope(e.target.value);
                         setReportClassFilter('ALL');
                       }}
-                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer max-w-[220px]"
+                      className="bg-transparent text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden cursor-pointer max-w-[220px]"
                     >
                       <option value="ALL">All Schools (Aggregated)</option>
                       {(registeredSchools.length > 0 ? registeredSchools : [activeSchool]).map((sch) => (
@@ -3792,29 +3792,29 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 )}
 
                 {reportType === 'daily' ? (
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] px-3 py-1.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                    <Calendar className="w-3.5 h-3.5 text-[#78716C] shrink-0" />
                     <label htmlFor="report-date-picker" className="sr-only">Select Date</label>
                     <input
                       id="report-date-picker"
                       type="date"
                       value={reportDate}
                       onChange={(e) => setReportDate(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer"
+                      className="bg-transparent text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden cursor-pointer"
                     />
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] px-3 py-1.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                    <Calendar className="w-3.5 h-3.5 text-[#78716C] shrink-0" />
                     <label htmlFor="report-month-picker" className="sr-only">Select Month</label>
                     <select
                       id="report-month-picker"
                       value={reportMonth}
                       onChange={(e) => setReportMonth(e.target.value)}
-                      className="bg-transparent text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-hidden cursor-pointer"
+                      className="bg-transparent text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden cursor-pointer"
                     >
                       {monthOptions.map((opt) => (
-                        <option key={opt.val} value={opt.val} className="dark:bg-slate-900">
+                        <option key={opt.val} value={opt.val} className="dark:bg-[#211415]">
                           {opt.label}
                         </option>
                       ))}
@@ -3824,14 +3824,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
                 {/* Class filter (when viewing a single active school) */}
                 {(!isSuperAdmin || reportSchoolScope === activeSchool.id) && (
-                  <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <div className="flex items-center gap-1.5 bg-[#FAF8F5] dark:bg-[#2C1215] px-3 py-1.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                    <Filter className="w-3.5 h-3.5 text-[#78716C] shrink-0" />
                     <label htmlFor="report-class-filter" className="sr-only">Filter by Class</label>
                     <select
                       id="report-class-filter"
                       value={reportClassFilter}
                       onChange={(e) => setReportClassFilter(e.target.value)}
-                      className="bg-transparent text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-hidden cursor-pointer"
+                      className="bg-transparent text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] focus:outline-hidden cursor-pointer"
                     >
                       <option value="ALL">All Classes ({classes.length})</option>
                       {classes.map((c) => (
@@ -3848,8 +3848,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           {/* Summary KPI Strip */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                 {reportType === 'daily' ? `Collected (${reportDate})` : `Total Collected (${reportMonthLabel})`}
               </div>
               <div className="mt-2 text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
@@ -3859,15 +3859,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   : reportData.totals.totalMonthlyCollected
                 ).toLocaleString()}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-[#57534E] mt-0.5">
                 {reportType === 'daily'
                   ? `${reportData.dailyPayments.length} receipt(s) on date`
                   : `${reportData.totals.totalPaidCount} student(s) paid`}
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                 Total Pending ({reportMonthLabel})
               </div>
               <div className="mt-2 text-xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">
@@ -3878,22 +3878,22 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                 {reportType === 'discounts'
                   ? `Discounts Granted (${reportMonthLabel})`
                   : reportType === 'partial'
                   ? 'Partial Pending Balances'
                   : 'Collection Rate'}
               </div>
-              <div className="mt-2 text-xl font-bold text-indigo-600 dark:text-indigo-400 tabular-nums">
+              <div className="mt-2 text-xl font-bold text-[#7F1D1D] dark:text-[#FCA5A5] tabular-nums">
                 {reportType === 'discounts'
                   ? `Rs. ${reportData.totals.totalDiscountsGranted.toLocaleString()}`
                   : reportType === 'partial'
                   ? `Rs. ${reportData.totals.totalPartialPending.toLocaleString()}`
                   : `${reportData.totals.overallCollectionRate}%`}
               </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
+              <div className="text-[11px] text-[#57534E] mt-0.5">
                 {reportType === 'discounts'
                   ? `${reportData.discountRows.length} discounted student(s)`
                   : reportType === 'partial'
@@ -3902,16 +3902,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
-              <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs">
+              <div className="text-[11px] font-bold text-[#57534E] dark:text-[#D6CCC2] uppercase tracking-wider">
                 Report Scope
               </div>
-              <div className="mt-2 text-sm font-bold text-slate-900 dark:text-white truncate" title={reportScopeLabel}>
+              <div className="mt-2 text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5] truncate" title={reportScopeLabel}>
                 {isSuperAdmin && reportSchoolScope === 'ALL'
                   ? `${reportData.targetDatasets.length} Registered Schools`
                   : activeSchool.name}
               </div>
-              <div className="text-[11px] text-slate-500 mt-1">
+              <div className="text-[11px] text-[#57534E] mt-1">
                 {isSuperAdmin && reportSchoolScope === 'ALL' ? 'Super Admin Aggregated' : `SEMIS: ${activeSchool.semisCode || 'N/A'}`}
               </div>
             </div>
@@ -3919,9 +3919,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
           {/* Super Admin School-by-School Aggregated Summary Table */}
           {isSuperAdmin && reportSchoolScope === 'ALL' && reportData.schoolSummaries.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-              <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
+              <div className="px-5 py-3.5 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#44403C] dark:text-[#FAF8F5]">
                   School-Wise Aggregated Financial Breakdown ({reportType === 'daily' ? reportDate : reportMonthLabel})
                 </h3>
                 <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
@@ -3931,7 +3931,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
-                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                    <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                       <th className="py-3 px-4">School &amp; SEMIS</th>
                       <th className="py-3 px-4">District</th>
                       <th className="py-3 px-4">Active Students</th>
@@ -3943,14 +3943,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       <th className="py-3 px-4 text-right">Total Pending</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                     {reportData.schoolSummaries.map((s) => (
-                      <tr key={s.schoolId} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                      <tr key={s.schoolId} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
                         <td className="py-3 px-4">
-                          <div className="font-bold text-slate-900 dark:text-white">{s.schoolName}</div>
-                          <div className="text-[10px] font-mono text-slate-400">SEMIS: {s.semisCode || 'N/A'}</div>
+                          <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">{s.schoolName}</div>
+                          <div className="text-[10px] font-mono text-[#78716C]">SEMIS: {s.semisCode || 'N/A'}</div>
                         </td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-300">{s.district || 'Sindh'}</td>
+                        <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4]">{s.district || 'Sindh'}</td>
                         <td className="py-3 px-4 font-semibold">{s.activeStudentsCount}</td>
                         <td className="py-3 px-4 text-emerald-600 dark:text-emerald-400 font-bold">{s.paidCount}</td>
                         <td className="py-3 px-4 text-rose-600 dark:text-rose-400 font-bold">{s.defaultersCount}</td>
@@ -3969,9 +3969,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           )}
 
           {/* Detailed Report Table */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl overflow-hidden shadow-xs">
-            <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-xs">
+            <div className="px-5 py-3.5 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between">
+              <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 {reportType === 'daily'
                   ? `Daily Fee Collection Ledger — ${reportDate}`
                   : reportType === 'monthly'
@@ -3982,7 +3982,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   ? `Partial Payments & Pending Balance Report — ${reportMonthLabel}`
                   : `Fee Defaulters List — ${reportMonthLabel}`}
               </h3>
-              <span className="text-[11px] font-semibold text-slate-500">
+              <span className="text-[11px] font-semibold text-[#57534E]">
                 {reportType === 'daily'
                   ? `${reportData.dailyPayments.length} record(s)`
                   : reportType === 'monthly'
@@ -3998,12 +3998,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             {/* 1. Daily Fee Collection Table */}
             {reportType === 'daily' && (
               reportData.dailyPayments.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  <Receipt className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                <div className="py-12 text-center text-xs text-[#57534E]">
+                  <Receipt className="w-9 h-9 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                  <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">
                     No collections recorded on {reportDate}
                   </p>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-[#78716C] mt-1">
                     Select another date above or record payments in "2. Collect Fee &amp; Vouchers".
                   </p>
                 </div>
@@ -4011,7 +4011,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                         <th className="py-3 px-4">Receipt No</th>
                         {isSuperAdmin && <th className="py-3 px-4">School</th>}
                         <th className="py-3 px-4">GR No</th>
@@ -4022,19 +4022,19 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-3 px-4 text-right">Amount Paid</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                       {reportData.dailyPayments.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                        <tr key={p.id} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
+                          <td className="py-3 px-4 font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                             {p.receiptNumber || 'RCPT'}
                           </td>
                           {isSuperAdmin && (
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">
+                            <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] max-w-[180px] truncate">
                               {p.schoolName}
                             </td>
                           )}
                           <td className="py-3 px-4 font-mono font-bold">{p.grNumber}</td>
-                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{p.studentName}</td>
+                          <td className="py-3 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">{p.studentName}</td>
                           <td className="py-3 px-4">{p.grade} - {p.section || 'General'}</td>
                           <td className="py-3 px-4">{p.monthLabel}</td>
                           <td className="py-3 px-4">{p.paymentMethod || 'Cash'}</td>
@@ -4052,12 +4052,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             {/* 2. Monthly Fee Collection Table */}
             {reportType === 'monthly' && (
               reportData.monthlyPayments.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  <Calendar className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                <div className="py-12 text-center text-xs text-[#57534E]">
+                  <Calendar className="w-9 h-9 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                  <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">
                     No fee collections found for {reportMonthLabel}
                   </p>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-[#78716C] mt-1">
                     Try choosing a different billing month or collecting fees in Tab 2.
                   </p>
                 </div>
@@ -4065,7 +4065,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                         <th className="py-3 px-4">Receipt No</th>
                         <th className="py-3 px-4">Date</th>
                         {isSuperAdmin && <th className="py-3 px-4">School</th>}
@@ -4076,22 +4076,22 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-3 px-4 text-right">Amount Paid</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                       {reportData.monthlyPayments.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                        <tr key={p.id} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
+                          <td className="py-3 px-4 font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                             {p.receiptNumber || 'RCPT'}
                           </td>
-                          <td className="py-3 px-4 text-slate-500">
+                          <td className="py-3 px-4 text-[#57534E]">
                             {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : 'N/A'}
                           </td>
                           {isSuperAdmin && (
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">
+                            <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] max-w-[180px] truncate">
                               {p.schoolName}
                             </td>
                           )}
                           <td className="py-3 px-4 font-mono font-bold">{p.grNumber}</td>
-                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{p.studentName}</td>
+                          <td className="py-3 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">{p.studentName}</td>
                           <td className="py-3 px-4">{p.grade} - {p.section || 'General'}</td>
                           <td className="py-3 px-4">{p.paymentMethod || 'Cash'}</td>
                           <td className="py-3 px-4 text-right font-bold text-emerald-600 dark:text-emerald-400">
@@ -4108,12 +4108,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             {/* 3. Defaulters List Table */}
             {reportType === 'defaulters' && (
               reportData.defaulterRows.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
+                <div className="py-12 text-center text-xs text-[#57534E]">
                   <CheckCircle2 className="w-9 h-9 mx-auto text-emerald-500 mb-2" />
-                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                  <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">
                     Zero Defaulters for {reportMonthLabel}!
                   </p>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-[#78716C] mt-1">
                     All active students in scope have cleared their dues.
                   </p>
                 </div>
@@ -4121,7 +4121,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                         {isSuperAdmin && <th className="py-3 px-4">School</th>}
                         <th className="py-3 px-4">GR No</th>
                         <th className="py-3 px-4">Student &amp; Father Name</th>
@@ -4130,21 +4130,21 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-3 px-4 text-right">Pending Due (PKR)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                       {reportData.defaulterRows.map((row) => (
-                        <tr key={`${row.schoolId}_${row.student.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                        <tr key={`${row.schoolId}_${row.student.id}`} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
                           {isSuperAdmin && (
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">
+                            <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] max-w-[180px] truncate">
                               {row.schoolName}
                             </td>
                           )}
                           <td className="py-3 px-4 font-mono font-bold">{row.student.grNumber}</td>
                           <td className="py-3 px-4">
-                            <div className="font-bold text-slate-900 dark:text-white">{row.student.fullName}</div>
-                            <div className="text-[10px] text-slate-400">s/o {row.student.fatherName}</div>
+                            <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">{row.student.fullName}</div>
+                            <div className="text-[10px] text-[#78716C]">s/o {row.student.fatherName}</div>
                           </td>
                           <td className="py-3 px-4">{row.student.grade} - {row.student.section || 'General'}</td>
-                          <td className="py-3 px-4 font-mono text-slate-500">{row.student.guardianPhone || 'N/A'}</td>
+                          <td className="py-3 px-4 font-mono text-[#57534E]">{row.student.guardianPhone || 'N/A'}</td>
                           <td className="py-3 px-4 text-right font-bold text-rose-600 dark:text-rose-400">
                             Rs. {row.expectedFee.toLocaleString()}
                           </td>
@@ -4164,9 +4164,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                     {reportData.discountRuleSummary.map((ruleStat) => (
                       <div
                         key={ruleStat.title}
-                        className="px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800 text-xs"
+                        className="px-3 py-2 rounded-xl bg-[#FFFDF9] dark:bg-[#211415] border border-amber-200 dark:border-amber-800 text-xs"
                       >
-                        <div className="font-bold text-slate-900 dark:text-white">{ruleStat.title}</div>
+                        <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">{ruleStat.title}</div>
                         <div className="text-[11px] text-amber-700 dark:text-amber-400 font-semibold">
                           {ruleStat.studentsCount} student(s) · Rs. {ruleStat.totalMonthlyDiscount.toLocaleString()}
                         </div>
@@ -4176,12 +4176,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 )}
 
                 {reportData.discountRows.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-slate-500">
-                    <Tag className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                    <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                  <div className="py-12 text-center text-xs text-[#57534E]">
+                    <Tag className="w-9 h-9 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                    <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">
                       No Discounts Recorded for {reportMonthLabel}
                     </p>
-                    <p className="text-slate-400 mt-1">
+                    <p className="text-[#78716C] mt-1">
                       Create discount rules in "4. Concessions" and assign them to students.
                     </p>
                   </div>
@@ -4189,7 +4189,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs border-collapse">
                       <thead>
-                        <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                        <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                           {isSuperAdmin && <th className="py-3 px-4">School</th>}
                           <th className="py-3 px-4">GR No</th>
                           <th className="py-3 px-4">Student Name</th>
@@ -4200,14 +4200,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           <th className="py-3 px-4 text-right">Net Payable</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                         {reportData.discountRows.map((row) => (
-                          <tr key={`${row.schoolId}_${row.student.id}`} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                          <tr key={`${row.schoolId}_${row.student.id}`} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
                             {isSuperAdmin && (
-                              <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">{row.schoolName}</td>
+                              <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] max-w-[180px] truncate">{row.schoolName}</td>
                             )}
                             <td className="py-3 px-4 font-mono font-bold">{row.student.grNumber}</td>
-                            <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{row.student.fullName}</td>
+                            <td className="py-3 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">{row.student.fullName}</td>
                             <td className="py-3 px-4">{row.student.grade} - {row.student.section || 'General'}</td>
                             <td className="py-3 px-4">
                               <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 font-bold text-[10px]">
@@ -4233,12 +4233,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             {/* 5. Partial Payments Report Table */}
             {reportType === 'partial' && (
               reportData.partialPaymentRows.length === 0 ? (
-                <div className="py-12 text-center text-xs text-slate-500">
-                  <Wallet className="w-9 h-9 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                  <p className="font-bold text-sm text-slate-700 dark:text-slate-300">
+                <div className="py-12 text-center text-xs text-[#57534E]">
+                  <Wallet className="w-9 h-9 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                  <p className="font-bold text-sm text-[#44403C] dark:text-[#E7E0D4]">
                     No Partial Payments in {reportMonthLabel}
                   </p>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-[#78716C] mt-1">
                     When partial amounts are received in Fee Collection, they appear here with remaining balances.
                   </p>
                 </div>
@@ -4246,7 +4246,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 font-bold uppercase text-[10px]">
+                      <tr className="bg-[#FAF8F5] dark:bg-[#2C1215]/60 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px]">
                         <th className="py-3 px-4">Receipt No</th>
                         {isSuperAdmin && <th className="py-3 px-4">School</th>}
                         <th className="py-3 px-4">GR No</th>
@@ -4258,15 +4258,15 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                         <th className="py-3 px-4 text-right">Advance Credit</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                       {reportData.partialPaymentRows.map((p) => (
-                        <tr key={p.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
-                          <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400">{p.receiptNumber || 'RCPT'}</td>
+                        <tr key={p.id} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/40">
+                          <td className="py-3 px-4 font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">{p.receiptNumber || 'RCPT'}</td>
                           {isSuperAdmin && (
-                            <td className="py-3 px-4 text-slate-600 dark:text-slate-300 max-w-[180px] truncate">{p.schoolName}</td>
+                            <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] max-w-[180px] truncate">{p.schoolName}</td>
                           )}
                           <td className="py-3 px-4 font-mono font-bold">{p.grNumber}</td>
-                          <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">{p.studentName}</td>
+                          <td className="py-3 px-4 font-bold text-[#1C1917] dark:text-[#FAF8F5]">{p.studentName}</td>
                           <td className="py-3 px-4">{p.grade} - {p.section || 'General'}</td>
                           <td className="py-3 px-4 text-right font-mono">Rs. {Number(p.netAmount || 0).toLocaleString()}</td>
                           <td className="py-3 px-4 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -4275,7 +4275,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                           <td className="py-3 px-4 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
                             Rs. {p.remainingDue.toLocaleString()}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-sky-600 dark:text-sky-400">
+                          <td className="py-3 px-4 text-right font-mono font-bold text-[#C2410C] dark:text-[#FDBA74]">
                             Rs. {p.studentAdvanceBalance.toLocaleString()}
                           </td>
                         </tr>
@@ -4295,22 +4295,22 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       {/* =================================================================== */}
       {customChargeModalClassId && (
         <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-3">
+              <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                 <Plus className="w-5 h-5 text-emerald-600" />
                 <span>Add Custom Fee / Fund</span>
               </h3>
               <button
                 type="button"
                 onClick={() => setCustomChargeModalClassId(null)}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
+                className="p-1 hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-lg transition"
               >
-                <X className="w-4 h-4 text-slate-400" />
+                <X className="w-4 h-4 text-[#78716C]" />
               </button>
             </div>
 
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
               Add a specialized charge for{' '}
               <strong>
                 {classes.find((c) => c.id === customChargeModalClassId)?.grade}
@@ -4320,7 +4320,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Charge Title / Fund Name
                 </label>
                 <input
@@ -4328,12 +4328,12 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   placeholder="e.g. Science Lab Fund"
                   value={newChargeTitle}
                   onChange={(e) => setNewChargeTitle(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2 text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Amount (PKR)
                 </label>
                 <input
@@ -4341,16 +4341,16 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   min="10"
                   value={newChargeAmount}
                   onChange={(e) => setNewChargeAmount(parseInt(e.target.value, 10) || 0)}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-hidden font-bold"
+                  className="w-full bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl px-3.5 py-2 text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden font-bold"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <button
                 type="button"
                 onClick={() => setCustomChargeModalClassId(null)}
-                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition"
+                className="px-4 py-2 text-xs font-semibold text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-xl transition"
               >
                 Cancel
               </button>
@@ -4379,135 +4379,135 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           accent="emerald"
         >
             {/* Printable A4 Container: 2 Identical Copies (School Copy & Student Copy) */}
-            <div className="printable-a4-sheet bg-white text-slate-900 p-6 border border-slate-200 rounded-xl space-y-8">
+            <div className="printable-a4-sheet bg-white text-[#1C1917] p-6 border border-[#E7E0D4] rounded-xl space-y-8">
               {[
                 { title: 'BANK / SCHOOL COUNTER COPY', copyTag: 'School Record' },
                 { title: 'STUDENT / PARENT COPY', copyTag: 'Student Record' },
               ].map((copy, idx) => (
                 <div
                   key={idx}
-                  className={`p-5 border-2 border-dashed border-slate-300 rounded-xl ${
-                    idx > 0 ? 'mt-6 pt-6 border-t-2 border-slate-400' : ''
+                  className={`p-5 border-2 border-dashed border-[#D6CCC2] rounded-xl ${
+                    idx > 0 ? 'mt-6 pt-6 border-t-2 border-[#C2B7A8]' : ''
                   }`}
                 >
                   {/* Header */}
-                  <div className="flex items-start justify-between border-b-2 border-slate-800 pb-3">
+                  <div className="flex items-start justify-between border-b-2 border-[#1C1917] pb-3">
                     <div>
                       <div className="text-[10px] font-bold tracking-widest text-emerald-800 uppercase">
                         GOVERNMENT OF SINDH · SCHOOL EDUCATION &amp; LITERACY DEPARTMENT
                       </div>
-                      <h2 className="text-lg font-black text-slate-900 uppercase">
+                      <h2 className="text-lg font-black text-[#1C1917] uppercase">
                         {activeSchool.name || 'Govt. High School'}
                       </h2>
-                      <div className="text-xs text-slate-600 font-medium">
+                      <div className="text-xs text-[#57534E] font-medium">
                         SEMIS Code: {activeSchool.semisCode || '403020101'} · District: {activeSchool.district || 'Latifabad, Hyderabad'}
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-900 text-white inline-block">
+                      <div className="px-2.5 py-0.5 rounded text-[10px] font-bold uppercase bg-[#2C1215] text-white inline-block">
                         {copy.title}
                       </div>
                       <div className="text-xs font-mono font-bold text-emerald-700 mt-1">
                         Receipt #: {activeVoucherForPrint.receiptNumber || 'RCPT-2026-001'}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-[#57534E]">
                         Date: {activeVoucherForPrint.paymentDate ? new Date(activeVoucherForPrint.paymentDate).toLocaleDateString('en-GB') : new Date().toLocaleDateString('en-GB')}
                       </div>
                     </div>
                   </div>
 
                   {/* Student Details Grid */}
-                  <div className="grid grid-cols-4 gap-2 my-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
+                  <div className="grid grid-cols-4 gap-2 my-3 text-xs bg-slate-50 p-3 rounded-lg border border-[#E7E0D4]">
                     <div>
-                      <span className="text-slate-500 text-[10px] block">Student Name:</span>
-                      <strong className="text-slate-900">{activeVoucherForPrint.studentName}</strong>
+                      <span className="text-[#57534E] text-[10px] block">Student Name:</span>
+                      <strong className="text-[#1C1917]">{activeVoucherForPrint.studentName}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[10px] block">GR / Roll No:</span>
-                      <strong className="text-slate-900 font-mono">{activeVoucherForPrint.grNumber}</strong>
+                      <span className="text-[#57534E] text-[10px] block">GR / Roll No:</span>
+                      <strong className="text-[#1C1917] font-mono">{activeVoucherForPrint.grNumber}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[10px] block">Class &amp; Section:</span>
-                      <strong className="text-slate-900">{activeVoucherForPrint.grade} - {activeVoucherForPrint.section || 'General'}</strong>
+                      <span className="text-[#57534E] text-[10px] block">Class &amp; Section:</span>
+                      <strong className="text-[#1C1917]">{activeVoucherForPrint.grade} - {activeVoucherForPrint.section || 'General'}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[10px] block">Fee Billing Month:</span>
+                      <span className="text-[#57534E] text-[10px] block">Fee Billing Month:</span>
                       <strong className="text-emerald-700">{activeVoucherForPrint.monthLabel}</strong>
                     </div>
                   </div>
 
                   {/* Fee Breakdown Table */}
-                  <table className="w-full text-left text-xs border border-slate-300 my-3">
-                    <thead className="bg-slate-100 font-bold text-slate-800">
+                  <table className="w-full text-left text-xs border border-[#D6CCC2] my-3">
+                    <thead className="bg-slate-100 font-bold text-[#1C1917]">
                       <tr>
-                        <th className="py-1.5 px-3 border border-slate-300">#</th>
-                        <th className="py-1.5 px-3 border border-slate-300">Fee Particulars</th>
-                        <th className="py-1.5 px-3 border border-slate-300 text-right">Amount (PKR)</th>
+                        <th className="py-1.5 px-3 border border-[#D6CCC2]">#</th>
+                        <th className="py-1.5 px-3 border border-[#D6CCC2]">Fee Particulars</th>
+                        <th className="py-1.5 px-3 border border-[#D6CCC2] text-right">Amount (PKR)</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-1.5 px-3 border border-slate-300">1</td>
-                        <td className="py-1.5 px-3 border border-slate-300">Monthly Tuition Fee</td>
-                        <td className="py-1.5 px-3 border border-slate-300 text-right font-mono">
+                        <td className="py-1.5 px-3 border border-[#D6CCC2]">1</td>
+                        <td className="py-1.5 px-3 border border-[#D6CCC2]">Monthly Tuition Fee</td>
+                        <td className="py-1.5 px-3 border border-[#D6CCC2] text-right font-mono">
                           {activeVoucherForPrint.baseAmount.toLocaleString()}
                         </td>
                       </tr>
                       {activeVoucherForPrint.customChargesAmount > 0 && (
                         <tr>
-                          <td className="py-1.5 px-3 border border-slate-300">2</td>
-                          <td className="py-1.5 px-3 border border-slate-300">Special Funds &amp; Lab Charges</td>
-                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono">
+                          <td className="py-1.5 px-3 border border-[#D6CCC2]">2</td>
+                          <td className="py-1.5 px-3 border border-[#D6CCC2]">Special Funds &amp; Lab Charges</td>
+                          <td className="py-1.5 px-3 border border-[#D6CCC2] text-right font-mono">
                             {activeVoucherForPrint.customChargesAmount.toLocaleString()}
                           </td>
                         </tr>
                       )}
                       {activeVoucherForPrint.discount > 0 && (
                         <tr className="text-amber-800 bg-amber-50/50">
-                          <td className="py-1.5 px-3 border border-slate-300">3</td>
-                          <td className="py-1.5 px-3 border border-slate-300">
+                          <td className="py-1.5 px-3 border border-[#D6CCC2]">3</td>
+                          <td className="py-1.5 px-3 border border-[#D6CCC2]">
                             Less: {activeVoucherForPrint.concessionTitle || 'Scholarship / Fee Concession'}
                           </td>
-                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono">
+                          <td className="py-1.5 px-3 border border-[#D6CCC2] text-right font-mono">
                             - {activeVoucherForPrint.discount.toLocaleString()}
                           </td>
                         </tr>
                       )}
-                      <tr className="bg-slate-100 font-bold text-slate-900">
-                        <td colSpan={2} className="py-2 px-3 border border-slate-300 text-right">
+                      <tr className="bg-slate-100 font-bold text-[#1C1917]">
+                        <td colSpan={2} className="py-2 px-3 border border-[#D6CCC2] text-right">
                           Total Net Payable:
                         </td>
-                        <td className="py-2 px-3 border border-slate-300 text-right font-mono text-sm text-emerald-800">
+                        <td className="py-2 px-3 border border-[#D6CCC2] text-right font-mono text-sm text-emerald-800">
                           Rs. {activeVoucherForPrint.netAmount.toLocaleString()}
                         </td>
                       </tr>
                       {activeVoucherForPrint.paidAmount > 0 && (
                         <tr className="bg-emerald-50/50 text-emerald-900">
-                          <td colSpan={2} className="py-1.5 px-3 border border-slate-300 text-right font-semibold">
+                          <td colSpan={2} className="py-1.5 px-3 border border-[#D6CCC2] text-right font-semibold">
                             Amount Paid / Settled:
                           </td>
-                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono font-bold">
+                          <td className="py-1.5 px-3 border border-[#D6CCC2] text-right font-mono font-bold">
                             Rs. {activeVoucherForPrint.paidAmount.toLocaleString()}
                           </td>
                         </tr>
                       )}
                       {(activeVoucherForPrint.pendingBalance || 0) > 0 && (
                         <tr className="bg-rose-50/60 text-rose-800">
-                          <td colSpan={2} className="py-1.5 px-3 border border-slate-300 text-right font-bold">
+                          <td colSpan={2} className="py-1.5 px-3 border border-[#D6CCC2] text-right font-bold">
                             Remaining Pending Balance:
                           </td>
-                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono font-bold">
+                          <td className="py-1.5 px-3 border border-[#D6CCC2] text-right font-mono font-bold">
                             Rs. {(activeVoucherForPrint.pendingBalance || 0).toLocaleString()}
                           </td>
                         </tr>
                       )}
                       {(activeVoucherForPrint.advanceGenerated || 0) > 0 && (
-                        <tr className="bg-sky-50/70 text-sky-900">
-                          <td colSpan={2} className="py-1.5 px-3 border border-slate-300 text-right font-bold">
+                        <tr className="bg-[#FFF7ED]/70 text-[#C2410C]">
+                          <td colSpan={2} className="py-1.5 px-3 border border-[#D6CCC2] text-right font-bold">
                             Advance Allocated ({activeVoucherForPrint.allocatedNextMonth || 'Next Month'}):
                           </td>
-                          <td className="py-1.5 px-3 border border-slate-300 text-right font-mono font-bold">
+                          <td className="py-1.5 px-3 border border-[#D6CCC2] text-right font-mono font-bold">
                             + Rs. {(activeVoucherForPrint.advanceGenerated || 0).toLocaleString()}
                           </td>
                         </tr>
@@ -4518,23 +4518,23 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   {/* Footer & Stamps */}
                   <div className="flex items-end justify-between pt-4 mt-2 text-xs">
                     <div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-[#57534E]">
                         Payment Status: <strong className="text-emerald-700 uppercase">{activeVoucherForPrint.status}</strong>
                         {activeVoucherForPrint.paymentMethod && ` via ${activeVoucherForPrint.paymentMethod}`}
                       </div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">
+                      <div className="text-[10px] text-[#78716C] mt-0.5">
                         Cashier: {activeVoucherForPrint.recordedByName || 'Fee Counter Official'}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-12">
                       <div className="text-center">
-                        <div className="w-28 border-b border-slate-400 mb-1"></div>
-                        <span className="text-[10px] text-slate-500">Cashier Stamp / Sign</span>
+                        <div className="w-28 border-b border-[#C2B7A8] mb-1"></div>
+                        <span className="text-[10px] text-[#57534E]">Cashier Stamp / Sign</span>
                       </div>
                       <div className="text-center">
-                        <div className="w-28 border-b border-slate-400 mb-1"></div>
-                        <span className="text-[10px] text-slate-500">Principal Signature</span>
+                        <div className="w-28 border-b border-[#C2B7A8] mb-1"></div>
+                        <span className="text-[10px] text-[#57534E]">Principal Signature</span>
                       </div>
                     </div>
                   </div>
@@ -4555,109 +4555,109 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           onClose={() => setBulkBatchForPrint(null)}
           accent="emerald"
         >
-            <div className="printable-a4-sheet bg-white text-slate-900 p-4 rounded-xl space-y-6">
+            <div className="printable-a4-sheet bg-white text-[#1C1917] p-4 rounded-xl space-y-6">
               {bulkBatchForPrint.map((voucher, idx) => (
                 <div
                   key={voucher.id}
-                  className={`p-4 border-2 border-dashed border-slate-400 rounded-xl print-break-inside-avoid ${
+                  className={`p-4 border-2 border-dashed border-[#C2B7A8] rounded-xl print-break-inside-avoid ${
                     idx % 2 === 1 && idx < bulkBatchForPrint.length - 1 ? 'print-page-break-after' : ''
                   }`}
                 >
-                  <div className="flex items-start justify-between border-b-2 border-slate-800 pb-2">
+                  <div className="flex items-start justify-between border-b-2 border-[#1C1917] pb-2">
                     <div>
                       <div className="text-[9px] font-bold tracking-widest text-emerald-800 uppercase">
                         GOVERNMENT OF SINDH · SCHOOL EDUCATION &amp; LITERACY DEPARTMENT
                       </div>
-                      <h2 className="text-base font-black text-slate-900 uppercase">
+                      <h2 className="text-base font-black text-[#1C1917] uppercase">
                         {activeSchool.name || 'Govt. High School'}
                       </h2>
-                      <div className="text-[11px] text-slate-600 font-medium">
+                      <div className="text-[11px] text-[#57534E] font-medium">
                         SEMIS Code: {activeSchool.semisCode || 'N/A'} · Due Date: {bulkDueDate}
                       </div>
                     </div>
 
                     <div className="text-right">
-                      <div className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-900 text-white inline-block">
+                      <div className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-[#2C1215] text-white inline-block">
                         MONTHLY FEE VOUCHER
                       </div>
                       <div className="text-[11px] font-mono font-bold text-emerald-700 mt-0.5">
                         Voucher #: {voucher.receiptNumber}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-[#57534E]">
                         Billing Month: <strong>{voucher.monthLabel}</strong>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-2 my-2.5 text-[11px] bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                  <div className="grid grid-cols-4 gap-2 my-2.5 text-[11px] bg-slate-50 p-2.5 rounded-lg border border-[#E7E0D4]">
                     <div>
-                      <span className="text-slate-500 text-[9px] block">Student Name:</span>
-                      <strong className="text-slate-900">{voucher.studentName}</strong>
+                      <span className="text-[#57534E] text-[9px] block">Student Name:</span>
+                      <strong className="text-[#1C1917]">{voucher.studentName}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[9px] block">GR Number:</span>
-                      <strong className="text-slate-900 font-mono">{voucher.grNumber}</strong>
+                      <span className="text-[#57534E] text-[9px] block">GR Number:</span>
+                      <strong className="text-[#1C1917] font-mono">{voucher.grNumber}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[9px] block">Class &amp; Section:</span>
-                      <strong className="text-slate-900">{voucher.grade} - {voucher.section || 'General'}</strong>
+                      <span className="text-[#57534E] text-[9px] block">Class &amp; Section:</span>
+                      <strong className="text-[#1C1917]">{voucher.grade} - {voucher.section || 'General'}</strong>
                     </div>
                     <div>
-                      <span className="text-slate-500 text-[9px] block">Status:</span>
+                      <span className="text-[#57534E] text-[9px] block">Status:</span>
                       <strong className="uppercase text-emerald-700">{voucher.status}</strong>
                     </div>
                   </div>
 
-                  <table className="w-full text-left text-[11px] border border-slate-300 border-collapse my-2">
-                    <thead className="bg-slate-100 font-bold text-slate-800">
+                  <table className="w-full text-left text-[11px] border border-[#D6CCC2] border-collapse my-2">
+                    <thead className="bg-slate-100 font-bold text-[#1C1917]">
                       <tr>
-                        <th className="py-1 px-2.5 border border-slate-300">Fee Particulars</th>
-                        <th className="py-1 px-2.5 border border-slate-300 text-right">Amount (PKR)</th>
+                        <th className="py-1 px-2.5 border border-[#D6CCC2]">Fee Particulars</th>
+                        <th className="py-1 px-2.5 border border-[#D6CCC2] text-right">Amount (PKR)</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr>
-                        <td className="py-1 px-2.5 border border-slate-300">Monthly Tuition &amp; Class Charges</td>
-                        <td className="py-1 px-2.5 border border-slate-300 text-right font-mono">
+                        <td className="py-1 px-2.5 border border-[#D6CCC2]">Monthly Tuition &amp; Class Charges</td>
+                        <td className="py-1 px-2.5 border border-[#D6CCC2] text-right font-mono">
                           {(voucher.baseAmount + voucher.customChargesAmount).toLocaleString()}
                         </td>
                       </tr>
                       {voucher.discount > 0 && (
                         <tr className="text-amber-800 bg-amber-50/40">
-                          <td className="py-1 px-2.5 border border-slate-300">
+                          <td className="py-1 px-2.5 border border-[#D6CCC2]">
                             Less: {voucher.concessionTitle || 'Concession / Scholarship'}
                           </td>
-                          <td className="py-1 px-2.5 border border-slate-300 text-right font-mono">
+                          <td className="py-1 px-2.5 border border-[#D6CCC2] text-right font-mono">
                             - {voucher.discount.toLocaleString()}
                           </td>
                         </tr>
                       )}
                       {voucher.paidAmount > 0 && (
                         <tr className="text-emerald-800">
-                          <td className="py-1 px-2.5 border border-slate-300">Less: Already Paid / Advance Credit</td>
-                          <td className="py-1 px-2.5 border border-slate-300 text-right font-mono">
+                          <td className="py-1 px-2.5 border border-[#D6CCC2]">Less: Already Paid / Advance Credit</td>
+                          <td className="py-1 px-2.5 border border-[#D6CCC2] text-right font-mono">
                             - {voucher.paidAmount.toLocaleString()}
                           </td>
                         </tr>
                       )}
-                      <tr className="bg-slate-100 font-bold text-slate-900">
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right">Net Payable Balance:</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono text-xs text-emerald-800">
+                      <tr className="bg-slate-100 font-bold text-[#1C1917]">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Net Payable Balance:</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono text-xs text-emerald-800">
                           Rs. {(voucher.pendingBalance ?? voucher.netAmount).toLocaleString()}
                         </td>
                       </tr>
                     </tbody>
                   </table>
 
-                  <div className="flex items-end justify-between pt-2 text-[10px] text-slate-500">
+                  <div className="flex items-end justify-between pt-2 text-[10px] text-[#57534E]">
                     <span>{voucher.notes || bulkVoucherNote}</span>
                     <div className="flex items-center gap-8">
                       <div className="text-center">
-                        <div className="w-24 border-b border-slate-400 mb-0.5"></div>
+                        <div className="w-24 border-b border-[#C2B7A8] mb-0.5"></div>
                         <span>Bank / Cashier Sign</span>
                       </div>
                       <div className="text-center">
-                        <div className="w-24 border-b border-slate-400 mb-0.5"></div>
+                        <div className="w-24 border-b border-[#C2B7A8] mb-0.5"></div>
                         <span>Principal Sign</span>
                       </div>
                     </div>
@@ -4679,14 +4679,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           onClose={() => setShowReportPrintModal(false)}
           accent="indigo"
         >
-            <div className="printable-a4-sheet bg-white text-slate-900 p-6 border border-slate-200 rounded-xl space-y-5">
+            <div className="printable-a4-sheet bg-white text-[#1C1917] p-6 border border-[#E7E0D4] rounded-xl space-y-5">
               {/* Official Letterhead */}
-              <div className="flex items-start justify-between border-b-2 border-slate-800 pb-3">
+              <div className="flex items-start justify-between border-b-2 border-[#1C1917] pb-3">
                 <div>
                   <div className="text-[10px] font-bold tracking-widest text-emerald-800 uppercase">
                     GOVERNMENT OF SINDH · SCHOOL EDUCATION &amp; LITERACY DEPARTMENT
                   </div>
-                  <h2 className="text-lg font-black text-slate-900 uppercase">
+                  <h2 className="text-lg font-black text-[#1C1917] uppercase">
                     {reportType === 'daily'
                       ? 'Daily Fee Collection Report'
                       : reportType === 'monthly'
@@ -4697,24 +4697,24 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                       ? 'Partial Payments & Pending Balance Report'
                       : 'Monthly Fee Defaulters List'}
                   </h2>
-                  <div className="text-xs text-slate-600 font-medium">
+                  <div className="text-xs text-[#57534E] font-medium">
                     Scope: {reportScopeLabel}
                   </div>
                 </div>
                 <div className="text-right text-xs">
-                  <div className="font-bold text-slate-800">
+                  <div className="font-bold text-[#1C1917]">
                     {reportType === 'daily' ? `Date: ${reportDate}` : `Month: ${reportMonthLabel}`}
                   </div>
-                  <div className="text-[10px] text-slate-500">
+                  <div className="text-[10px] text-[#57534E]">
                     Generated: {new Date().toLocaleString('en-GB')}
                   </div>
                 </div>
               </div>
 
               {/* Totals Summary Box */}
-              <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-300 text-xs">
+              <div className="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-[#D6CCC2] text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">Total Collected</span>
+                  <span className="text-[10px] text-[#57534E] block uppercase font-bold">Total Collected</span>
                   <strong className="text-sm text-emerald-800 font-mono">
                     Rs.{' '}
                     {(reportType === 'daily'
@@ -4726,7 +4726,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </strong>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">
+                  <span className="text-[10px] text-[#57534E] block uppercase font-bold">
                     {reportType === 'discounts' ? 'Total Discounts Granted' : 'Total Pending Balance'}
                   </span>
                   <strong className="text-sm text-rose-700 font-mono">
@@ -4740,8 +4740,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
                   </strong>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block uppercase font-bold">Collection Rate</span>
-                  <strong className="text-sm text-slate-900 font-mono">
+                  <span className="text-[10px] text-[#57534E] block uppercase font-bold">Collection Rate</span>
+                  <strong className="text-sm text-[#1C1917] font-mono">
                     {reportData.totals.overallCollectionRate}% ({reportData.totals.totalPaidCount}/{reportData.totals.totalActiveStudents})
                   </strong>
                 </div>
@@ -4749,28 +4749,28 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
               {/* A4 Report Table */}
               {reportType === 'daily' && (
-                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
-                  <thead className="bg-slate-100 font-bold text-slate-800">
+                <table className="w-full text-left text-[11px] border border-[#D6CCC2] border-collapse">
+                  <thead className="bg-slate-100 font-bold text-[#1C1917]">
                     <tr>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Receipt</th>
-                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
-                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Method</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Paid (PKR)</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Receipt</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-[#D6CCC2]">School</th>}
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Class</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Method</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Paid (PKR)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.dailyPayments.map((p) => (
                       <tr key={p.id}>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.receiptNumber || 'RCPT'}</td>
-                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{p.schoolName}</td>}
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.grNumber}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{p.studentName}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">{p.grade} - {p.section || 'General'}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">{p.paymentMethod || 'Cash'}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{p.receiptNumber || 'RCPT'}</td>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{p.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-semibold">{p.studentName}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.grade} - {p.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.paymentMethod || 'Cash'}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono font-bold">
                           {Number(p.paidAmount || 0).toLocaleString()}
                         </td>
                       </tr>
@@ -4780,30 +4780,30 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               )}
 
               {reportType === 'monthly' && (
-                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
-                  <thead className="bg-slate-100 font-bold text-slate-800">
+                <table className="w-full text-left text-[11px] border border-[#D6CCC2] border-collapse">
+                  <thead className="bg-slate-100 font-bold text-[#1C1917]">
                     <tr>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Receipt</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Date</th>
-                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
-                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Paid (PKR)</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Receipt</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Date</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-[#D6CCC2]">School</th>}
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Class</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Paid (PKR)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.monthlyPayments.map((p) => (
                       <tr key={p.id}>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.receiptNumber || 'RCPT'}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{p.receiptNumber || 'RCPT'}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">
                           {p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('en-GB') : 'N/A'}
                         </td>
-                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{p.schoolName}</td>}
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.grNumber}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{p.studentName}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">{p.grade} - {p.section || 'General'}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold">
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{p.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-semibold">{p.studentName}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.grade} - {p.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono font-bold">
                           {Number(p.paidAmount || 0).toLocaleString()}
                         </td>
                       </tr>
@@ -4813,32 +4813,32 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               )}
 
               {reportType === 'defaulters' && (
-                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
-                  <thead className="bg-slate-100 font-bold text-slate-800">
+                <table className="w-full text-left text-[11px] border border-[#D6CCC2] border-collapse">
+                  <thead className="bg-slate-100 font-bold text-[#1C1917]">
                     <tr>
-                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
-                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Student &amp; Father Name</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Guardian Phone</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Due (PKR)</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-[#D6CCC2]">School</th>}
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Student &amp; Father Name</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Class</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Guardian Phone</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Due (PKR)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.defaulterRows.map((row) => (
                       <tr key={`${row.schoolId}_${row.student.id}`}>
-                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{row.schoolName}</td>}
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{row.student.grNumber}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{row.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{row.student.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-semibold">
                           {row.student.fullName} s/o {row.student.fatherName}
                         </td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">
                           {row.student.grade} - {row.student.section || 'General'}
                         </td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">
                           {row.student.guardianPhone || 'N/A'}
                         </td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold text-rose-700">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono font-bold text-rose-700">
                           {row.expectedFee.toLocaleString()}
                         </td>
                       </tr>
@@ -4848,30 +4848,30 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               )}
 
               {reportType === 'discounts' && (
-                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
-                  <thead className="bg-slate-100 font-bold text-slate-800">
+                <table className="w-full text-left text-[11px] border border-[#D6CCC2] border-collapse">
+                  <thead className="bg-slate-100 font-bold text-[#1C1917]">
                     <tr>
-                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
-                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Concession Rule</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Discount (PKR)</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Net Payable</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-[#D6CCC2]">School</th>}
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Class</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Concession Rule</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Discount (PKR)</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Net Payable</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.discountRows.map((row) => (
                       <tr key={`${row.schoolId}_${row.student.id}`}>
-                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{row.schoolName}</td>}
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{row.student.grNumber}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{row.student.fullName}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">{row.student.grade} - {row.student.section || 'General'}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{row.concessionTitle}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold text-amber-700">
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{row.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{row.student.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-semibold">{row.student.fullName}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{row.student.grade} - {row.student.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-semibold">{row.concessionTitle}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono font-bold text-amber-700">
                           -{row.discountAmount.toLocaleString()}
                         </td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono font-bold">
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono font-bold">
                           {row.netFee.toLocaleString()}
                         </td>
                       </tr>
@@ -4881,30 +4881,30 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               )}
 
               {reportType === 'partial' && (
-                <table className="w-full text-left text-[11px] border border-slate-300 border-collapse">
-                  <thead className="bg-slate-100 font-bold text-slate-800">
+                <table className="w-full text-left text-[11px] border border-[#D6CCC2] border-collapse">
+                  <thead className="bg-slate-100 font-bold text-[#1C1917]">
                     <tr>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Receipt</th>
-                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-slate-300">School</th>}
-                      <th className="py-1.5 px-2.5 border border-slate-300">GR No</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Student Name</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300">Class</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Net Due</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Paid</th>
-                      <th className="py-1.5 px-2.5 border border-slate-300 text-right">Pending</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Receipt</th>
+                      {isSuperAdmin && <th className="py-1.5 px-2.5 border border-[#D6CCC2]">School</th>}
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">GR No</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Student Name</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2]">Class</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Net Due</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Paid</th>
+                      <th className="py-1.5 px-2.5 border border-[#D6CCC2] text-right">Pending</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reportData.partialPaymentRows.map((p) => (
                       <tr key={p.id}>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.receiptNumber || 'RCPT'}</td>
-                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-slate-300">{p.schoolName}</td>}
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-mono">{p.grNumber}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 font-semibold">{p.studentName}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300">{p.grade} - {p.section || 'General'}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono">{Number(p.netAmount || 0).toLocaleString()}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono text-emerald-700 font-bold">{Number(p.paidAmount || 0).toLocaleString()}</td>
-                        <td className="py-1.5 px-2.5 border border-slate-300 text-right font-mono text-rose-700 font-bold">{p.remainingDue.toLocaleString()}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{p.receiptNumber || 'RCPT'}</td>
+                        {isSuperAdmin && <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.schoolName}</td>}
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-mono">{p.grNumber}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] font-semibold">{p.studentName}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2]">{p.grade} - {p.section || 'General'}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono">{Number(p.netAmount || 0).toLocaleString()}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono text-emerald-700 font-bold">{Number(p.paidAmount || 0).toLocaleString()}</td>
+                        <td className="py-1.5 px-2.5 border border-[#D6CCC2] text-right font-mono text-rose-700 font-bold">{p.remainingDue.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -4913,17 +4913,17 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
 
               {/* Signatures Footer */}
               <div className="flex items-end justify-between pt-8 text-xs">
-                <div className="text-[10px] text-slate-500">
+                <div className="text-[10px] text-[#57534E]">
                   Prepared by: {currentUserProfile?.fullName || 'Accounts Office'}
                 </div>
                 <div className="flex items-center gap-12">
                   <div className="text-center">
-                    <div className="w-28 border-b border-slate-400 mb-1"></div>
-                    <span className="text-[10px] text-slate-500">Accounts / Cashier</span>
+                    <div className="w-28 border-b border-[#C2B7A8] mb-1"></div>
+                    <span className="text-[10px] text-[#57534E]">Accounts / Cashier</span>
                   </div>
                   <div className="text-center">
-                    <div className="w-28 border-b border-slate-400 mb-1"></div>
-                    <span className="text-[10px] text-slate-500">Principal / DDO Sign</span>
+                    <div className="w-28 border-b border-[#C2B7A8] mb-1"></div>
+                    <span className="text-[10px] text-[#57534E]">Principal / DDO Sign</span>
                   </div>
                 </div>
               </div>

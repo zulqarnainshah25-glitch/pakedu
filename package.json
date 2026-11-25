@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.js",
   "engines": {
     "node": "24.x"
   },
@@ -13,7 +14,9 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test:rules": "tsx firestore.rules.test.ts"
+    "test:rules": "tsx firestore.rules.test.ts",
+    "electron:dev": "concurrently -k \"npm run dev\" \"electron . --dev\"",
+    "electron:build": "vite build && electron-builder"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.2",
@@ -52,6 +55,9 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^10.0.7",
+    "electron": "^45.5.0",
+    "electron-builder": "^26.18.0",
     "esbuild": "^0.25.0",
     "eslint": "^10.13.0",
     "tailwindcss": "^4.3.3",

@@ -143,27 +143,27 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
   return (
     <div className="space-y-5">
       {/* Header Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-sm">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onBack}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer shrink-0"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center text-[#78716C] hover:text-[#1C1917] dark:hover:text-[#FAF8F5] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-xl transition cursor-pointer shrink-0"
               aria-label="Back to dashboard"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-lg sm:text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Daily Homework &amp; Class Diary
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   Phase D
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                 {activeSchool.name} · Post class homework assignments and submission due dates
               </p>
             </div>
@@ -174,7 +174,7 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
               type="button"
               onClick={handleOpenPostModal}
               disabled={selectableClasses.length === 0}
-              className="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50 shrink-0"
+              className="min-h-[44px] w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-50 shrink-0"
             >
               <Plus className="w-4 h-4" />
               <span>Assign Homework</span>
@@ -184,22 +184,22 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
       </div>
 
       {/* Filters Bar (Mobile-First Touch Controls) */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-sm grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search subject, topic, or teacher..."
-            className="w-full min-h-[44px] pl-10 pr-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+            className="w-full min-h-[44px] pl-10 pr-3.5 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
           />
         </div>
 
         <select
           value={filterClassId}
           onChange={(e) => setFilterClassId(e.target.value)}
-          className="w-full min-h-[44px] px-3.5 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+          className="w-full min-h-[44px] px-3.5 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
         >
           <option value="all">All Accessible Classes ({selectableClasses.length})</option>
           {selectableClasses.map((cls) => (
@@ -212,12 +212,12 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
 
       {/* Homework Feed Cards */}
       {visibleHomework.length === 0 ? (
-        <div className="bg-white dark:bg-slate-900 border border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center space-y-2">
-          <BookOpen className="w-10 h-10 text-indigo-400 mx-auto opacity-60" />
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-dashed border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-10 text-center space-y-2">
+          <BookOpen className="w-10 h-10 text-[#FED7AA] mx-auto opacity-60" />
+          <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
             No Homework Posted Yet
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+          <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] max-w-md mx-auto">
             {canPostHomework
               ? 'Tap "Assign Homework" to publish an assignment with subject details and due date for students and parents.'
               : 'No homework entries match your class filter right now.'}
@@ -235,15 +235,15 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
             return (
               <div
                 key={hw.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between gap-3 hover:border-indigo-300 dark:hover:border-indigo-700 transition"
+                className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col justify-between gap-3 hover:border-[#7F1D1D] dark:hover:border-[#C2410C] transition"
               >
                 <div className="space-y-2.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="px-2.5 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[11px] font-bold">
+                      <span className="px-2.5 py-0.5 rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60 text-[11px] font-bold">
                         {hw.subject}
                       </span>
-                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[11px] font-semibold">
+                      <span className="px-2 py-0.5 rounded-lg bg-[#F3EFEA] dark:bg-[#2C1215] text-[#44403C] dark:text-[#E7E0D4] text-[11px] font-semibold">
                         {hw.grade} - {hw.section || 'General'}
                       </span>
                     </div>
@@ -261,24 +261,24 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                   </div>
 
                   {hw.title && (
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       {hw.title}
                     </h3>
                   )}
 
-                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+                  <p className="text-xs text-[#57534E] dark:text-[#E7E0D4] leading-relaxed whitespace-pre-line">
                     {hw.description}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2 text-[11px] text-slate-500">
+                <div className="pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between gap-2 text-[11px] text-[#57534E]">
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="flex items-center gap-1">
-                      <UserCheck className="w-3.5 h-3.5 text-indigo-500" />
+                      <UserCheck className="w-3.5 h-3.5 text-[#7F1D1D]" />
                       {hw.teacherName}
                     </span>
                     <span className="flex items-center gap-1 font-mono">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      <Calendar className="w-3.5 h-3.5 text-[#78716C]" />
                       Assigned: {hw.assignedDate}
                     </span>
                   </div>
@@ -302,16 +302,16 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
 
       {/* Assign Homework Modal */}
       {isModalOpen && canPostHomework && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#2C1215]/70 backdrop-blur-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-indigo-600" />
+                <BookOpen className="w-5 h-5 text-[#7F1D1D]" />
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                     Post Class Homework
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[#78716C]">
                     Visible immediately to students &amp; parents in class diary
                   </p>
                 </div>
@@ -319,7 +319,7 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center text-slate-400 hover:text-slate-700 rounded-xl cursor-pointer"
+                className="min-h-[40px] min-w-[40px] flex items-center justify-center text-[#78716C] hover:text-[#1C1917] rounded-xl cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -334,13 +334,13 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
             <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Class &amp; Section *
                   </label>
                   <select
                     value={formClassId}
                     onChange={(e) => setFormClassId(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5]"
                     required
                   >
                     {selectableClasses.map((cls) => (
@@ -352,14 +352,14 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Due Date *
                   </label>
                   <input
                     type="date"
                     value={formDueDate}
                     onChange={(e) => setFormDueDate(e.target.value)}
-                    className="w-full min-h-[44px] px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5]"
                     required
                   />
                 </div>
@@ -367,7 +367,7 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Subject *
                   </label>
                   <input
@@ -375,13 +375,13 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                     value={formSubject}
                     onChange={(e) => setFormSubject(e.target.value)}
                     placeholder="e.g., Mathematics, English, Sindhi"
-                    className="w-full min-h-[44px] px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5]"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Assignment Title (Optional)
                   </label>
                   <input
@@ -389,13 +389,13 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     placeholder="e.g., Unit 3 Practice Questions"
-                    className="w-full min-h-[44px] px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                    className="w-full min-h-[44px] px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Homework Description &amp; Instructions *
                 </label>
                 <textarea
@@ -403,23 +403,23 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Write clear instructions, page numbers, or questions for students..."
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white"
+                  className="w-full px-3 py-2.5 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5]"
                   required
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="min-h-[44px] px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-semibold cursor-pointer"
+                  className="min-h-[44px] px-4 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] text-[#44403C] dark:text-[#E7E0D4] rounded-xl font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="min-h-[44px] px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-xs transition cursor-pointer disabled:opacity-60"
+                  className="min-h-[44px] px-5 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white rounded-xl font-semibold shadow-xs transition cursor-pointer disabled:opacity-60"
                 >
                   {isSaving ? 'Posting...' : 'Publish Homework'}
                 </button>

@@ -503,27 +503,27 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Banner & Header */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onBack}
-              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              className="p-2 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-xl transition cursor-pointer"
               title="Return to SMS Dashboard"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Student Information System (SIS)
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60">
                   General Register (GR)
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                 {activeSchool.name} · Session {activeSchool.activeAcademicYear}
               </p>
             </div>
@@ -534,13 +534,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               <button
                 type="button"
                 onClick={openAddModal}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Admit New Student</span>
               </button>
             ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-medium rounded-xl border border-slate-200 dark:border-slate-700">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2] text-xs font-medium rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                 <ShieldCheck className="w-4 h-4 text-emerald-500" />
                 <span>Teacher Incharge View (Read-Only)</span>
               </div>
@@ -549,16 +549,16 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
         </div>
 
         {/* Role Banner */}
-        <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
+        <div className="mt-4 pt-4 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
           {isAdmin ? (
-            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800/50 px-3.5 py-2 rounded-xl">
+            <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#E7E0D4] bg-[#FAF8F5] dark:bg-[#2C1215]/50 px-3.5 py-2 rounded-xl">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 <span>
                   <strong>Administrator Access:</strong> Full authority to admit students, issue GR numbers, update bio-data, and process withdrawals.
                 </span>
               </div>
-              <span className="text-[11px] font-mono text-slate-400">Total Records: {students.length}</span>
+              <span className="text-[11px] font-mono text-[#78716C]">Total Records: {students.length}</span>
             </div>
           ) : canAdmitStudents ? (
             <div className="flex items-center justify-between text-xs text-amber-900 dark:text-amber-200 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-3.5 py-2 rounded-xl">
@@ -573,7 +573,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               </span>
             </div>
           ) : (
-            <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-300 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 px-3.5 py-2 rounded-xl">
+            <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#E7E0D4] bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/50 px-3.5 py-2 rounded-xl">
               <div className="flex items-center gap-2">
                 <UserCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
                 <span>
@@ -607,42 +607,42 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
       {/* Summary KPI Badges */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs">
-          <div className="text-[11px] text-slate-500 dark:text-slate-400">Total Enrolled</div>
-          <div className="text-xl font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-3.5 shadow-xs">
+          <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">Total Enrolled</div>
+          <div className="text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-0.5 tabular-nums">
             {aggregateCounts.total}
           </div>
-          <div className="text-[10px] text-indigo-600 dark:text-indigo-400 mt-0.5">
+          <div className="text-[10px] text-[#7F1D1D] dark:text-[#FCA5A5] mt-0.5">
             {isAdmin ? 'All School Classes' : 'Assigned Class(es)'}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs">
-          <div className="text-[11px] text-slate-500 dark:text-slate-400">Active Students</div>
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-3.5 shadow-xs">
+          <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">Active Students</div>
           <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-0.5 tabular-nums">
             {aggregateCounts.active}
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Regular roll register</div>
+          <div className="text-[10px] text-[#57534E] mt-0.5">Regular roll register</div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs">
-          <div className="text-[11px] text-slate-500 dark:text-slate-400">Boys (Male)</div>
-          <div className="text-xl font-bold text-sky-600 dark:text-sky-400 mt-0.5 tabular-nums">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-3.5 shadow-xs">
+          <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">Boys (Male)</div>
+          <div className="text-xl font-bold text-[#C2410C] dark:text-[#FDBA74] mt-0.5 tabular-nums">
             {aggregateCounts.male}
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
+          <div className="text-[10px] text-[#57534E] mt-0.5">
             {aggregateCounts.total > 0
               ? `${Math.round((aggregateCounts.male / aggregateCounts.total) * 100)}% of total`
               : '0%'}
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 shadow-xs">
-          <div className="text-[11px] text-slate-500 dark:text-slate-400">Girls (Female)</div>
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-3.5 shadow-xs">
+          <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">Girls (Female)</div>
           <div className="text-xl font-bold text-pink-600 dark:text-pink-400 mt-0.5 tabular-nums">
             {aggregateCounts.female}
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5">
+          <div className="text-[10px] text-[#57534E] mt-0.5">
             {aggregateCounts.total > 0
               ? `${Math.round((aggregateCounts.female / aggregateCounts.total) * 100)}% of total`
               : '0%'}
@@ -651,23 +651,23 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       </div>
 
       {/* Search & Filters Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs space-y-3">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 shadow-xs space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           {/* Search Box */}
           <div className="md:col-span-5 relative">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by Student Name, Father's Name, GR No, B-Form..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+              className="w-full pl-9 pr-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] placeholder:text-[#78716C] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5]"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -679,7 +679,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
             >
               <option value="All">All Classes ({classes.length})</option>
               {classes.map((c) => (
@@ -695,7 +695,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
             <select
               value={selectedGender}
               onChange={(e) => setSelectedGender(e.target.value as any)}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
             >
               <option value="All">All Genders</option>
               <option value="Male">Boys (Male)</option>
@@ -708,7 +708,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value as any)}
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
             >
               <option value="All">All Statuses</option>
               <option value="active">Active Enrolled</option>
@@ -720,9 +720,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
         </div>
 
         {/* Filter tags & active counts */}
-        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-1">
+        <div className="flex items-center justify-between text-xs text-[#57534E] dark:text-[#D6CCC2] pt-1">
           <div>
-            Showing <strong className="text-slate-900 dark:text-white">{displayedStudents.length}</strong> of{' '}
+            Showing <strong className="text-[#1C1917] dark:text-[#FAF8F5]">{displayedStudents.length}</strong> of{' '}
             {filteredStudentsForUser.length} students
             {(searchQuery || selectedClassId !== 'All' || selectedGender !== 'All' || selectedStatus !== 'All') && (
               <button
@@ -733,7 +733,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   setSelectedGender('All');
                   setSelectedStatus('All');
                 }}
-                className="ml-3 text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                className="ml-3 text-[#7F1D1D] dark:text-[#FCA5A5] hover:underline cursor-pointer"
               >
                 Clear all filters
               </button>
@@ -744,7 +744,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
             <button
               type="button"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1 text-[11px] text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] text-[#57534E] hover:text-[#1C1917] dark:hover:text-[#FAF8F5] cursor-pointer"
               title="Print Current Student List"
             >
               <Printer className="w-3.5 h-3.5" />
@@ -755,10 +755,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       </div>
 
       {/* Students Data Table */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-600 dark:text-slate-300 font-semibold border-b border-slate-200 dark:border-slate-800">
+            <thead className="bg-[#FAF8F5] dark:bg-[#2C1215]/70 text-[#57534E] dark:text-[#E7E0D4] font-semibold border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <tr>
                 <th className="py-3 px-4">GR No.</th>
                 <th className="py-3 px-4">Student Name</th>
@@ -771,13 +771,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+            <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)] text-[#44403C] dark:text-[#E7E0D4]">
               {displayedStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-slate-400">
-                    <Users className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-600 mb-2" />
-                    <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No students found</p>
-                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  <td colSpan={9} className="py-12 text-center text-[#78716C]">
+                    <Users className="w-8 h-8 mx-auto text-[#E7E0D4] dark:text-[#A8A29E] mb-2" />
+                    <p className="text-sm font-semibold text-[#44403C] dark:text-[#E7E0D4]">No students found</p>
+                    <p className="text-xs text-[#78716C] mt-1 max-w-sm mx-auto">
                       {searchQuery || selectedClassId !== 'All'
                         ? 'Try adjusting your search query or class filter.'
                         : 'No student records have been created in this register yet.'}
@@ -786,7 +786,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       <button
                         type="button"
                         onClick={openAddModal}
-                        className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-xs font-semibold cursor-pointer"
+                        className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7F1D1D] text-white rounded-xl text-xs font-semibold cursor-pointer"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         <span>Admit First Student</span>
@@ -800,10 +800,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   return (
                     <tr
                       key={student.id}
-                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                      className="hover:bg-[#FAF8F5]/80 dark:hover:bg-[#3F1014]/40 transition-colors"
                     >
                       {/* GR Number */}
-                      <td className="py-3 px-4 font-mono font-bold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5] whitespace-nowrap">
                         {student.grNumber}
                       </td>
 
@@ -814,14 +814,14 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             <img
                               src={student.photoUrl}
                               alt={student.fullName}
-                              className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                              className="w-7 h-7 rounded-full object-cover border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] shrink-0"
                             />
                           ) : (
                             <div
                               className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
                                 student.gender === 'Female'
                                   ? 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300'
-                                  : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                                  : 'bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]'
                               }`}
                             >
                               {student.fullName.charAt(0)}
@@ -831,7 +831,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             <button
                               type="button"
                               onClick={() => setViewingStudent(student)}
-                              className="font-bold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition cursor-pointer text-left block"
+                              className="font-bold text-[#1C1917] dark:text-[#FAF8F5] hover:text-[#651414] dark:hover:text-[#FED7AA] transition cursor-pointer text-left block"
                             >
                               {student.fullName}
                             </button>
@@ -845,7 +845,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                                 )
                               </span>
                             )}
-                            <span className="text-[10px] text-slate-400 block sm:hidden">
+                            <span className="text-[10px] text-[#78716C] block sm:hidden">
                               S/D/O {student.fatherName}
                             </span>
                           </div>
@@ -854,25 +854,25 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                       {/* Father's Name */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <span className="text-slate-800 dark:text-slate-200">{student.fatherName}</span>
+                        <span className="text-[#1C1917] dark:text-[#FAF8F5]">{student.fatherName}</span>
                       </td>
 
                       {/* Class & Section */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="font-semibold text-slate-900 dark:text-white">
+                        <div className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                           {student.grade} - {student.section}
                         </div>
                         {classInfo && (
-                          <div className="text-[10px] text-slate-400">
+                          <div className="text-[10px] text-[#78716C]">
                             {classInfo.medium} Medium
                           </div>
                         )}
                       </td>
 
                       {/* NADRA B-Form */}
-                      <td className="py-3 px-4 font-mono text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                      <td className="py-3 px-4 font-mono text-[11px] text-[#57534E] dark:text-[#E7E0D4] whitespace-nowrap">
                         {student.bFormNumber || (
-                          <span className="text-slate-400 font-sans italic text-[10px]">Not provided</span>
+                          <span className="text-[#78716C] font-sans italic text-[10px]">Not provided</span>
                         )}
                       </td>
 
@@ -882,7 +882,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                           className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                             student.gender === 'Female'
                               ? 'bg-pink-50 dark:bg-pink-950/50 text-pink-700 dark:text-pink-300 border border-pink-200 dark:border-pink-800'
-                              : 'bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800'
+                              : 'bg-[#FFF7ED] dark:bg-[#7C2D12]/50 text-[#C2410C] dark:text-[#FDBA74] border border-[#FED7AA] dark:border-[#C2410C]/50'
                           }`}
                         >
                           {student.gender}
@@ -891,12 +891,12 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                       {/* Guardian Contact */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-slate-700 dark:text-slate-300">
-                          <Phone className="w-3 h-3 text-slate-400" />
+                        <div className="flex items-center gap-1.5 font-mono text-[11px] text-[#44403C] dark:text-[#E7E0D4]">
+                          <Phone className="w-3 h-3 text-[#78716C]" />
                           <span>{student.guardianPhone}</span>
                         </div>
                         {student.address && (
-                          <div className="text-[10px] text-slate-400 truncate max-w-[140px]" title={student.address}>
+                          <div className="text-[10px] text-[#78716C] truncate max-w-[140px]" title={student.address}>
                             {student.address}
                           </div>
                         )}
@@ -920,7 +920,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                           </span>
                         )}
                         {student.status === 'graduated' && (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] border border-[#FED7AA] dark:border-[#C2410C]/50">
                             Graduated
                           </span>
                         )}
@@ -932,7 +932,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                           <button
                             type="button"
                             onClick={() => setViewingStudent(student)}
-                            className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                            className="p-1.5 text-[#78716C] hover:text-[#651414] dark:hover:text-[#FED7AA] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-lg transition cursor-pointer"
                             title="View Full Profile"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -942,7 +942,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             <button
                               type="button"
                               onClick={() => openEditModal(student)}
-                              className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition cursor-pointer"
+                              className="p-1.5 text-[#78716C] hover:text-[#651414] dark:hover:text-[#FED7AA] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-lg transition cursor-pointer"
                               title="Edit Bio-data"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -953,7 +953,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                             <button
                               type="button"
                               onClick={() => setDeleteConfirmId(student.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
+                              className="p-1.5 text-[#78716C] hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition cursor-pointer"
                               title="Delete / Withdraw"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -972,17 +972,17 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
 
             <div className="text-center space-y-1">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 Withdraw / Delete Student Record?
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                 Are you sure you want to delete this student from the General Register? This will also decrement the class enrollment count.
               </p>
             </div>
@@ -991,7 +991,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               <button
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+                className="flex-1 px-4 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#E7E0D4] text-xs font-semibold rounded-xl transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -1012,35 +1012,35 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
       {/* Student Profile Card Modal (View Details + Fee Ledger) */}
       {viewingStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in my-8 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in my-8 max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 {viewingStudent.photoUrl ? (
                   <img
                     src={viewingStudent.photoUrl}
                     alt={viewingStudent.fullName}
-                    className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                    className="w-12 h-12 rounded-2xl object-cover border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] shrink-0"
                   />
                 ) : (
                   <div
                     className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 ${
                       viewingStudent.gender === 'Female'
                         ? 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300'
-                        : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                        : 'bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]'
                     }`}
                   >
                     {viewingStudent.fullName.charAt(0)}
                   </div>
                 )}
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-lg font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                     {viewingStudent.fullName}
                   </h3>
-                  <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center gap-2 text-xs text-[#57534E] dark:text-[#D6CCC2]">
                     <span>S/D/O {viewingStudent.fatherName}</span>
                     <span>·</span>
-                    <span className="font-mono font-semibold text-indigo-600 dark:text-indigo-400">
+                    <span className="font-mono font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
                       {viewingStudent.grNumber}
                     </span>
                   </div>
@@ -1050,67 +1050,67 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               <button
                 type="button"
                 onClick={() => setViewingStudent(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                className="p-1.5 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Student Info Grid */}
-            <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 dark:bg-slate-800/60 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+            <div className="grid grid-cols-2 gap-3 text-xs bg-[#FAF8F5] dark:bg-[#2C1215]/60 p-4 rounded-xl border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)]">
               <div>
-                <span className="text-[11px] text-slate-400 block">Class &amp; Section</span>
-                <span className="font-bold text-slate-800 dark:text-slate-100">
+                <span className="text-[11px] text-[#78716C] block">Class &amp; Section</span>
+                <span className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   {viewingStudent.grade} - {viewingStudent.section}
                 </span>
               </div>
 
               <div>
-                <span className="text-[11px] text-slate-400 block">Status</span>
+                <span className="text-[11px] text-[#78716C] block">Status</span>
                 <span className="font-bold text-emerald-600 dark:text-emerald-400 capitalize">
                   {viewingStudent.status}
                 </span>
               </div>
 
               <div>
-                <span className="text-[11px] text-slate-400 block">NADRA B-Form No.</span>
-                <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                <span className="text-[11px] text-[#78716C] block">NADRA B-Form No.</span>
+                <span className="font-mono font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                   {viewingStudent.bFormNumber || 'Not Registered'}
                 </span>
               </div>
 
               <div>
-                <span className="text-[11px] text-slate-400 block">Gender</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                <span className="text-[11px] text-[#78716C] block">Gender</span>
+                <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                   {viewingStudent.gender}
                 </span>
               </div>
 
               <div>
-                <span className="text-[11px] text-slate-400 block">Date of Birth</span>
-                <span className="font-mono text-slate-800 dark:text-slate-200">
+                <span className="text-[11px] text-[#78716C] block">Date of Birth</span>
+                <span className="font-mono text-[#1C1917] dark:text-[#FAF8F5]">
                   {viewingStudent.dob}
                 </span>
               </div>
 
               <div>
-                <span className="text-[11px] text-slate-400 block">Admission Date</span>
-                <span className="font-mono text-slate-800 dark:text-slate-200">
+                <span className="text-[11px] text-[#78716C] block">Admission Date</span>
+                <span className="font-mono text-[#1C1917] dark:text-[#FAF8F5]">
                   {viewingStudent.admissionDate}
                 </span>
               </div>
 
               <div className="col-span-2">
-                <span className="text-[11px] text-slate-400 block">Guardian Phone</span>
-                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                <span className="text-[11px] text-[#78716C] block">Guardian Phone</span>
+                <span className="font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                   {viewingStudent.guardianPhone}
                 </span>
               </div>
 
               {viewingStudent.address && (
                 <div className="col-span-2">
-                  <span className="text-[11px] text-slate-400 block">Residential Address</span>
-                  <span className="text-slate-700 dark:text-slate-300">
+                  <span className="text-[11px] text-[#78716C] block">Residential Address</span>
+                  <span className="text-[#44403C] dark:text-[#E7E0D4]">
                     {viewingStudent.address}
                   </span>
                 </div>
@@ -1119,11 +1119,11 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
             {/* Fee Ledger & Concession Assignment */}
             {viewingStudentLedger && (
-              <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
+              <div className="space-y-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pt-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <Receipt className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h4 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       Student Fee Ledger &amp; Balances
                     </h4>
                   </div>
@@ -1131,7 +1131,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   {/* Permanent Concession Assignment (Admin Only) */}
                   {isAdmin ? (
                     <div className="flex items-center gap-1.5">
-                      <label htmlFor="profile-concession-select" className="text-[10px] font-bold text-slate-500">
+                      <label htmlFor="profile-concession-select" className="text-[10px] font-bold text-[#57534E]">
                         Permanent Discount:
                       </label>
                       <select
@@ -1180,9 +1180,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                 {/* 4 KPI Ledger Cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Total Due</span>
-                    <strong className="text-sm font-mono text-slate-900 dark:text-white">
+                  <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                    <span className="text-[10px] font-bold uppercase text-[#78716C] block">Total Due</span>
+                    <strong className="text-sm font-mono text-[#1C1917] dark:text-[#FAF8F5]">
                       Rs. {viewingStudentLedger.totalDue.toLocaleString()}
                     </strong>
                   </div>
@@ -1198,19 +1198,19 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       Rs. {viewingStudentLedger.pendingBalance.toLocaleString()}
                     </strong>
                   </div>
-                  <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60">
-                    <span className="text-[10px] font-bold uppercase text-sky-700 dark:text-sky-400 block">Advance Balance</span>
-                    <strong className="text-sm font-mono text-sky-700 dark:text-sky-300">
+                  <div className="p-3 rounded-xl bg-[#FFF7ED]/70 dark:bg-[#7C2D12]/30 border border-[#FED7AA] dark:border-[#C2410C]/50">
+                    <span className="text-[10px] font-bold uppercase text-[#C2410C] dark:text-[#FDBA74] block">Advance Balance</span>
+                    <strong className="text-sm font-mono text-[#C2410C] dark:text-[#FDBA74]">
                       Rs. {viewingStudentLedger.advanceBalance.toLocaleString()}
                     </strong>
                   </div>
                 </div>
 
                 {/* Monthly Fee Ledger Breakdown Table */}
-                <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
+                <div className="border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl overflow-hidden">
                   <div className="overflow-x-auto max-h-48">
                     <table className="w-full text-left text-[11px] border-collapse">
-                      <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-300 font-bold uppercase text-[10px] sticky top-0">
+                      <thead className="bg-[#FAF8F5] dark:bg-[#2C1215]/70 text-[#57534E] dark:text-[#E7E0D4] font-bold uppercase text-[10px] sticky top-0">
                         <tr>
                           <th className="py-2 px-3">Month</th>
                           <th className="py-2 px-3 text-right">Net Due</th>
@@ -1220,13 +1220,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                           <th className="py-2 px-3">Status</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                         {viewingStudentLedger.rows.map((row) => (
-                          <tr key={row.month} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                            <td className="py-2 px-3 font-semibold text-slate-800 dark:text-slate-200">
+                          <tr key={row.month} className="hover:bg-[#FAF8F5]/50 dark:hover:bg-[#3F1014]/30">
+                            <td className="py-2 px-3 font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                               <div>{row.monthLabel}</div>
                               {row.receiptNumber && (
-                                <div className="text-[9px] font-mono text-slate-400">{row.receiptNumber}</div>
+                                <div className="text-[9px] font-mono text-[#78716C]">{row.receiptNumber}</div>
                               )}
                             </td>
                             <td className="py-2 px-3 text-right font-mono">
@@ -1260,7 +1260,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                                 </span>
                               )}
                               {row.status === 'advance_credit' && (
-                                <span className="px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 font-bold uppercase text-[9px]">
+                                <span className="px-1.5 py-0.5 rounded bg-[#FFF7ED] dark:bg-[#7C2D12]/70 text-[#C2410C] dark:text-[#FDBA74] font-bold uppercase text-[9px]">
                                   Advance Credit
                                 </span>
                               )}
@@ -1276,15 +1276,15 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
             {/* Parent Portal Access & Child Linkage */}
             {activeViewingStudent && (
-              <div className="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-3">
+              <div className="p-4 rounded-xl bg-[#FEF2F2]/70 dark:bg-[#3F1014]/30 border border-[#FECACA] dark:border-[#7F1D1D]/60 space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <Link2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <Link2 className="w-4 h-4 text-[#7F1D1D] dark:text-[#FCA5A5]" />
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                      <h4 className="text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                         Parent Portal Access
                       </h4>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                      <p className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">
                         Allow parent/guardian read-only access to attendance, fee ledger, and report cards
                       </p>
                     </div>
@@ -1300,14 +1300,14 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       Invite Ready
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                       Not Linked
                     </span>
                   )}
                 </div>
 
                 {activeViewingStudent.parentUid && (
-                  <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-slate-900/60 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-[#211415]/60 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
                     <span>
                       Linked Parent Email:{' '}
                       <strong className="font-mono">
@@ -1315,7 +1315,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       </strong>
                     </span>
                     {activeViewingStudent.parentLinkedAt && (
-                      <span className="text-[10px] text-slate-500">
+                      <span className="text-[10px] text-[#57534E]">
                         Since {new Date(activeViewingStudent.parentLinkedAt).toLocaleDateString()}
                       </span>
                     )}
@@ -1326,20 +1326,20 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   <div className="space-y-2.5">
                     <div className="flex flex-col sm:flex-row gap-2">
                       <div className="relative flex-1">
-                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <Mail className="w-3.5 h-3.5 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
                         <input
                           type="email"
                           value={inviteEmailInput}
                           onChange={(e) => setInviteEmailInput(e.target.value)}
                           placeholder="Parent email (e.g., parent@gmail.com)"
-                          className="w-full pl-8 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-700 rounded-xl text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                          className="w-full pl-8 pr-3 py-2 text-xs bg-[#FFFDF9] dark:bg-[#211415] border border-[#FECACA] dark:border-[#7F1D1D]/60 rounded-xl text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                         />
                       </div>
                       <button
                         type="button"
                         onClick={handleGenerateParentInvite}
                         disabled={isGeneratingInvite}
-                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
                       >
                         <KeyRound className="w-3.5 h-3.5" />
                         <span>
@@ -1351,15 +1351,15 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     </div>
 
                     {(generatedInvite?.code || activeViewingStudent.parentInviteCode) && (
-                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="p-2.5 rounded-xl bg-[#FFFDF9] dark:bg-[#211415] border border-[#FECACA] dark:border-[#7F1D1D]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                         <div className="space-y-0.5 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-slate-500">Invite Code:</span>
-                            <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded">
+                            <span className="text-[11px] text-[#57534E]">Invite Code:</span>
+                            <span className="font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2] dark:bg-[#3F1014]/60 px-2 py-0.5 rounded">
                               {generatedInvite?.code || activeViewingStudent.parentInviteCode}
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400 truncate">
+                          <p className="text-[10px] text-[#78716C] truncate">
                             {generatedInvite?.url ||
                               `${typeof window !== 'undefined' ? window.location.origin : ''}/?parent_invite=${encodeURIComponent(
                                 activeViewingStudent.parentInviteCode || ''
@@ -1380,7 +1380,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                                 )}`
                             )
                           }
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg transition cursor-pointer shrink-0"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] text-[11px] font-semibold rounded-lg transition cursor-pointer shrink-0"
                         >
                           {copiedInvite ? (
                             <>
@@ -1398,7 +1398,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     )}
 
                     {inviteMessage && (
-                      <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
+                      <p className="text-[11px] font-medium text-[#7F1D1D] dark:text-[#FCA5A5]">
                         {inviteMessage}
                       </p>
                     )}
@@ -1427,16 +1427,16 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                 )}`;
 
               return (
-                <div className="p-4 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 space-y-3">
+                <div className="p-4 rounded-xl bg-[#FFF7ED]/70 dark:bg-[#7C2D12]/30 border border-[#FED7AA] dark:border-[#C2410C]/50 space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <GraduationCap className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                      <GraduationCap className="w-4 h-4 text-[#C2410C] dark:text-[#FDBA74]" />
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        <h4 className="text-xs font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                           Student Portal Access (Email-Free GR / ID Login)
                         </h4>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                          Login ID: <span className="font-mono font-semibold text-slate-700 dark:text-slate-200">{activeViewingStudent.grNumber}</span> · Student ID: <span className="font-mono">{activeViewingStudent.id}</span> (no email needed)
+                        <p className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">
+                          Login ID: <span className="font-mono font-semibold text-[#44403C] dark:text-[#FAF8F5]">{activeViewingStudent.grNumber}</span> · Student ID: <span className="font-mono">{activeViewingStudent.id}</span> (no email needed)
                         </p>
                       </div>
                     </div>
@@ -1451,14 +1451,14 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                         Invite Ready
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                         Not Linked
                       </span>
                     )}
                   </div>
 
                   {isStudentLinked && (
-                    <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-slate-900/60 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                    <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-[#211415]/60 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
                       <span>
                         Linked Student Email:{' '}
                         <strong className="font-mono">
@@ -1468,7 +1468,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                         </strong>
                       </span>
                       {(liveStudentLink?.claimedAt || activeViewingStudent.studentLinkedAt) && (
-                        <span className="text-[10px] text-slate-500">
+                        <span className="text-[10px] text-[#57534E]">
                           Since{' '}
                           {new Date(
                             liveStudentLink?.claimedAt || activeViewingStudent.studentLinkedAt!
@@ -1482,20 +1482,20 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     <div className="space-y-2.5">
                       <div className="flex flex-col sm:flex-row gap-2">
                         <div className="relative flex-1">
-                          <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <Mail className="w-3.5 h-3.5 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
                           <input
                             type="email"
                             value={studentInviteEmailInput}
                             onChange={(e) => setStudentInviteEmailInput(e.target.value)}
                             placeholder="Optional notification email (not required for student login)"
-                            className="w-full pl-8 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-700 rounded-xl text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                            className="w-full pl-8 pr-3 py-2 text-xs bg-[#FFFDF9] dark:bg-[#211415] border border-[#FED7AA] dark:border-[#C2410C]/50 rounded-xl text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#C2410C]"
                           />
                         </div>
                         <button
                           type="button"
                           onClick={handleGenerateStudentInvite}
                           disabled={isGeneratingStudentInvite}
-                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
                         >
                           <KeyRound className="w-3.5 h-3.5" />
                           <span>
@@ -1507,22 +1507,22 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       </div>
 
                       {activeCode && (
-                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="p-2.5 rounded-xl bg-[#FFFDF9] dark:bg-[#211415] border border-[#FED7AA] dark:border-[#C2410C]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
                           <div className="space-y-0.5 min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-[11px] text-slate-500">Student Code:</span>
-                              <span className="font-mono font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded">
+                              <span className="text-[11px] text-[#57534E]">Student Code:</span>
+                              <span className="font-mono font-bold text-[#C2410C] dark:text-[#FDBA74] bg-[#FFF7ED] dark:bg-[#7C2D12]/60 px-2 py-0.5 rounded">
                                 {activeCode}
                               </span>
                             </div>
-                            <p className="text-[10px] text-slate-400 truncate">
+                            <p className="text-[10px] text-[#78716C] truncate">
                               {activeStudentUrl}
                             </p>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleCopyParentInviteUrl(activeStudentUrl, 'student')}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg transition cursor-pointer shrink-0"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] text-[11px] font-semibold rounded-lg transition cursor-pointer shrink-0"
                           >
                             {copiedStudentInvite ? (
                               <>
@@ -1540,7 +1540,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       )}
 
                       {studentInviteMessage && (
-                        <p className="text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                        <p className="text-[11px] font-medium text-[#C2410C] dark:text-[#FDBA74]">
                           {studentInviteMessage}
                         </p>
                       )}
@@ -1551,7 +1551,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
             })()}
 
             {/* School context */}
-            <div className="text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3 flex items-center justify-between">
+            <div className="text-[11px] text-[#78716C] border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pt-3 flex items-center justify-between">
               <span>{activeSchool.name}</span>
               <span className="font-mono">SEMIS: {activeSchool.semisCode}</span>
             </div>
@@ -1565,7 +1565,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     setViewingStudent(null);
                     openEditModal(target);
                   }}
-                  className="px-3.5 py-1.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl text-xs font-semibold cursor-pointer"
+                  className="px-3.5 py-1.5 bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   Edit Record
                 </button>
@@ -1573,7 +1573,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               <button
                 type="button"
                 onClick={() => setViewingStudent(null)}
-                className="px-4 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-semibold cursor-pointer"
+                className="px-4 py-1.5 bg-[#2C1215] dark:bg-white text-white dark:text-[#1C1917] rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Close
               </button>
@@ -1584,18 +1584,18 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
       {/* Add / Edit Student Modal */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 my-8">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 my-8">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center">
                   <GraduationCap className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                     {editingStudent ? 'Edit Student Bio-Data' : 'New Student Admission (GR)'}
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[#78716C]">
                     Pakistani School Student Information System Record
                   </p>
                 </div>
@@ -1603,7 +1603,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               <button
                 type="button"
                 onClick={() => setIsFormModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                className="p-1.5 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1620,7 +1620,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 {/* Student Full Name */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Student Full Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1629,13 +1629,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="e.g., Muhammad Ali"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 {/* Father's Name */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Father's Name <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1644,13 +1644,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     value={fatherName}
                     onChange={(e) => setFatherName(e.target.value)}
                     placeholder="e.g., Abdul Razzaq"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 {/* General Register (GR) Number */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     GR / Admission No. <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1659,14 +1659,14 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     value={grNumber}
                     onChange={(e) => setGrNumber(e.target.value)}
                     placeholder="e.g., GR-1050"
-                    className="w-full px-3 py-2 font-mono font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-indigo-600 dark:text-indigo-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 font-mono font-bold bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#7F1D1D] dark:text-[#FCA5A5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">Unique General Register identifier</span>
+                  <span className="text-[10px] text-[#78716C] mt-0.5 block">Unique General Register identifier</span>
                 </div>
 
                 {/* NADRA B-Form Number */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     NADRA B-Form No. (Optional)
                   </label>
                   <input
@@ -1674,14 +1674,14 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     value={bFormNumber}
                     onChange={(e) => setBFormNumber(e.target.value)}
                     placeholder="e.g., 41303-1234567-1"
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 font-mono bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
-                  <span className="text-[10px] text-slate-400 mt-0.5 block">National Child Registration Certificate</span>
+                  <span className="text-[10px] text-[#78716C] mt-0.5 block">National Child Registration Certificate</span>
                 </div>
 
                 {/* Class & Section */}
                 <div>
-                  <label htmlFor="admission-class-select" className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="admission-class-select" className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Class &amp; Section <span className="text-rose-500">*</span>
                   </label>
                   <select
@@ -1690,7 +1690,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     onChange={(e) => setClassId(e.target.value)}
                     required
                     disabled={loadingClasses}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer disabled:opacity-60"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer disabled:opacity-60"
                   >
                     <option value="">
                       {loadingClasses
@@ -1714,7 +1714,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                 {/* Gender */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Gender <span className="text-rose-500">*</span>
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -1723,8 +1723,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       onClick={() => setGender('Male')}
                       className={`py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
                         gender === 'Male'
-                          ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-500 text-indigo-700 dark:text-indigo-300'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                          ? 'bg-[#FEF2F2] dark:bg-[#3F1014]/60 border-[#7F1D1D] text-[#7F1D1D] dark:text-[#FCA5A5]'
+                          : 'bg-[#FAF8F5] dark:bg-[#2C1215] border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#D6CCC2]'
                       }`}
                     >
                       👦 Male (Boy)
@@ -1735,7 +1735,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       className={`py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
                         gender === 'Female'
                           ? 'bg-pink-50 dark:bg-pink-950/60 border-pink-500 text-pink-700 dark:text-pink-300'
-                          : 'bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
+                          : 'bg-[#FAF8F5] dark:bg-[#2C1215] border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[#57534E] dark:text-[#D6CCC2]'
                       }`}
                     >
                       👧 Female (Girl)
@@ -1745,7 +1745,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
                 {/* Date of Birth */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Date of Birth <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1753,13 +1753,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     required
                     value={dob}
                     onChange={(e) => setDob(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 {/* Admission Date */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Admission Date <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1767,13 +1767,13 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     required
                     value={admissionDate}
                     onChange={(e) => setAdmissionDate(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 {/* Guardian Phone Number */}
                 <div>
-                  <label htmlFor="admission-guardian-phone" className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label htmlFor="admission-guardian-phone" className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Guardian Phone No. <span className="text-rose-500">*</span>
                   </label>
                   <input
@@ -1783,19 +1783,19 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     value={guardianPhone}
                     onChange={(e) => setGuardianPhone(e.target.value)}
                     placeholder="e.g., 0300-1234567"
-                    className="w-full px-3 py-2 font-mono bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 font-mono bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 {/* Status */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Enrollment Status
                   </label>
                   <select
                     value={status}
                     onChange={(e) => setStatus(e.target.value as any)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
                   >
                     <option value="active">Active (Enrolled)</option>
                     <option value="struck_off">Struck Off (Kharij)</option>
@@ -1807,7 +1807,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
               {/* Address */}
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Residential Address (Mohallah / Unit / City)
                 </label>
                 <input
@@ -1815,52 +1815,52 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
                   placeholder="e.g., House 42, Block D, Latifabad Unit 7, Hyderabad"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                 />
               </div>
 
               {/* Parent Email, Student Email & Photo (Optional) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-[#FAF8F5] dark:bg-[#2C1215]/50 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Parent Email (for Parent Portal Login)
                   </label>
                   <div className="relative">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-3.5 h-3.5 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
                       value={parentEmail}
                       onChange={(e) => setParentEmail(e.target.value)}
                       placeholder="e.g., parent@gmail.com"
-                      className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                      className="w-full pl-8 pr-3 py-2 bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                     />
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
+                  <span className="text-[10px] text-[#78716C] mt-1 block">
                     Matches automatically when the parent creates a Parent Portal account.
                   </span>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Student Email (for Student Portal Login)
                   </label>
                   <div className="relative">
-                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-3.5 h-3.5 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="email"
                       value={studentEmail}
                       onChange={(e) => setStudentEmail(e.target.value)}
                       placeholder="e.g., student@gmail.com"
-                      className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                      className="w-full pl-8 pr-3 py-2 bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#C2410C]"
                     />
                   </div>
-                  <span className="text-[10px] text-slate-400 mt-1 block">
+                  <span className="text-[10px] text-[#78716C] mt-1 block">
                     Optional pre-verified login email for the Student Portal.
                   </span>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Student Photo (Optional — JPEG/PNG)
                   </label>
                   <div className="flex items-center gap-2.5">
@@ -1868,14 +1868,14 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       <img
                         src={photoUrl}
                         alt="Student preview"
-                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                        className="w-10 h-10 rounded-xl object-cover border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] shrink-0"
                       />
                     ) : (
-                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-500 shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 border border-[#FECACA] dark:border-[#7F1D1D]/60 flex items-center justify-center text-[#7F1D1D] shrink-0">
                         <Camera className="w-4 h-4" />
                       </div>
                     )}
-                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-200 cursor-pointer transition">
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FFFDF9] dark:bg-[#211415] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-lg text-[11px] font-semibold text-[#44403C] dark:text-[#FAF8F5] cursor-pointer transition">
                       <Upload className="w-3.5 h-3.5" />
                       <span>{photoUrl ? 'Change Photo' : 'Upload Photo'}</span>
                       <input
@@ -1916,7 +1916,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     id="admission-concession-select"
                     value={selectedConcessionId}
                     onChange={(e) => setSelectedConcessionId(e.target.value)}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-semibold text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer"
+                    className="w-full px-3 py-2 bg-[#FFFDF9] dark:bg-[#211415] border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-amber-500 cursor-pointer"
                   >
                     <option value="">-- No Permanent Discount (Standard Fee) --</option>
                     {feeConcessions
@@ -1934,17 +1934,17 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               )}
 
               {/* Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                 <button
                   type="button"
                   onClick={() => setIsFormModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+                  className="px-4 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#E7E0D4] text-xs font-semibold rounded-xl transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+                  className="px-5 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
                 >
                   {editingStudent ? 'Save Changes' : 'Confirm Admission'}
                 </button>

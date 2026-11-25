@@ -295,39 +295,39 @@ export const QuestionPaperTool: React.FC = () => {
       {/* =================================================================== */}
       <form
         onSubmit={handleGeneratePaper}
-        className="no-print bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-6 shadow-xs"
+        className="no-print bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl p-5 sm:p-6 space-y-6 shadow-xs"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E7E0D4]">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#5b21b6]">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#7F1D1D]">
               <FileSpreadsheet className="w-4 h-4" />
               <span>AI Assessment Studio</span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+            <h2 className="text-lg sm:text-xl font-bold text-[#1C1917] mt-0.5">
               AI Question Paper Maker (English / Urdu / Sindhi)
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#57534E] mt-0.5">
               Generate balanced MCQs, Short Questions, and Long Questions tailored to your Class, Difficulty, Total Marks, Language, and School Branding.
             </p>
           </div>
-          <div className="text-xs font-mono text-slate-600 bg-purple-50 border border-purple-200 px-3 py-1.5 rounded-lg">
+          <div className="text-xs font-mono text-[#57534E] bg-[#FEF2F2] border border-[#FECACA] px-3 py-1.5 rounded-lg">
             Auto Marks Split: {previewDistribution.mcqTotalMarks} MCQs +{' '}
             {previewDistribution.shortTotalMarks} Short +{' '}
             {previewDistribution.longTotalMarks} Long ={' '}
-            <strong className="text-[#5b21b6]">{previewDistribution.totalMarks}</strong>
+            <strong className="text-[#7F1D1D]">{previewDistribution.totalMarks}</strong>
           </div>
         </div>
 
         {/* School Branding Section */}
-        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-700">
-            <Building2 className="w-4 h-4 text-[#5b21b6]" />
+        <div className="bg-[#FAF8F5] border border-[#E7E0D4] rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#44403C]">
+            <Building2 className="w-4 h-4 text-[#7F1D1D]" />
             <span>School Branding Header (Prints at Top of Paper)</span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-start">
             <div className="lg:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 School / Institution Name
               </label>
               <input
@@ -336,12 +336,12 @@ export const QuestionPaperTool: React.FC = () => {
                 value={schoolName}
                 onChange={(e) => setSchoolName(e.target.value)}
                 placeholder="e.g., Government Boys High School..."
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Exam Title
               </label>
               <input
@@ -349,16 +349,16 @@ export const QuestionPaperTool: React.FC = () => {
                 value={examTitle}
                 onChange={(e) => setExamTitle(e.target.value)}
                 placeholder="e.g., Annual Exam 2026"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 School Logo (PNG / JPG)
               </label>
               <div className="flex items-center gap-2">
-                <label className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#5b21b6] bg-purple-100 hover:bg-purple-200 border border-purple-300 rounded-lg cursor-pointer transition-colors">
+                <label className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#7F1D1D] bg-[#FEE2E2] hover:bg-[#FEE2E2] border border-[#FECACA] rounded-lg cursor-pointer transition-colors">
                   <Upload className="w-3.5 h-3.5" />
                   <span>{schoolLogoDataUrl ? 'Change Logo' : 'Upload Logo'}</span>
                   <input
@@ -385,7 +385,7 @@ export const QuestionPaperTool: React.FC = () => {
             </div>
 
             <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 School Address / City
               </label>
               <input
@@ -393,12 +393,12 @@ export const QuestionPaperTool: React.FC = () => {
                 value={schoolAddress}
                 onChange={(e) => setSchoolAddress(e.target.value)}
                 placeholder="e.g., Taluka Qasimabad, District Hyderabad, Sindh"
-                className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
 
             {schoolLogoDataUrl && (
-              <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-lg p-2">
+              <div className="flex items-center gap-2.5 bg-[#FFFDF9] border border-[#E7E0D4] rounded-lg p-2">
                 <img
                   src={schoolLogoDataUrl}
                   alt="School Logo Preview"
@@ -421,13 +421,13 @@ export const QuestionPaperTool: React.FC = () => {
         {/* Paper Options & Syllabus Inputs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               Class (1st to 12th)
             </label>
             <select
               value={className}
               onChange={(e) => setClassName(e.target.value)}
-              className="w-full px-3 py-2 text-sm font-semibold text-[#5b21b6] bg-purple-50/60 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+              className="w-full px-3 py-2 text-sm font-semibold text-[#7F1D1D] bg-[#FEF2F2]/60 border border-[#FECACA] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
             >
               {PAPER_CLASSES.map((c) => (
                 <option key={c} value={c}>
@@ -438,7 +438,7 @@ export const QuestionPaperTool: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               Subject
             </label>
             <input
@@ -448,7 +448,7 @@ export const QuestionPaperTool: React.FC = () => {
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="e.g., Physics, English, Sindhi"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+              className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
             />
             <datalist id="qp-subject-list">
               {SUBJECT_SUGGESTIONS.map((s) => (
@@ -458,13 +458,13 @@ export const QuestionPaperTool: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               Paper Language
             </label>
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as QuestionPaperLanguage)}
-              className="w-full px-3 py-2 text-sm font-semibold bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+              className="w-full px-3 py-2 text-sm font-semibold bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
             >
               <option value="English">English</option>
               <option value="Urdu">Urdu (اردو)</option>
@@ -473,13 +473,13 @@ export const QuestionPaperTool: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               Difficulty Level
             </label>
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value as QuestionPaperDifficulty)}
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+              className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
             >
               <option value="Easy">Easy (Recall &amp; Basic)</option>
               <option value="Medium">Medium (Standard Board)</option>
@@ -489,7 +489,7 @@ export const QuestionPaperTool: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
                 Total Marks
               </label>
               <input
@@ -501,11 +501,11 @@ export const QuestionPaperTool: React.FC = () => {
                 onChange={(e) =>
                   setTotalMarks(Math.max(10, Math.min(200, Number(e.target.value) || 50)))
                 }
-                className="w-full px-2.5 py-2 text-sm font-mono font-bold bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-2.5 py-2 text-sm font-mono font-bold bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
                 Time Allowed
               </label>
               <input
@@ -513,14 +513,14 @@ export const QuestionPaperTool: React.FC = () => {
                 value={timeAllowed}
                 onChange={(e) => setTimeAllowed(e.target.value)}
                 placeholder="2 Hours"
-                className="w-full px-2.5 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-2.5 py-2 text-xs bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+          <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
             Syllabus Covered (Chapters, Topics, or Key Learning Points)
           </label>
           <textarea
@@ -529,7 +529,7 @@ export const QuestionPaperTool: React.FC = () => {
             value={syllabusCovered}
             onChange={(e) => setSyllabusCovered(e.target.value)}
             placeholder="Paste chapters, topics, or specific book units covered for this exam..."
-            className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+            className="w-full px-3.5 py-2.5 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
           />
         </div>
 
@@ -551,10 +551,7 @@ export const QuestionPaperTool: React.FC = () => {
           <button
             type="submit"
             disabled={isGenerating}
-            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-white rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-60"
-            style={{
-              background: 'linear-gradient(135deg, #5b21b6 0%, #ec4899 100%)',
-            }}
+            className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-bold text-[#FFFDF9] bg-[#7F1D1D] hover:bg-[#651414] rounded-lg shadow-sm transition-all cursor-pointer disabled:opacity-60"
           >
             {isGenerating ? (
               <>
@@ -575,26 +572,26 @@ export const QuestionPaperTool: React.FC = () => {
       {/* QUESTION PAPER PREVIEW / EMPTY PLACEHOLDER OR PRINTABLE A4 SHEET    */}
       {/* =================================================================== */}
       {!generatedPaper ? (
-        <div className="no-print bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center space-y-2">
-          <div className="w-11 h-11 rounded-full bg-purple-50 text-[#5b21b6] flex items-center justify-center mx-auto">
+        <div className="no-print bg-[#FFFDF9] border border-dashed border-[#D6CCC2] rounded-xl p-8 text-center space-y-2">
+          <div className="w-11 h-11 rounded-full bg-[#FEF2F2] text-[#7F1D1D] flex items-center justify-center mx-auto">
             <FileSpreadsheet className="w-5 h-5" />
           </div>
-          <h4 className="text-base font-bold text-slate-900">
+          <h4 className="text-base font-bold text-[#1C1917]">
             Configure Your Paper &amp; Click &ldquo;Generate Paper&rdquo;
           </h4>
-          <p className="text-xs text-slate-500 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs text-[#57534E] max-w-xl mx-auto leading-relaxed">
             Your custom School Name, Address, Logo, Language ({language}), Difficulty ({difficulty}), and Total Marks ({totalMarks}) will be formatted into a clean A4 exam paper with MCQs, Short Questions, and Long Questions.
           </p>
         </div>
       ) : (
         <>
           {/* Action Bar (Hidden in Print) */}
-          <div className="no-print bg-white border border-slate-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="no-print bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl p-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 onClick={() => setShowAnswerKey(!showAnswerKey)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#44403C] bg-[#F3EFEA] hover:bg-[#E7E0D4] rounded-lg cursor-pointer"
               >
                 {showAnswerKey ? (
                   <>
@@ -613,7 +610,7 @@ export const QuestionPaperTool: React.FC = () => {
             <button
               type="button"
               onClick={triggerPrintDocument}
-              className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-slate-900 hover:bg-slate-800 rounded-lg cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-2 px-5 py-2 text-xs font-bold text-white bg-[#2C1215] hover:bg-[#58181D] rounded-lg cursor-pointer shadow-xs"
             >
               <Printer className="w-4 h-4" />
               Print / Download PDF (A4)
@@ -625,10 +622,10 @@ export const QuestionPaperTool: React.FC = () => {
           {/* ================================================================= */}
           <div
             dir={isRtlPaper ? 'rtl' : 'ltr'}
-            className="printable-a4-sheet bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs text-slate-900 space-y-5"
+            className="printable-a4-sheet bg-white border border-[#E7E0D4] rounded-xl p-6 sm:p-8 shadow-xs text-[#1C1917] space-y-5"
           >
             {/* School Branding Header */}
-            <div className="border-b-2 border-slate-900 pb-4">
+            <div className="border-b-2 border-[#1C1917] pb-4">
               <div className="flex items-center justify-center gap-4 text-center">
                 {schoolLogoDataUrl && (
                   <img
@@ -638,37 +635,37 @@ export const QuestionPaperTool: React.FC = () => {
                   />
                 )}
                 <div>
-                  <h1 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-slate-900">
+                  <h1 className="text-xl sm:text-2xl font-extrabold uppercase tracking-tight text-[#1C1917]">
                     {schoolName}
                   </h1>
                   {schoolAddress && (
-                    <p className="text-xs text-slate-600 mt-0.5">{schoolAddress}</p>
+                    <p className="text-xs text-[#57534E] mt-0.5">{schoolAddress}</p>
                   )}
-                  <p className="text-sm font-bold text-[#5b21b6] mt-1">
+                  <p className="text-sm font-bold text-[#7F1D1D] mt-1">
                     {generatedPaper.paperTitle || examTitle}
                   </p>
                 </div>
               </div>
 
               {/* Paper Metadata Row */}
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-b border-slate-300 py-2 text-xs font-semibold">
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 border-t border-b border-[#D6CCC2] py-2 text-xs font-semibold">
                 <div>
-                  <span className="text-slate-500">Class:</span> {className}
+                  <span className="text-[#57534E]">Class:</span> {className}
                 </div>
                 <div>
-                  <span className="text-slate-500">Subject:</span> {subject}
+                  <span className="text-[#57534E]">Subject:</span> {subject}
                 </div>
                 <div>
-                  <span className="text-slate-500">Time:</span> {timeAllowed}
+                  <span className="text-[#57534E]">Time:</span> {timeAllowed}
                 </div>
                 <div className="sm:text-end font-mono">
-                  <span className="text-slate-500">Total Marks:</span>{' '}
+                  <span className="text-[#57534E]">Total Marks:</span>{' '}
                   {generatedPaper.totalMarks}
                 </div>
               </div>
 
               {/* Student Name / Roll No Row for Printed Paper */}
-              <div className="mt-2.5 grid grid-cols-2 gap-4 text-xs text-slate-700">
+              <div className="mt-2.5 grid grid-cols-2 gap-4 text-xs text-[#44403C]">
                 <div className="flex items-end gap-2">
                   <span className="font-semibold shrink-0">Student Name:</span>
                   <div className="flex-1 border-b border-dotted border-slate-500 h-4" />
@@ -680,7 +677,7 @@ export const QuestionPaperTool: React.FC = () => {
               </div>
 
               {generatedPaper.instructions && (
-                <p className="mt-2.5 text-[11px] italic text-slate-600 bg-slate-50 px-3 py-1.5 rounded border border-slate-200">
+                <p className="mt-2.5 text-[11px] italic text-[#57534E] bg-slate-50 px-3 py-1.5 rounded border border-[#E7E0D4]">
                   <strong>Instructions:</strong> {generatedPaper.instructions}
                 </p>
               )}
@@ -688,11 +685,11 @@ export const QuestionPaperTool: React.FC = () => {
 
             {/* SECTION A: MCQs */}
             <section className="space-y-3">
-              <div className="flex items-center justify-between border-b border-slate-300 pb-1">
-                <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
+              <div className="flex items-center justify-between border-b border-[#D6CCC2] pb-1">
+                <h2 className="text-sm font-extrabold uppercase tracking-wide text-[#1C1917]">
                   {generatedPaper.sectionATitle}
                 </h2>
-                <span className="text-xs font-mono font-bold text-slate-700">
+                <span className="text-xs font-mono font-bold text-[#44403C]">
                   ({generatedPaper.mcqs.length} × 1 = {generatedPaper.sectionAMarks}{' '}
                   Marks)
                 </span>
@@ -701,10 +698,10 @@ export const QuestionPaperTool: React.FC = () => {
               <div className="space-y-3 text-xs sm:text-sm">
                 {generatedPaper.mcqs.map((mcq, idx) => (
                   <div key={idx} className="space-y-1.5 break-inside-avoid">
-                    <p className="font-semibold text-slate-900">
+                    <p className="font-semibold text-[#1C1917]">
                       Q{idx + 1}. {mcq.question}
                     </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 ps-4 text-xs text-slate-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 ps-4 text-xs text-[#44403C]">
                       {mcq.options.map((opt, optIdx) => (
                         <div key={optIdx} className="flex items-start gap-1.5">
                           <span className="font-bold">
@@ -721,16 +718,16 @@ export const QuestionPaperTool: React.FC = () => {
 
             {/* SECTION B: SHORT QUESTIONS */}
             <section className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-b border-slate-300 pb-1">
+              <div className="flex items-center justify-between border-b border-[#D6CCC2] pb-1">
                 <div>
-                  <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
+                  <h2 className="text-sm font-extrabold uppercase tracking-wide text-[#1C1917]">
                     {generatedPaper.sectionBTitle}
                   </h2>
-                  <p className="text-[11px] text-slate-600">
+                  <p className="text-[11px] text-[#57534E]">
                     {generatedPaper.sectionBNote}
                   </p>
                 </div>
-                <span className="text-xs font-mono font-bold text-slate-700 shrink-0">
+                <span className="text-xs font-mono font-bold text-[#44403C] shrink-0">
                   ({generatedPaper.sectionBMarks} Marks)
                 </span>
               </div>
@@ -740,7 +737,7 @@ export const QuestionPaperTool: React.FC = () => {
                   <li key={idx} className="leading-relaxed break-inside-avoid">
                     <div className="flex items-baseline justify-between gap-3">
                       <span>{q.question}</span>
-                      <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                      <span className="text-[11px] font-mono text-[#57534E] shrink-0">
                         [{q.marks} Marks]
                       </span>
                     </div>
@@ -751,16 +748,16 @@ export const QuestionPaperTool: React.FC = () => {
 
             {/* SECTION C: LONG / DESCRIPTIVE QUESTIONS */}
             <section className="space-y-3 pt-2">
-              <div className="flex items-center justify-between border-b border-slate-300 pb-1">
+              <div className="flex items-center justify-between border-b border-[#D6CCC2] pb-1">
                 <div>
-                  <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">
+                  <h2 className="text-sm font-extrabold uppercase tracking-wide text-[#1C1917]">
                     {generatedPaper.sectionCTitle}
                   </h2>
-                  <p className="text-[11px] text-slate-600">
+                  <p className="text-[11px] text-[#57534E]">
                     {generatedPaper.sectionCNote}
                   </p>
                 </div>
-                <span className="text-xs font-mono font-bold text-slate-700 shrink-0">
+                <span className="text-xs font-mono font-bold text-[#44403C] shrink-0">
                   ({generatedPaper.sectionCMarks} Marks)
                 </span>
               </div>
@@ -770,7 +767,7 @@ export const QuestionPaperTool: React.FC = () => {
                   <li key={idx} className="leading-relaxed break-inside-avoid">
                     <div className="flex items-baseline justify-between gap-3">
                       <span>{q.question}</span>
-                      <span className="text-[11px] font-mono text-slate-500 shrink-0">
+                      <span className="text-[11px] font-mono text-[#57534E] shrink-0">
                         [{q.marks} Marks]
                       </span>
                     </div>
@@ -781,15 +778,15 @@ export const QuestionPaperTool: React.FC = () => {
 
             {/* Optional MCQ Answer Key (Teacher Copy) */}
             {showAnswerKey && (
-              <section className="mt-6 pt-4 border-t-2 border-dashed border-slate-400 break-inside-avoid">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#5b21b6] mb-2">
+              <section className="mt-6 pt-4 border-t-2 border-dashed border-[#C2B7A8] break-inside-avoid">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-[#7F1D1D] mb-2">
                   Teacher Answer Key — Section A (MCQs)
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
                   {generatedPaper.mcqs.map((mcq, idx) => (
                     <div
                       key={idx}
-                      className="bg-slate-50 border border-slate-200 rounded px-2.5 py-1.5"
+                      className="bg-slate-50 border border-[#E7E0D4] rounded px-2.5 py-1.5"
                     >
                       <span className="font-bold">Q{idx + 1}:</span>{' '}
                       <span className="text-emerald-700 font-semibold">

@@ -429,7 +429,7 @@ const EditableSpan: React.FC<{
             ...resolvedColorStyle,
             ...style
           }}
-          className={`cv-interactive-field w-full bg-transparent resize-none overflow-hidden rounded px-1 -mx-1 border border-transparent hover:border-dashed hover:border-slate-400 focus:border-solid focus:border-blue-500 focus:bg-blue-50/20 focus:outline-none transition-colors leading-snug ${urlBreakClass} ${className}`}
+          className={`cv-interactive-field w-full bg-transparent resize-none overflow-hidden rounded px-1 -mx-1 border border-transparent hover:border-dashed hover:border-slate-400 focus:border-solid focus:border-[#7F1D1D] focus:bg-[#FEF2F2]/30 focus:outline-none transition-colors leading-snug ${urlBreakClass} ${className}`}
         />
         {cleanStaticVal && (
           <div
@@ -471,7 +471,7 @@ const EditableSpan: React.FC<{
           ...resolvedColorStyle,
           ...style
         }}
-        className={`cv-interactive-field bg-transparent rounded px-0.5 border border-transparent hover:border-dashed hover:border-slate-400 focus:border-solid focus:border-blue-500 focus:bg-blue-50/20 focus:outline-none transition-colors ${urlBreakClass} ${className}`}
+        className={`cv-interactive-field bg-transparent rounded px-0.5 border border-transparent hover:border-dashed hover:border-slate-400 focus:border-solid focus:border-[#7F1D1D] focus:bg-[#FEF2F2]/30 focus:outline-none transition-colors ${urlBreakClass} ${className}`}
       />
       {cleanStaticVal && (
         <span
@@ -819,7 +819,7 @@ const SortableExperienceCard: React.FC<{
             onUpdateItem({ ...item, bullets: updated });
             onBlurSync?.();
           }}
-          className="cv-edit-cue add-btn mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-blue-700 hover:text-blue-900 px-2 py-1 min-h-[24px] rounded-md bg-blue-50/80 hover:bg-blue-100/90 transition-colors whitespace-nowrap"
+          className="cv-edit-cue add-btn mt-1 inline-flex items-center gap-1 text-[10px] font-semibold text-[#7F1D1D] hover:text-[#651414] px-2 py-1 min-h-[24px] rounded-md bg-[#FEF2F2] hover:bg-[#FEE2E2] transition-colors whitespace-nowrap"
         >
           <Plus className="w-3 h-3 shrink-0" />
           <span>Bullet</span>
@@ -2770,7 +2770,7 @@ export const CVTemplateRenderer: React.FC<CVTemplateRendererProps> = ({
                   });
                   onBlurSync?.();
                 }}
-                className="cv-edit-cue add-btn inline-flex items-center gap-1 text-[10px] not-italic font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded"
+                className="cv-edit-cue add-btn inline-flex items-center gap-1 text-[10px] not-italic font-semibold text-[#7F1D1D] bg-[#FEF2F2] hover:bg-[#FEE2E2] px-2 py-0.5 rounded"
               >
                 <Plus className="w-3 h-3" />
                 <span>Add Specific Referee Details</span>

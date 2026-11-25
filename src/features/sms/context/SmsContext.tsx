@@ -3785,7 +3785,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => syncError.retry()}
-              className="px-3.5 py-1.5 bg-white text-red-700 hover:bg-red-50 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+              className="px-3.5 py-1.5 bg-[#FFFDF9] text-red-700 hover:bg-red-50 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-sm cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               Retry

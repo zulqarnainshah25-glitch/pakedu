@@ -2,23 +2,45 @@
 
 /* ==========================================================================
    PAKEDU PORTAL & SELD ENTERPRISE ERP THEME
-   Style: Premium SaaS / Deep Slate (#0f172a), Trust Indigo (#4f46e5), Emerald (#10b981)
+   Style: Academic Editorial / Warm Ivory (#FAF8F5), Terracotta (#C2410C), Deep Burgundy (#7F1D1D)
    ========================================================================== */
 
+@theme {
+  --color-ivory: #FAF8F5;
+  --color-parchment: #F3EFEA;
+  --color-warm-white: #FFFDF9;
+  --color-sand: #E7E0D4;
+  --color-espresso: #2C1215;
+  --color-wine: #58181D;
+  --color-burgundy: #7F1D1D;
+  --color-burgundy-hover: #651414;
+  --color-terracotta: #C2410C;
+  --color-terracotta-hover: #9A3412;
+  --color-bronze: #B45309;
+  --color-ink: #1C1917;
+  --color-stone: #57534E;
+}
+
 :root {
-  --primary: #4f46e5; /* Modern Trust Indigo */
-  --secondary: #0ea5e9; /* Crisp Sky Blue */
-  --accent: #10b981; /* Emerald */
-  --bg: #f8fafc; /* Slate-50 */
-  --card-bg: #ffffff;
-  --text-main: #0f172a; /* Slate-900 */
-  --text-muted: #64748b; /* Slate-500 */
-  --border: rgba(226, 232, 240, 0.9);
-  --glass-bg: rgba(255, 255, 255, 0.92);
-  --glass-border: rgba(226, 232, 240, 0.8);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --primary: #7F1D1D; /* Deep Burgundy */
+  --primary-hover: #651414;
+  --secondary: #C2410C; /* Warm Terracotta */
+  --secondary-hover: #9A3412;
+  --accent: #15803D; /* Harmonious Emerald */
+  --bronze: #B45309; /* Bronze-Gold */
+  --bg: #FAF8F5; /* Warm Ivory */
+  --parchment: #F3EFEA; /* Soft Warm Parchment */
+  --card-bg: #FFFDF9; /* Pure Warm White */
+  --sidebar-bg: #2C1215; /* Deep Espresso-Burgundy */
+  --wine-bg: #58181D; /* Rich Deep Burgundy Wine */
+  --text-main: #1C1917; /* Deep Charcoal-Espresso */
+  --text-muted: #57534E; /* Warm Stone Gray */
+  --border: #E7E0D4; /* Soft Sand */
+  --glass-bg: rgba(255, 253, 249, 0.94);
+  --glass-border: #E7E0D4;
+  --shadow-sm: 0 1px 2px 0 rgba(28, 25, 23, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(28, 25, 23, 0.06), 0 2px 4px -2px rgba(28, 25, 23, 0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(28, 25, 23, 0.08), 0 4px 6px -4px rgba(28, 25, 23, 0.04);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
@@ -26,19 +48,25 @@
 }
 
 body.dark-mode {
-  --primary: #6366f1; /* Indigo-400 */
-  --secondary: #38bdf8; /* Sky-400 */
-  --accent: #34d399; /* Emerald-400 */
-  --bg: #0b0f19; /* Deep Slate-950 */
-  --card-bg: #111827; /* Gray-900 / Slate-900 */
-  --text-main: #f8fafc;
-  --text-muted: #94a3b8;
-  --border: rgba(255, 255, 255, 0.08);
-  --glass-bg: rgba(17, 24, 39, 0.92);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --primary: #C2410C; /* Warm Terracotta Accent on Dark Espresso */
+  --primary-hover: #9A3412;
+  --secondary: #EA580C;
+  --secondary-hover: #C2410C;
+  --accent: #22C55E;
+  --bronze: #D97706;
+  --bg: #160D0E; /* Warm Deep Espresso */
+  --parchment: #1F1113;
+  --card-bg: #211415; /* Elevated Dark Espresso Card */
+  --sidebar-bg: #2C1215;
+  --wine-bg: #58181D;
+  --text-main: #FAF8F5;
+  --text-muted: #D6CCC2;
+  --border: rgba(255, 253, 249, 0.12);
+  --glass-bg: rgba(33, 20, 21, 0.94);
+  --glass-border: rgba(255, 253, 249, 0.12);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.55);
 }
 
 @layer base {
@@ -96,7 +124,7 @@ body.dark-mode {
   left: 0;
   width: 100%;
   height: 3px;
-  background: linear-gradient(90deg, #4f46e5, #0ea5e9, #10b981);
+  background: linear-gradient(90deg, #7F1D1D, #C2410C, #B45309);
   z-index: 9999;
 }
 
@@ -109,19 +137,20 @@ body.dark-mode {
   box-shadow: var(--shadow-sm);
 }
 
-/* Premium Pill Button */
+/* Premium Editorial CTA Button */
 .allforu-btn-demo {
-  background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
-  color: #ffffff !important;
+  background: #C2410C;
+  color: #FFFDF9 !important;
   border-radius: 9999px;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 4px 12px rgba(127, 29, 29, 0.25);
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .allforu-btn-demo:hover {
+  background: #9A3412;
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35);
+  box-shadow: 0 6px 16px rgba(194, 65, 12, 0.35);
 }
 
 /* Section Title Accent Bar */
@@ -154,7 +183,7 @@ body.dark-mode {
 .allforu-tool-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-md);
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: rgba(194, 65, 12, 0.45);
 }
 
 /* Animated News Ticker from allfaru.dpdns.org */
@@ -207,10 +236,12 @@ body.printing-mode .allforu-progress-bar {
   display: none !important;
 }
 
+body.printing-mode,
 body.printing-mode .app-main-wrapper {
   padding: 0 !important;
   margin: 0 !important;
   background: #ffffff !important;
+  color: #000000 !important;
 }
 
 body.printing-mode .printable-a4-sheet {
@@ -220,6 +251,8 @@ body.printing-mode .printable-a4-sheet {
   border: none !important;
   box-shadow: none !important;
   padding: 8mm !important;
+  background: #ffffff !important;
+  color: #000000 !important;
 }
 
 @media print {
@@ -256,6 +289,7 @@ body.printing-mode .printable-a4-sheet {
     width: 100% !important;
     height: auto !important;
     overflow: visible !important;
+    background: #ffffff !important;
   }
 
   .printable-a4-sheet {
@@ -266,6 +300,8 @@ body.printing-mode .printable-a4-sheet {
     width: 100% !important;
     max-width: 100% !important;
     overflow: visible !important;
+    background: #ffffff !important;
+    color: #000000 !important;
   }
 }
 
@@ -461,11 +497,11 @@ html.dark .cv-paper-sheet .cv-light-sidebar {
 @keyframes pakeduSplashPulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.35);
+    box-shadow: 0 0 0 0 rgba(194, 65, 12, 0.35);
   }
   50% {
     transform: scale(1.04);
-    box-shadow: 0 0 0 12px rgba(99, 102, 241, 0);
+    box-shadow: 0 0 0 12px rgba(194, 65, 12, 0);
   }
 }
 

@@ -140,34 +140,34 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={onBack}
-              className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer"
+              className="p-2 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-xl transition cursor-pointer"
               title="Return to SMS Dashboard"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                <h1 className="text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Faculty &amp; Teacher Management (اساتذہ ڈائریکٹری)
                 </h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60">
                   Staff Incharge
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                 {activeSchool.name} · SEMIS Code: <span className="font-mono">{activeSchool.semisCode}</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-semibold">
+            <span className="px-3 py-1.5 rounded-xl bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] text-xs font-semibold">
               Total Faculty: {teachers.length}
             </span>
           </div>
@@ -192,15 +192,15 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
       )}
 
       {/* Tab Navigation */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-        <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto">
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('roster')}
             className={`py-3.5 px-5 sm:px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'roster'
-                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'border-b-2 border-[#7F1D1D] text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2]/40 dark:bg-[#3F1014]/20'
+                : 'text-[#57534E] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
             }`}
           >
             <UserCheck className="w-4 h-4" />
@@ -212,8 +212,8 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
             onClick={() => setActiveTab('profiles')}
             className={`py-3.5 px-5 sm:px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'profiles'
-                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'border-b-2 border-[#7F1D1D] text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2]/40 dark:bg-[#3F1014]/20'
+                : 'text-[#57534E] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
             }`}
           >
             <Award className="w-4 h-4" />
@@ -225,8 +225,8 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
             onClick={() => setActiveTab('requests')}
             className={`py-3.5 px-5 sm:px-6 text-xs font-bold transition flex items-center gap-2 cursor-pointer whitespace-nowrap ${
               activeTab === 'requests'
-                ? 'border-b-2 border-indigo-600 text-indigo-600 dark:text-indigo-400 bg-indigo-50/40 dark:bg-indigo-950/20'
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+                ? 'border-b-2 border-[#7F1D1D] text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2]/40 dark:bg-[#3F1014]/20'
+                : 'text-[#57534E] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
             }`}
           >
             <Clock className="w-4 h-4" />
@@ -249,18 +249,18 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 return (
                   <div
                     key={teacher.id}
-                    className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 rounded-xl space-y-3 hover:border-indigo-300 dark:hover:border-indigo-700 transition"
+                    className="p-4 bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-xl space-y-3 hover:border-[#7F1D1D] dark:hover:border-[#C2410C] transition"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-xs">
+                        <div className="w-9 h-9 rounded-xl bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center font-bold text-xs">
                           {teacher.name.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-bold text-slate-900 dark:text-white text-xs">
+                          <h3 className="font-bold text-[#1C1917] dark:text-[#FAF8F5] text-xs">
                             {teacher.name}
                           </h3>
-                          <span className="text-[10px] text-slate-500 dark:text-slate-400 block">
+                          <span className="text-[10px] text-[#57534E] dark:text-[#D6CCC2] block">
                             {teacher.designation}
                           </span>
                         </div>
@@ -271,21 +271,21 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                       </span>
                     </div>
 
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+                    <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] space-y-1">
                       <div className="flex items-center gap-1.5">
-                        <Mail className="w-3 h-3 text-slate-400" />
+                        <Mail className="w-3 h-3 text-[#78716C]" />
                         <span className="truncate">{teacher.email}</span>
                       </div>
                       {teacher.phone && (
                         <div className="flex items-center gap-1.5 font-mono">
-                          <Phone className="w-3 h-3 text-slate-400" />
+                          <Phone className="w-3 h-3 text-[#78716C]" />
                           <span>{teacher.phone}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
-                      <span className="text-[10px] text-slate-400 block mb-1">
+                    <div className="pt-2 border-t border-[#E7E0D4]/60 dark:border-[rgba(255,253,249,0.14)]">
+                      <span className="text-[10px] text-[#78716C] block mb-1">
                         Assigned Class Incharge:
                       </span>
                       {inchargeClasses.length > 0 ? (
@@ -293,14 +293,14 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                           {inchargeClasses.map((c) => (
                             <span
                               key={c.id}
-                              className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-semibold"
+                              className="px-2 py-0.5 rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/50 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60 text-[10px] font-semibold"
                             >
                               {c.grade} - {c.section}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-[10px] text-slate-400 italic">
+                        <span className="text-[10px] text-[#78716C] italic">
                           No class assigned as incharge
                         </span>
                       )}
@@ -318,17 +318,17 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
             {/* Filter and Search Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Search by teacher name, designation, CNIC, or phone..."
                   value={teacherSearch}
                   onChange={(e) => setTeacherSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  className="w-full pl-9 pr-4 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] placeholder-slate-400 focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                 />
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-center gap-2 text-xs text-[#57534E] dark:text-[#D6CCC2]">
                 <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span>Admin Delegation: Assigning <strong>Admission Incharge</strong> allows the teacher to admit and edit students.</span>
               </div>
@@ -343,20 +343,20 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 return (
                   <div
                     key={teacher.id}
-                    className="p-5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl space-y-4 hover:border-indigo-300 dark:hover:border-indigo-700 transition"
+                    className="p-5 bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl space-y-4 hover:border-[#7F1D1D] dark:hover:border-[#C2410C] transition"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-11 h-11 rounded-2xl bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                        <div className="w-11 h-11 rounded-2xl bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                           {teacher.name.charAt(0)}
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                            <h3 className="font-bold text-[#1C1917] dark:text-[#FAF8F5] text-sm">
                               {teacher.name}
                             </h3>
                           </div>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 block">
+                          <span className="text-xs text-[#57534E] dark:text-[#D6CCC2] block">
                             {teacher.designation}
                           </span>
                         </div>
@@ -369,47 +369,47 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                             Admission Incharge
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                             Faculty
                           </span>
                         )}
-                        <span className="text-[10px] text-slate-400 font-mono">
+                        <span className="text-[10px] text-[#78716C] font-mono">
                           ID: {teacher.id}
                         </span>
                       </div>
                     </div>
 
                     {/* Detailed Institutional Attributes */}
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
+                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#E7E0D4]/60 dark:border-[rgba(255,253,249,0.14)] text-xs">
                       <div>
-                        <span className="text-[10px] text-slate-400 block">CNIC (شناختی کارڈ)</span>
-                        <span className="font-mono font-semibold text-slate-800 dark:text-slate-200 text-[11px]">
+                        <span className="text-[10px] text-[#78716C] block">CNIC (شناختی کارڈ)</span>
+                        <span className="font-mono font-semibold text-[#1C1917] dark:text-[#FAF8F5] text-[11px]">
                           {teacher.cnic || '—'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Joining Date</span>
-                        <span className="font-mono text-slate-800 dark:text-slate-200 text-[11px]">
+                        <span className="text-[10px] text-[#78716C] block">Joining Date</span>
+                        <span className="font-mono text-[#1C1917] dark:text-[#FAF8F5] text-[11px]">
                           {teacher.joiningDate || '2023-08-15'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Official Contact</span>
-                        <span className="font-mono text-slate-700 dark:text-slate-300 text-[11px] truncate block">
+                        <span className="text-[10px] text-[#78716C] block">Official Contact</span>
+                        <span className="font-mono text-[#44403C] dark:text-[#E7E0D4] text-[11px] truncate block">
                           {teacher.phone || '0300-1122334'}
                         </span>
                       </div>
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Email Address</span>
-                        <span className="text-slate-700 dark:text-slate-300 text-[11px] truncate block" title={teacher.email}>
+                        <span className="text-[10px] text-[#78716C] block">Email Address</span>
+                        <span className="text-[#44403C] dark:text-[#E7E0D4] text-[11px] truncate block" title={teacher.email}>
                           {teacher.email}
                         </span>
                       </div>
                     </div>
 
                     {/* Assigned Classes */}
-                    <div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 text-xs">
-                      <span className="text-[10px] text-slate-400 block mb-1">
+                    <div className="pt-2 border-t border-[#E7E0D4]/60 dark:border-[rgba(255,253,249,0.14)] text-xs">
+                      <span className="text-[10px] text-[#78716C] block mb-1">
                         Class Incharge &amp; Sections:
                       </span>
                       {inchargeClasses.length > 0 ? (
@@ -428,26 +428,26 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                           {assignedClasses.map((c) => (
                             <span
                               key={c.id}
-                              className="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 text-[10px] font-semibold"
+                              className="px-2 py-0.5 rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/50 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60 text-[10px] font-semibold"
                             >
                               {c.grade} - {c.section}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <span className="text-[10px] text-slate-400 italic">No class currently assigned</span>
+                        <span className="text-[10px] text-[#78716C] italic">No class currently assigned</span>
                       )}
                     </div>
 
                     {/* Actions: Edit Profile, Offer Letter & Toggle Admission Incharge */}
-                    <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-2">
+                    <div className="pt-3 border-t border-[#E7E0D4]/60 dark:border-[rgba(255,253,249,0.14)] flex flex-wrap items-center justify-between gap-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <button
                           type="button"
                           onClick={() => openEditProfile(teacher)}
-                          className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                          className="min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#3F1014] dark:hover:bg-slate-600 text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-semibold transition cursor-pointer"
                         >
-                          <Edit2 className="w-3.5 h-3.5 text-slate-500" />
+                          <Edit2 className="w-3.5 h-3.5 text-[#57534E]" />
                           <span>Edit Profile</span>
                         </button>
 
@@ -467,7 +467,7 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                         className={`min-h-[40px] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                           teacher.isAdmissionIncharge
                             ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700'
-                            : 'bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800'
+                            : 'bg-[#FEF2F2] hover:bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60'
                         }`}
                         title={teacher.isAdmissionIncharge ? 'Revoke Admission Incharge Authority' : 'Designate as Admission Incharge'}
                       >
@@ -490,12 +490,12 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
         {activeTab === 'requests' && (
           <div className="p-5">
             {pendingJoinRequests.length === 0 ? (
-              <div className="py-12 text-center text-slate-400">
+              <div className="py-12 text-center text-[#78716C]">
                 <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                <p className="text-sm font-semibold text-[#44403C] dark:text-[#E7E0D4]">
                   No Pending Join Requests
                 </p>
-                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                <p className="text-xs text-[#78716C] mt-1 max-w-sm mx-auto">
                   All incoming teacher affiliation applications have been processed.
                 </p>
               </div>
@@ -504,7 +504,7 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 {pendingJoinRequests.map((req) => (
                   <div
                     key={req.id}
-                    className="p-4 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                    className="p-4 bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4"
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center font-bold text-sm shrink-0">
@@ -512,24 +512,24 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                       </div>
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-slate-900 dark:text-white text-xs">
+                          <h3 className="font-bold text-[#1C1917] dark:text-[#FAF8F5] text-xs">
                             {req.fullName}
                           </h3>
                           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                             Pending Approval
                           </span>
                         </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300">
-                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">{req.designation}</span>
+                        <div className="text-[11px] text-[#57534E] dark:text-[#E7E0D4]">
+                          <span className="font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">{req.designation}</span>
                           {req.fatherName && (
-                            <span> · S/D/O <strong className="text-slate-800 dark:text-slate-200">{req.fatherName}</strong></span>
+                            <span> · S/D/O <strong className="text-[#1C1917] dark:text-[#FAF8F5]">{req.fatherName}</strong></span>
                           )}
-                          <span> · CNIC: <strong className="font-mono text-slate-800 dark:text-slate-200">{req.cnic || '—'}</strong></span>
+                          <span> · CNIC: <strong className="font-mono text-[#1C1917] dark:text-[#FAF8F5]">{req.cnic || '—'}</strong></span>
                         </div>
-                        <div className="text-[10px] text-slate-400 flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-0.5">
-                          <span>Email: <strong className="text-slate-600 dark:text-slate-300">{req.email}</strong></span>
-                          <span>Phone: <strong className="font-mono text-slate-600 dark:text-slate-300">{req.phone}</strong></span>
-                          {req.semisCode && <span>SEMIS: <strong className="font-mono text-indigo-600 dark:text-indigo-400">{req.semisCode}</strong></span>}
+                        <div className="text-[10px] text-[#78716C] flex flex-wrap items-center gap-x-3 gap-y-0.5 pt-0.5">
+                          <span>Email: <strong className="text-[#57534E] dark:text-[#E7E0D4]">{req.email}</strong></span>
+                          <span>Phone: <strong className="font-mono text-[#57534E] dark:text-[#E7E0D4]">{req.phone}</strong></span>
+                          {req.semisCode && <span>SEMIS: <strong className="font-mono text-[#7F1D1D] dark:text-[#FCA5A5]">{req.semisCode}</strong></span>}
                           <span>Applied: <strong>{new Date(req.requestedAt).toLocaleDateString()}</strong></span>
                         </div>
                       </div>
@@ -564,18 +564,18 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
       {/* Approve & Assign Class Modal */}
       {selectedRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                     Approve Teacher &amp; Assign Classes
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[#78716C]">
                     Allocating teaching responsibilities for {selectedRequest.fullName}
                   </p>
                 </div>
@@ -583,7 +583,7 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
               <button
                 type="button"
                 onClick={() => setSelectedRequest(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                className="p-1.5 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -591,37 +591,37 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
             <div className="space-y-3.5 text-xs">
               {/* Applicant Full Details Review Card */}
-              <div className="p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="p-3 bg-[#FAF8F5] dark:bg-[#2C1215]/80 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-900 dark:text-white text-xs">
+                  <span className="font-bold text-[#1C1917] dark:text-[#FAF8F5] text-xs">
                     {selectedRequest.fullName}
                   </span>
-                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60">
                     {selectedRequest.designation}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60">
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1.5 border-t border-[#E7E0D4]/60 dark:border-[rgba(255,253,249,0.14)]">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Father&apos;s Name</span>
-                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                    <span className="text-[10px] text-[#78716C] block">Father&apos;s Name</span>
+                    <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                       {selectedRequest.fatherName || '—'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">NADRA CNIC</span>
-                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    <span className="text-[10px] text-[#78716C] block">NADRA CNIC</span>
+                    <span className="font-mono font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                       {selectedRequest.cnic || '—'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Official Phone</span>
-                    <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">
+                    <span className="text-[10px] text-[#78716C] block">Official Phone</span>
+                    <span className="font-mono font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                       {selectedRequest.phone || '—'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Official Email</span>
-                    <span className="font-mono text-slate-800 dark:text-slate-200 truncate block" title={selectedRequest.email}>
+                    <span className="text-[10px] text-[#78716C] block">Official Email</span>
+                    <span className="font-mono text-[#1C1917] dark:text-[#FAF8F5] truncate block" title={selectedRequest.email}>
                       {selectedRequest.email}
                     </span>
                   </div>
@@ -629,40 +629,40 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1.5">
                   Select Teaching Class(es):
                 </label>
                 <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
                   {classes.map((cls) => (
                     <label
                       key={cls.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                      className="flex items-center justify-between p-2 rounded-lg bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] cursor-pointer"
                     >
                       <div className="flex items-center gap-2">
                         <input
                           type="checkbox"
                           checked={assignedClassIds.includes(cls.id)}
                           onChange={() => handleToggleClass(cls.id)}
-                          className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                          className="rounded text-[#7F1D1D] focus:ring-[#7F1D1D] cursor-pointer"
                         />
-                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                        <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                           {cls.grade} - {cls.section}
                         </span>
                       </div>
-                      <span className="text-[10px] text-slate-400">{cls.medium} Medium</span>
+                      <span className="text-[10px] text-[#78716C]">{cls.medium} Medium</span>
                     </label>
                   ))}
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Designate as Primary Class Incharge (حاضری انچارج):
                 </label>
                 <select
                   value={classTeacherForId}
                   onChange={(e) => setClassTeacherForId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
                 >
                   <option value="">None (Subject Teacher only)</option>
                   {classes.map((c) => (
@@ -671,17 +671,17 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                     </option>
                   ))}
                 </select>
-                <span className="text-[10px] text-slate-400 mt-1 block">
+                <span className="text-[10px] text-[#78716C] mt-1 block">
                   Assigning as Class Incharge gives this teacher permission to take daily roll call for that section.
                 </span>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+            <div className="pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setSelectedRequest(null)}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                className="px-3.5 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
@@ -699,18 +699,18 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
 
       {/* Edit Teacher Profile Modal */}
       {editingTeacher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center">
                   <Edit2 className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                  <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                     Edit Teacher Profile &amp; Role
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-[#78716C]">
                     Institutional details for {editingTeacher.name}
                   </p>
                 </div>
@@ -718,7 +718,7 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
               <button
                 type="button"
                 onClick={() => setEditingTeacher(null)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg cursor-pointer"
+                className="p-1.5 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] rounded-lg cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -727,7 +727,7 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
             <form onSubmit={handleSaveTeacherProfile} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Full Name:
                   </label>
                   <input
@@ -735,12 +735,12 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                     required
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Designation:
                   </label>
                   <input
@@ -749,14 +749,14 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                     value={editDesignation}
                     onChange={(e) => setEditDesignation(e.target.value)}
                     placeholder="e.g., HST (Science), PST, JST"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     CNIC (شناختی کارڈ نمبر):
                   </label>
                   <input
@@ -764,12 +764,12 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                     value={editCnic}
                     onChange={(e) => setEditCnic(e.target.value)}
                     placeholder="41303-1234567-1"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-mono text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Official Contact Phone:
                   </label>
                   <input
@@ -777,20 +777,20 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                     value={editPhone}
                     onChange={(e) => setEditPhone(e.target.value)}
                     placeholder="0300-1234567"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-mono text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-mono text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Joining / Appointment Date:
                 </label>
                 <input
                   type="date"
                   value={editJoiningDate}
                   onChange={(e) => setEditJoiningDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] focus:outline-hidden focus:ring-2 focus:ring-[#7F1D1D]"
                 />
               </div>
 
@@ -814,17 +814,17 @@ export const TeacherManagement: React.FC<{ onBack: () => void }> = ({ onBack }) 
                 </label>
               </div>
 
-              <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+              <div className="pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setEditingTeacher(null)}
-                  className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold cursor-pointer"
+                  className="px-3.5 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] rounded-xl text-xs font-semibold cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+                  className="px-4 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
                 >
                   Save Profile Changes
                 </button>

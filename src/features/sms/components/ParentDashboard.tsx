@@ -243,19 +243,19 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
 
     return (
       <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in duration-200">
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center shrink-0">
               <UserCheck className="w-6 h-6" />
             </div>
             <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-indigo-100 dark:bg-indigo-950/70 text-indigo-800 dark:text-indigo-300">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FEE2E2] dark:bg-[#3F1014]/70 text-[#7F1D1D] dark:text-[#FCA5A5]">
                 Parent Portal · Verification Required
               </span>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white mt-1">
+              <h2 className="text-lg sm:text-xl font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-1">
                 Link Your Child&apos;s Student Profile
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                 Enter your child&apos;s School and GR Number along with either your School Invite Code, registered Parent Email ({currentUserProfile?.email}), or Guardian Phone Number to unlock read-only attendance, fee ledger, and exam report cards.
               </p>
             </div>
@@ -270,13 +270,13 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
 
           <form onSubmit={handleLinkChild} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                 Child&apos;s School <span className="text-rose-500">*</span>
               </label>
               <select
                 value={claimSchoolId}
                 onChange={(e) => setClaimSchoolId(e.target.value)}
-                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                 required
               >
                 <option value="">-- Select School --</option>
@@ -290,7 +290,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Child&apos;s GR Number <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -298,13 +298,13 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   value={claimGrNumber}
                   onChange={(e) => setClaimGrNumber(e.target.value)}
                   placeholder="e.g., GR-1042"
-                  className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Parent Invite Code (From School)
                 </label>
                 <input
@@ -312,13 +312,13 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   value={claimInviteCode}
                   onChange={(e) => setClaimInviteCode(e.target.value)}
                   placeholder="e.g., PAR-1042-XXXX"
-                  className="w-full px-3.5 py-2.5 text-xs font-mono uppercase rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                  className="w-full px-3.5 py-2.5 text-xs font-mono uppercase rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+              <label className="block text-xs font-bold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                 Guardian Phone Number (Alternative verification if Invite Code omitted)
               </label>
               <input
@@ -326,14 +326,14 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                 value={claimPhone}
                 onChange={(e) => setClaimPhone(e.target.value)}
                 placeholder="e.g., 0300-1234567"
-                className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-white"
+                className="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
               />
             </div>
 
             <button
               type="submit"
               disabled={isClaiming}
-              className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              className="w-full py-3 bg-[#7F1D1D] hover:bg-[#651414] text-white rounded-xl text-sm font-bold shadow-md transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
             >
               <KeyRound className="w-4 h-4" />
               <span>{isClaiming ? 'Verifying Student Link...' : 'Verify & Link Child Profile'}</span>
@@ -348,17 +348,17 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
     <div className="w-full space-y-6 animate-in fade-in duration-200">
       <div className={reportExamForPrint ? 'no-print space-y-6' : 'space-y-6'}>
         {/* Child Identity & School Header Card */}
-        <div className="bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-slate-800 relative overflow-hidden">
+        <div className="bg-gradient-to-br from-[#58181D] via-[#7F1D1D] to-[#3F1014] text-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[rgba(255,253,249,0.14)] relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">
             <div className="flex items-center gap-4">
               {childStudent.photoUrl ? (
                 <img
                   src={childStudent.photoUrl}
                   alt={childStudent.fullName}
-                  className="w-20 h-20 rounded-2xl object-cover border-2 border-indigo-400/50 shadow-md shrink-0 bg-white"
+                  className="w-20 h-20 rounded-2xl object-cover border-2 border-[#7F1D1D]/50 shadow-md shrink-0 bg-[#FFFDF9]"
                 />
               ) : (
-                <div className="w-20 h-20 rounded-2xl bg-indigo-500/20 border-2 border-indigo-400/40 text-indigo-200 flex items-center justify-center font-black text-3xl shrink-0">
+                <div className="w-20 h-20 rounded-2xl bg-[#7F1D1D]/20 border-2 border-[#7F1D1D]/40 text-[#FED7AA] flex items-center justify-center font-black text-3xl shrink-0">
                   {childStudent.fullName.charAt(0)}
                 </div>
               )}
@@ -369,14 +369,14 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                     <Lock className="w-3 h-3" />
                     <span>Parent Portal · Strict Read-Only</span>
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-slate-200">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-white/10 text-[#FAF8F5]">
                     GR: {childStudent.grNumber}
                   </span>
                 </div>
                 <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight">
                   {childStudent.fullName}
                 </h1>
-                <div className="text-xs text-slate-300 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div className="text-xs text-[#E7E0D4] flex flex-wrap items-center gap-x-3 gap-y-1">
                   <span>Father: <strong>{childStudent.fatherName}</strong></span>
                   <span>·</span>
                   <span>
@@ -389,12 +389,12 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
             </div>
 
             <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 text-xs space-y-1 min-w-[240px]">
-              <div className="flex items-center gap-1.5 text-indigo-300 font-bold text-[11px] uppercase">
+              <div className="flex items-center gap-1.5 text-[#FED7AA] font-bold text-[11px] uppercase">
                 <Building className="w-3.5 h-3.5" />
                 <span>{activeSchool.name}</span>
               </div>
-              <div className="text-slate-300">SEMIS Code: <strong className="font-mono text-white">{activeSchool.semisCode}</strong></div>
-              <div className="text-slate-300">Parent Account: <strong className="text-white">{currentUserProfile?.email}</strong></div>
+              <div className="text-[#E7E0D4]">SEMIS Code: <strong className="font-mono text-white">{activeSchool.semisCode}</strong></div>
+              <div className="text-[#E7E0D4]">Parent Account: <strong className="text-white">{currentUserProfile?.email}</strong></div>
             </div>
           </div>
         </div>
@@ -402,25 +402,25 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
         {/* 3-Metric Top Summary Strip */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Monthly Attendance % */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-[#57534E] uppercase tracking-wider">
                 Monthly Attendance
               </span>
               <CalendarCheck2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <div className="text-3xl font-black text-slate-900 dark:text-white">
+            <div className="text-3xl font-black text-[#1C1917] dark:text-[#FAF8F5]">
               {childAttendanceStats.monthTotal > 0 ? `${childAttendanceStats.monthPercentage}%` : '—'}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <div className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">
               Present: {childAttendanceStats.monthPresent} · Late: {childAttendanceStats.monthLate} · Absent: {childAttendanceStats.monthAbsent}
             </div>
           </div>
 
           {/* Fee Status Summary */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-[#57534E] uppercase tracking-wider">
                 Fee Balance (Read-Only)
               </span>
               <CreditCard className="w-5 h-5 text-rose-600 dark:text-rose-400" />
@@ -428,40 +428,40 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
             <div className="text-3xl font-black text-rose-600 dark:text-rose-400 font-mono">
               Rs. {(childFeeLedger?.pendingBalance || 0).toLocaleString()}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <div className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">
               Total Due: Rs. {(childFeeLedger?.totalDue || 0).toLocaleString()} · Paid: Rs. {(childFeeLedger?.totalPaid || 0).toLocaleString()}
             </div>
           </div>
 
           {/* Published Exams Count */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <span className="text-xs font-bold text-[#57534E] uppercase tracking-wider">
                 Published Exam Results
               </span>
-              <Award className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+              <Award className="w-5 h-5 text-[#7F1D1D] dark:text-[#FCA5A5]" />
             </div>
-            <div className="text-3xl font-black text-indigo-600 dark:text-indigo-400">
+            <div className="text-3xl font-black text-[#7F1D1D] dark:text-[#FCA5A5]">
               {publishedExamsForChild.length}
             </div>
-            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            <div className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1">
               Official A4 Report Cards ready for download
             </div>
           </div>
         </div>
 
         {/* Child Student Portal Invite Card (Create/View Code on Parent Dashboard) */}
-        <div className="bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800/60 rounded-2xl p-5 shadow-xs space-y-3">
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#FED7AA] dark:border-[#C2410C]/50 rounded-2xl p-5 shadow-xs space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center shrink-0">
                 <GraduationCap className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                <h2 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Student Portal Access &amp; Invite Code
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                   Your child can register and log in using only their Student ID / GR Number and Invite Code (no email address required).
                 </p>
               </div>
@@ -478,26 +478,26 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                 Invite Code Ready
               </span>
             ) : (
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4]">
                 Not Created Yet
               </span>
             )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
-              <div className="text-[11px] text-slate-500 dark:text-slate-400">Login Student ID / GR#</div>
-              <div className="font-mono font-bold text-slate-900 dark:text-white mt-0.5">
+            <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)]">
+              <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">Login Student ID / GR#</div>
+              <div className="font-mono font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-0.5">
                 {childStudent.grNumber}
               </div>
-              <div className="text-[10px] text-slate-400 font-mono truncate mt-0.5">
+              <div className="text-[10px] text-[#78716C] font-mono truncate mt-0.5">
                 ID: {childStudent.id}
               </div>
             </div>
 
-            <div className="p-3 rounded-xl bg-sky-50/70 dark:bg-sky-950/35 border border-sky-200 dark:border-sky-800/60">
-              <div className="text-[11px] text-sky-800 dark:text-sky-300">Student Invite Code</div>
-              <div className="font-mono font-bold text-sky-700 dark:text-sky-300 mt-0.5">
+            <div className="p-3 rounded-xl bg-[#FFF7ED]/70 dark:bg-[#7C2D12]/35 border border-[#FED7AA] dark:border-[#C2410C]/50">
+              <div className="text-[11px] text-[#C2410C] dark:text-[#FDBA74]">Student Invite Code</div>
+              <div className="font-mono font-bold text-[#C2410C] dark:text-[#FDBA74] mt-0.5">
                 {activeChildStudentCode || 'Pending creation'}
               </div>
             </div>
@@ -508,7 +508,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   type="button"
                   onClick={handleCreateChildStudentInvite}
                   disabled={isCreatingStudentInvite}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60"
                 >
                   <KeyRound className="w-3.5 h-3.5" />
                   <span>
@@ -520,7 +520,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   <button
                     type="button"
                     onClick={() => handleCopyChildStudentValue(activeChildStudentCode, 'code')}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer"
                   >
                     {copiedChildInviteKey === 'code' ? (
                       <>
@@ -537,7 +537,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
                   <button
                     type="button"
                     onClick={() => handleCopyChildStudentValue(activeChildStudentInviteUrl, 'url')}
-                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-xl transition cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] text-xs font-semibold rounded-xl transition cursor-pointer"
                   >
                     {copiedChildInviteKey === 'url' ? (
                       <>
@@ -557,7 +557,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
           </div>
 
           {studentInviteFeedback && (
-            <div className="px-3 py-2 rounded-xl bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 text-xs text-sky-800 dark:text-sky-200">
+            <div className="px-3 py-2 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/40 border border-[#FED7AA] dark:border-[#C2410C]/50 text-xs text-[#C2410C] dark:text-[#FDBA74]">
               {studentInviteFeedback}
             </div>
           )}

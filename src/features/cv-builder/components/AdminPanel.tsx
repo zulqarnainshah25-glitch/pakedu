@@ -541,13 +541,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-600 dark:text-emerald-400">
             <Shield className="w-4 h-4 text-emerald-600" />
             <span>Administrator Session Active · Zulqarnain Shah</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+          <h1 className="text-2xl font-bold text-[#1C1917] dark:text-[#FAF8F5] mt-1">
             Studio Governance &amp; Payment Operations
           </h1>
         </div>
@@ -567,14 +567,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex items-center overflow-x-auto gap-2 py-4 border-b border-slate-200 dark:border-slate-800">
+      <div className="flex items-center overflow-x-auto gap-2 py-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
         <button
           type="button"
           onClick={() => setActiveTab('templates')}
           className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'templates'
-              ? 'bg-slate-900 text-white dark:bg-blue-600'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-[#2C1215] text-white dark:bg-[#C2410C]'
+              : 'text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
           }`}
         >
           <LayoutTemplate className="w-3.5 h-3.5" />
@@ -586,8 +586,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           onClick={() => setActiveTab('plans')}
           className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'plans'
-              ? 'bg-slate-900 text-white dark:bg-blue-600'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-[#2C1215] text-white dark:bg-[#C2410C]'
+              : 'text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
           }`}
         >
           <CreditCard className="w-3.5 h-3.5" />
@@ -599,8 +599,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           onClick={() => setActiveTab('accounts')}
           className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'accounts'
-              ? 'bg-slate-900 text-white dark:bg-blue-600'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-[#2C1215] text-white dark:bg-[#C2410C]'
+              : 'text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
           }`}
         >
           <Smartphone className="w-3.5 h-3.5" />
@@ -612,8 +612,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           onClick={() => setActiveTab('proofs')}
           className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'proofs'
-              ? 'bg-slate-900 text-white dark:bg-blue-600'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-[#2C1215] text-white dark:bg-[#C2410C]'
+              : 'text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
           }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
@@ -625,8 +625,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           onClick={() => setActiveTab('users')}
           className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-bold rounded-lg transition-colors whitespace-nowrap ${
             activeTab === 'users'
-              ? 'bg-slate-900 text-white dark:bg-blue-600'
-              : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-[#2C1215] text-white dark:bg-[#C2410C]'
+              : 'text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
           }`}
         >
           <Users className="w-3.5 h-3.5" />
@@ -640,7 +640,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-slate-900 dark:text-white">
+                <span className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Template Tier Status:
                 </span>
                 <span
@@ -653,7 +653,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   {freeTemplatesCount} Free · {templates.length - freeTemplatesCount} Paid
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                 Rules: Only 2 CV templates are Free (Minimalist Clean &amp; Timeline Classic); all other 5 templates are Paid/Locked.
               </p>
             </div>
@@ -662,7 +662,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button
                 type="button"
                 onClick={handleSeedTemplates}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#44403C] dark:text-[#FAF8F5] bg-[#FFFDF9] dark:bg-[#2C1215] border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] rounded-lg hover:bg-[#FAF8F5]"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 <span>Reset 2 Free / 5 Paid Defaults</span>
@@ -674,7 +674,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   setImportError(null);
                   setIsImportModalOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2] dark:bg-[#3F1014]/60 border border-[#FECACA] dark:border-[#7F1D1D]/60 rounded-lg hover:bg-[#FEE2E2]"
               >
                 <Upload className="w-3.5 h-3.5" />
                 <span>Import JSON</span>
@@ -683,7 +683,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               <button
                 type="button"
                 onClick={handleOpenNewTemplate}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-blue-600 rounded-lg hover:bg-slate-800"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C1215] dark:bg-[#C2410C] rounded-lg hover:bg-[#58181D]"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ Add Template</span>
@@ -695,13 +695,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             {templates.map((tpl) => (
               <div
                 key={tpl.id}
-                className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col justify-between"
+                className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl p-5 flex flex-col justify-between"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                        <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                           {tpl.name}
                         </h3>
                         <span
@@ -714,7 +714,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           {tpl.isPremium ? 'PAID / LOCKED' : 'FREE TIER'}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <div className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                         <span>{tpl.category}</span>
                         <span className="mx-1.5">·</span>
                         <span className="font-mono">{tpl.id}</span>
@@ -722,21 +722,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span
-                        className="w-4 h-4 rounded-full border border-slate-300"
+                        className="w-4 h-4 rounded-full border border-[#D6CCC2]"
                         style={{ backgroundColor: tpl.accentColor }}
                       />
                       <span
-                        className="w-4 h-4 rounded-full border border-slate-300"
+                        className="w-4 h-4 rounded-full border border-[#D6CCC2]"
                         style={{ backgroundColor: tpl.secondaryColor }}
                       />
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-3 leading-relaxed">
+                  <p className="text-xs text-[#57534E] dark:text-[#E7E0D4] mt-3 leading-relaxed">
                     {tpl.description}
                   </p>
 
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] font-mono text-slate-500 dark:text-slate-400 space-y-1">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[11px] font-mono text-[#57534E] dark:text-[#D6CCC2] space-y-1">
                     <div>Layout: {tpl.layoutType}</div>
                     <div>
                       Photo Slot: {tpl.photoSlot?.position} ({tpl.photoSlot?.widthMm}×{tpl.photoSlot?.heightMm}mm)
@@ -744,7 +744,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2">
+                <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex flex-wrap items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => handleToggleTemplateTier(tpl)}
@@ -766,7 +766,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         className={`inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-md transition-colors ${
                           activeTemplateId === tpl.id
                             ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                            : 'bg-slate-900 dark:bg-blue-600 text-white hover:bg-slate-800'
+                            : 'bg-[#2C1215] dark:bg-[#C2410C] text-white hover:bg-[#58181D]'
                         }`}
                       >
                         <Check className="w-3 h-3" />
@@ -776,7 +776,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => handleExportTemplateJson(tpl)}
-                      className="p-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 rounded"
+                      className="p-1.5 text-[#57534E] hover:text-[#1C1917] dark:text-[#D6CCC2] rounded"
                       title="Export JSON"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -787,7 +787,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         setEditingTemplate(tpl);
                         setIsTemplateModalOpen(true);
                       }}
-                      className="p-1.5 text-slate-600 hover:text-slate-900 dark:text-slate-400 rounded"
+                      className="p-1.5 text-[#57534E] hover:text-[#1C1917] dark:text-[#D6CCC2] rounded"
                       title="Edit Template"
                     >
                       <Pencil className="w-3.5 h-3.5" />
@@ -814,17 +814,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           <form onSubmit={handleSavePlans} className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Pakistani Rupee (PKR) Plans Management
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                   Update plan pricing, maximum PDF exports, and maximum Word (.docx) downloads.
                 </p>
               </div>
               <button
                 type="submit"
                 disabled={savingPlans}
-                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold text-white bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 rounded-lg shadow-xs"
+                className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold text-white bg-[#2C1215] dark:bg-[#C2410C] hover:bg-[#58181D] rounded-lg shadow-xs"
               >
                 <Save className="w-4 h-4" />
                 <span>Save Plans Changes</span>
@@ -835,19 +835,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               {plans.map((p, idx) => (
                 <div
                   key={p.id}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 space-y-4 shadow-xs"
+                  className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 space-y-4 shadow-xs"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm text-slate-900 dark:text-white uppercase font-mono">
+                    <span className="font-bold text-sm text-[#1C1917] dark:text-[#FAF8F5] uppercase font-mono">
                       {p.name}
                     </span>
-                    <span className="text-xs px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-mono">
+                    <span className="text-xs px-2 py-0.5 rounded bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] font-mono">
                       ID: {p.id}
                     </span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Price in PKR (Rs.)
                     </label>
                     <input
@@ -860,13 +860,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           prev.map((item, i) => (i === idx ? { ...item, pricePkr: val } : item))
                         );
                       }}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono text-sm"
+                      className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono text-sm"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                         Max PDF Downloads
                       </label>
                       <input
@@ -880,11 +880,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             prev.map((item, i) => (i === idx ? { ...item, pdfLimit: val } : item))
                           );
                         }}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono text-xs"
+                        className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                         Max Word Downloads
                       </label>
                       <input
@@ -898,13 +898,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             prev.map((item, i) => (i === idx ? { ...item, wordLimit: val } : item))
                           );
                         }}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono text-xs"
+                        className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono text-xs"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Short Description / Tagline
                     </label>
                     <input
@@ -916,12 +916,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           prev.map((item, i) => (i === idx ? { ...item, description: val } : item))
                         );
                       }}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg text-xs"
+                      className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                       Features List (1 per line)
                     </label>
                     <textarea
@@ -933,7 +933,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           prev.map((item, i) => (i === idx ? { ...item, features: lines } : item))
                         );
                       }}
-                      className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg text-xs font-mono"
+                      className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg text-xs font-mono"
                     />
                   </div>
                 </div>
@@ -946,13 +946,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Tab 3: Bank & Easypaisa Settings */}
       {activeTab === 'accounts' && (
         <div className="mt-6 max-w-3xl">
-          <form onSubmit={handleSaveAccounts} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800">
+          <form onSubmit={handleSaveAccounts} className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 space-y-6">
+            <div className="flex items-center justify-between pb-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div>
-                <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Receiving Accounts Configuration
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                   Yeh details users ko Paywall / Checkout popup mein nazar aati hain.
                 </p>
               </div>
@@ -974,7 +974,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Easypaisa Mobile Number
                   </label>
                   <input
@@ -982,11 +982,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={accounts.easypaisaNumber}
                     onChange={(e) => setAccounts({ ...accounts, easypaisaNumber: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Easypaisa Account Title
                   </label>
                   <input
@@ -994,21 +994,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={accounts.easypaisaTitle}
                     onChange={(e) => setAccounts({ ...accounts, easypaisaTitle: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg"
                   />
                 </div>
               </div>
             </div>
 
             {/* Bank Transfer Section */}
-            <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <div className="flex items-center gap-2 text-sm font-bold text-blue-600 dark:text-blue-400">
+            <div className="space-y-4 pt-4 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+              <div className="flex items-center gap-2 text-sm font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                 <Building2 className="w-4 h-4" />
                 <span>Bank Transfer / Raast Details</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Bank Name
                   </label>
                   <input
@@ -1016,11 +1016,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={accounts.bankName}
                     onChange={(e) => setAccounts({ ...accounts, bankName: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Bank Account Title
                   </label>
                   <input
@@ -1028,11 +1028,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={accounts.bankTitle}
                     onChange={(e) => setAccounts({ ...accounts, bankTitle: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Bank Account Number
                   </label>
                   <input
@@ -1040,11 +1040,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={accounts.bankAccount}
                     onChange={(e) => setAccounts({ ...accounts, bankAccount: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     IBAN / Raast ID
                   </label>
                   <input
@@ -1052,22 +1052,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     required
                     value={accounts.iban}
                     onChange={(e) => setAccounts({ ...accounts, iban: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono"
                   />
                 </div>
               </div>
             </div>
 
             {/* Transfer Instructions */}
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 text-xs">
-              <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+            <div className="pt-4 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-xs">
+              <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                 Instructions for Users (Urdu/English)
               </label>
               <textarea
                 rows={3}
                 value={accounts.instructions}
                 onChange={(e) => setAccounts({ ...accounts, instructions: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg text-xs"
+                className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg text-xs"
               />
             </div>
           </form>
@@ -1079,27 +1079,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="mt-6 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 Payment Requests (TID Verification &amp; Instant Premium Activation)
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
                 User Email, TID (Transaction ID) aur Date check kar ke &quot;Approve&quot; dabayein. Request status &apos;approved&apos; ho jaye ga aur user ka plan foran &apos;premium&apos; ho jaye ga.
               </p>
             </div>
             <button
               type="button"
               onClick={loadProofs}
-              className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900"
+              className="inline-flex items-center gap-1 text-xs font-medium text-[#57534E] dark:text-[#E7E0D4] hover:text-[#1C1917]"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loadingProofs ? 'animate-spin' : ''}`} />
               <span>Refresh Requests</span>
             </button>
           </div>
 
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                <tr className="border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[11px] font-semibold text-[#57534E] uppercase tracking-wider">
                   <th className="py-3 px-4">Date / Time</th>
                   <th className="py-3 px-4">User</th>
                   <th className="py-3 px-4">Plan &amp; Amount</th>
@@ -1109,47 +1109,47 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                 {proofs.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-8 text-center text-slate-500">
+                    <td colSpan={7} className="py-8 text-center text-[#57534E]">
                       Abhi tak koi payment proof submit nahi hua.
                     </td>
                   </tr>
                 ) : (
                   proofs.map((proof) => (
-                    <tr key={proof.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                    <tr key={proof.id} className="hover:bg-[#FAF8F5] dark:hover:bg-[#3F1014]/50">
+                      <td className="py-3 px-4 text-[#57534E] font-mono text-[11px]">
                         {new Date(proof.createdAt).toLocaleString()}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-semibold text-slate-900 dark:text-white">
+                        <div className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                           {proof.senderName || 'User'}
                         </div>
-                        <div className="text-slate-500 font-mono text-[11px]">
+                        <div className="text-[#57534E] font-mono text-[11px]">
                           {proof.userEmail}
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 dark:text-white">
+                        <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                           {proof.planName}
                         </div>
                         <div className="font-mono text-emerald-600 font-bold">
                           Rs. {proof.amountPkr}
                         </div>
                       </td>
-                      <td className="py-3 px-4 capitalize font-medium text-slate-700 dark:text-slate-300">
+                      <td className="py-3 px-4 capitalize font-medium text-[#44403C] dark:text-[#E7E0D4]">
                         {proof.method}
                       </td>
                       <td className="py-3 px-4">
-                        <div className="font-mono font-bold text-slate-900 dark:text-white">
+                        <div className="font-mono font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                           TID: {proof.trxId}
                         </div>
-                        <div className="text-slate-500 font-mono text-[11px]">
+                        <div className="text-[#57534E] font-mono text-[11px]">
                           Ph: {proof.senderPhone}
                         </div>
                         {proof.notes && (
-                          <div className="text-[10px] text-slate-400 mt-0.5">{proof.notes}</div>
+                          <div className="text-[10px] text-[#78716C] mt-0.5">{proof.notes}</div>
                         )}
                       </td>
                       <td className="py-3 px-4">
@@ -1189,7 +1189,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             </button>
                           </div>
                         ) : (
-                          <span className="text-slate-400 text-xs">Processed</span>
+                          <span className="text-[#78716C] text-xs">Processed</span>
                         )}
                       </td>
                     </tr>
@@ -1206,20 +1206,20 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="mt-6 space-y-8">
           <div>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Registered Users</h2>
+              <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">Registered Users</h2>
               <button
                 type="button"
                 onClick={loadAdminDirectory}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900"
+                className="inline-flex items-center gap-1 text-xs font-medium text-[#57534E] dark:text-[#E7E0D4] hover:text-[#1C1917]"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${loadingDirectory ? 'animate-spin' : ''}`} />
                 <span>Refresh</span>
               </button>
             </div>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[11px] font-semibold text-[#57534E] uppercase tracking-wider">
                     <th className="py-3 px-4">Name</th>
                     <th className="py-3 px-4">Email</th>
                     <th className="py-3 px-4">Current Plan</th>
@@ -1228,13 +1228,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <th className="py-3 px-4 text-right">Quick Plan Change</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                   {allUsers.map((u) => (
-                    <tr key={u.uid} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                      <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                    <tr key={u.uid} className="hover:bg-[#FAF8F5] dark:hover:bg-[#3F1014]/50">
+                      <td className="py-3 px-4 font-medium text-[#1C1917] dark:text-[#FAF8F5]">
                         {u.displayName}
                       </td>
-                      <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono">
+                      <td className="py-3 px-4 text-[#57534E] dark:text-[#E7E0D4] font-mono">
                         {u.email}
                       </td>
                       <td className="py-3 px-4">
@@ -1243,10 +1243,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                             u.plan === 'unlimited' || u.plan === 'premium'
                               ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
                               : u.plan === 'pro'
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                              ? 'bg-[#FEE2E2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5]'
                               : u.plan === 'starter'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
-                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                              ? 'bg-[#FEE2E2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5]'
+                              : 'bg-[#F3EFEA] text-[#44403C] dark:bg-[#2C1215] dark:text-[#E7E0D4]'
                           }`}
                         >
                           {u.plan}
@@ -1264,7 +1264,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                           onChange={(e) =>
                             handleManualUserPlanChange(u.uid, e.target.value as PlanTier)
                           }
-                          className="px-2.5 py-1.5 text-xs font-semibold border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg cursor-pointer"
+                          className="px-2.5 py-1.5 text-xs font-semibold border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg cursor-pointer"
                         >
                           <option value="free">Free</option>
                           <option value="premium">Premium (All Unlocked)</option>
@@ -1281,13 +1281,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
 
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white mb-3">
+            <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] mb-3">
               All User CVs (Read-Only Inspection)
             </h2>
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-x-auto">
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  <tr className="border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215] text-[11px] font-semibold text-[#57534E] uppercase tracking-wider">
                     <th className="py-3 px-4">CV Title</th>
                     <th className="py-3 px-4">Candidate</th>
                     <th className="py-3 px-4">Target Role</th>
@@ -1295,31 +1295,31 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     <th className="py-3 px-4 text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
                   {allCVs.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="py-8 text-center text-slate-500">
+                      <td colSpan={5} className="py-8 text-center text-[#57534E]">
                         No CVs saved in database yet.
                       </td>
                     </tr>
                   ) : (
                     allCVs.map((cv) => (
-                      <tr key={cv.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                        <td className="py-3 px-4 font-semibold text-slate-900 dark:text-white">
+                      <tr key={cv.id} className="hover:bg-[#FAF8F5] dark:hover:bg-[#3F1014]/50">
+                        <td className="py-3 px-4 font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                           {cv.title}
                         </td>
-                        <td className="py-3 px-4 text-slate-700 dark:text-slate-300">
+                        <td className="py-3 px-4 text-[#44403C] dark:text-[#E7E0D4]">
                           {cv.fullName}
                         </td>
-                        <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                        <td className="py-3 px-4 text-[#57534E] dark:text-[#D6CCC2]">
                           {cv.jobTitle}
                         </td>
-                        <td className="py-3 px-4 font-mono text-slate-500">{cv.templateId}</td>
+                        <td className="py-3 px-4 font-mono text-[#57534E]">{cv.templateId}</td>
                         <td className="py-3 px-4 text-right">
                           <button
                             type="button"
                             onClick={() => setPreviewCV(cv)}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[#44403C] bg-[#F3EFEA] hover:bg-[#E7E0D4] rounded"
                           >
                             <Eye className="w-3.5 h-3.5" />
                             <span>View CV</span>
@@ -1337,16 +1337,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Template Add/Edit Modal */}
       {isTemplateModalOpen && editingTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-xl w-full overflow-hidden shadow-xl my-8">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C1215]/70 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl max-w-xl w-full overflow-hidden shadow-xl my-8">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+              <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                 Configure Template ({editingTemplate.id})
               </h3>
               <button
                 type="button"
                 onClick={() => setIsTemplateModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-700"
+                className="p-1 text-[#78716C] hover:text-[#1C1917]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1355,7 +1355,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
             <form onSubmit={handleSaveTemplate} className="p-5 space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Template ID
                   </label>
                   <input
@@ -1365,11 +1365,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={(e) =>
                       setEditingTemplate({ ...editingTemplate, id: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Template Name
                   </label>
                   <input
@@ -1379,14 +1379,14 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={(e) =>
                       setEditingTemplate({ ...editingTemplate, name: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Category
                   </label>
                   <select
@@ -1397,7 +1397,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         category: e.target.value as TemplateCategory
                       })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] rounded-lg bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   >
                     {CATEGORIES.map((c) => (
                       <option key={c} value={c}>
@@ -1408,7 +1408,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Layout
                   </label>
                   <select
@@ -1419,7 +1419,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         layoutType: e.target.value as TemplateLayoutType
                       })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] rounded-lg bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   >
                     <option value="two-column-left">two-column-left (Left Sidebar + Right Main)</option>
                     <option value="two-column-right">two-column-right (Left Main + Right Sidebar)</option>
@@ -1433,7 +1433,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Template Tier
                   </label>
                   <select
@@ -1444,7 +1444,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         isPremium: e.target.value === 'paid'
                       })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-semibold"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] rounded-lg bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] font-semibold"
                   >
                     <option value="free">Free Tier</option>
                     <option value="paid">Paid / Locked</option>
@@ -1454,7 +1454,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Photo Slot Position
                   </label>
                   <select
@@ -1473,7 +1473,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                         }
                       })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] rounded-lg bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5]"
                   >
                     <option value="sidebar-top">sidebar-top (Sidebar Top)</option>
                     <option value="header-left">header-left (Header Left)</option>
@@ -1486,7 +1486,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Accent Color
                   </label>
                   <input
@@ -1495,12 +1495,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={(e) =>
                       setEditingTemplate({ ...editingTemplate, accentColor: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono"
                   />
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Secondary Color
                   </label>
                   <input
@@ -1509,13 +1509,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     onChange={(e) =>
                       setEditingTemplate({ ...editingTemplate, secondaryColor: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg font-mono"
+                    className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg font-mono"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Description
                 </label>
                 <input
@@ -1524,12 +1524,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onChange={(e) =>
                     setEditingTemplate({ ...editingTemplate, description: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white rounded-lg"
+                  className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] rounded-lg"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Custom CSS (`.header-section`, `.sidebar`, `.main-heading`, patterns, etc.)
                 </label>
                 <textarea
@@ -1538,21 +1538,21 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   onChange={(e) =>
                     setEditingTemplate({ ...editingTemplate, customCss: e.target.value })
                   }
-                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 bg-slate-950 text-emerald-400 rounded-lg font-mono text-[11px]"
+                  className="w-full px-3 py-2 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#2C1215] text-emerald-400 rounded-lg font-mono text-[11px]"
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                 <button
                   type="button"
                   onClick={() => setIsTemplateModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  className="px-4 py-2 text-xs font-medium text-[#57534E] dark:text-[#D6CCC2] hover:text-[#1C1917]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-blue-600 hover:bg-slate-800 rounded-lg"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#2C1215] dark:bg-[#C2410C] hover:bg-[#58181D] rounded-lg"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Save Template</span>
@@ -1565,27 +1565,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* JSON Template Import Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl max-w-2xl w-full overflow-hidden shadow-xl my-8">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-800">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C1215]/70 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl max-w-2xl w-full overflow-hidden shadow-xl my-8">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
-                <FileCode className="w-4 h-4 text-blue-600" />
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                <FileCode className="w-4 h-4 text-[#7F1D1D]" />
+                <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                   Import New CV Template(s) via JSON
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-700"
+                className="p-1 text-[#78716C] hover:text-[#1C1917]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleImportJsonSubmit} className="p-5 space-y-4 text-xs">
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-50 dark:bg-slate-800/70 p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                <span className="text-slate-600 dark:text-slate-300">
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-[#FAF8F5] dark:bg-[#2C1215]/70 p-3 rounded-lg border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+                <span className="text-[#57534E] dark:text-[#E7E0D4]">
                   Upload a <code>.json</code> file or paste single/multiple Template JSON objects below:
                 </span>
                 <div className="flex items-center gap-2">
@@ -1599,16 +1599,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 dark:text-white bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md hover:bg-slate-100"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5] bg-[#FFFDF9] dark:bg-[#3F1014] border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.22)] rounded-md hover:bg-[#F3EFEA]"
                   >
-                    <Upload className="w-3.5 h-3.5 text-blue-600" />
+                    <Upload className="w-3.5 h-3.5 text-[#7F1D1D]" />
                     <span>Upload .json File</span>
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                   Template JSON Payload
                 </label>
                 <textarea
@@ -1618,24 +1618,24 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
                     setImportJsonText(e.target.value);
                     setImportError(null);
                   }}
-                  className="w-full px-3 py-2.5 border border-slate-300 dark:border-slate-700 bg-slate-950 text-emerald-400 rounded-lg font-mono text-[11.5px] leading-relaxed focus:outline-none"
+                  className="w-full px-3 py-2.5 border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#2C1215] text-emerald-400 rounded-lg font-mono text-[11.5px] leading-relaxed focus:outline-none"
                 />
                 {importError && (
                   <p className="text-red-600 font-semibold mt-1.5">{importError}</p>
                 )}
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
                 <button
                   type="button"
                   onClick={() => setIsImportModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900"
+                  className="px-4 py-2 text-xs font-medium text-[#57534E] dark:text-[#D6CCC2] hover:text-[#1C1917]"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#7F1D1D] hover:bg-[#651414] rounded-lg"
                 >
                   <Check className="w-3.5 h-3.5" />
                   <span>Import Template Now</span>
@@ -1648,19 +1648,19 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({
 
       {/* Read-only CV Inspection Modal */}
       {previewCV && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-slate-100 border border-slate-300 rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between px-6 py-3.5 bg-white border-b border-slate-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C1215]/75 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-[#F3EFEA] border border-[#D6CCC2] rounded-xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between px-6 py-3.5 bg-[#FFFDF9] border-b border-[#E7E0D4]">
               <div>
-                <h3 className="text-sm font-bold text-slate-900">
+                <h3 className="text-sm font-bold text-[#1C1917]">
                   Viewing CV: {previewCV.fullName} ({previewCV.title})
                 </h3>
-                <p className="text-xs text-slate-500">Read-Only Administrator View</p>
+                <p className="text-xs text-[#57534E]">Read-Only Administrator View</p>
               </div>
               <button
                 type="button"
                 onClick={() => setPreviewCV(null)}
-                className="p-1.5 text-slate-500 hover:text-slate-900 rounded-lg"
+                className="p-1.5 text-[#57534E] hover:text-[#1C1917] rounded-lg"
               >
                 <X className="w-4 h-4" />
               </button>

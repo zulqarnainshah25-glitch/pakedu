@@ -1,0 +1,57 @@
+name: Build Windows Installer (PakEdu Portal)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  build:
+    name: Build & Package Windows EXE
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      # Step 1: Check out the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Set up Node.js 24
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      # Step 3: Install NPM Dependencies
+      - name: Install Dependencies
+        run: npm install --legacy-peer-deps
+
+      # Step 4: Build Vite Production Bundle (with secure GitHub Secrets)
+      - name: Build Web Application (Vite)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_STORAGE_BUCKET: ${{ secrets.VITE_FIREBASE_STORAGE_BUCKET }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.VITE_FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+          VITE_FIREBASE_FIRESTORE_DATABASE_ID: ${{ secrets.VITE_FIREBASE_FIRESTORE_DATABASE_ID }}
+        run: npm run build
+
+      # Step 5: Package Windows NSIS Installer using Electron Builder
+      - name: Package Windows Installer
+        run: npx electron-builder --win --x64 --publish never
+
+      # Step 6: Upload Windows Installer as a Downloadable Artifact
+      - name: Upload Windows Installer Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PakEdu-Portal-Windows-EXE
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 14

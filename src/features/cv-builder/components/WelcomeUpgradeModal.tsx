@@ -30,7 +30,7 @@ export const WelcomeUpgradeModal: React.FC<WelcomeUpgradeModalProps> = ({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         onClick={onClose}
-        className="fixed inset-0 bg-slate-950/75 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-[#2C1215]/75 backdrop-blur-xs transition-opacity"
       />
 
       {/* Modal Dialog Card */}
@@ -39,12 +39,12 @@ export const WelcomeUpgradeModal: React.FC<WelcomeUpgradeModalProps> = ({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 15 }}
         transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
-        className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl p-6 sm:p-7 z-10 text-center space-y-5"
+        className="relative bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl p-6 sm:p-7 z-10 text-center space-y-5"
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] rounded-xl hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
@@ -58,31 +58,31 @@ export const WelcomeUpgradeModal: React.FC<WelcomeUpgradeModalProps> = ({
           <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1 rounded-full">
             Welcome to AtelierCV
           </span>
-          <h2 className="text-xl font-black text-slate-900 dark:text-white mt-2.5">
+          <h2 className="text-xl font-black text-[#1C1917] dark:text-[#FAF8F5] mt-2.5">
             Aap Ka Free Tier Account Tayar Hai! 🎉
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 max-w-sm mx-auto">
-            Khushamdeed, <span className="font-semibold text-slate-800 dark:text-slate-200">{userName || userEmail.split('@')[0]}</span>! Aap ke account mein Free Tier activate ho chuka hai.
+          <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1.5 max-w-sm mx-auto">
+            Khushamdeed, <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">{userName || userEmail.split('@')[0]}</span>! Aap ke account mein Free Tier activate ho chuka hai.
           </p>
         </div>
 
         {/* Free Tier Included Box */}
-        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-left text-xs space-y-2">
-          <div className="font-bold text-slate-900 dark:text-white flex items-center justify-between">
+        <div className="p-4 rounded-2xl bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] text-left text-xs space-y-2">
+          <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center justify-between">
             <span>Free Tier Mein Shamil Hain:</span>
-            <span className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold px-2 py-0.5 rounded-full">
+            <span className="text-[10px] bg-[#E7E0D4] dark:bg-[#3F1014] text-[#44403C] dark:text-[#E7E0D4] font-bold px-2 py-0.5 rounded-full">
               FREE
             </span>
           </div>
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-2 text-[#57534E] dark:text-[#E7E0D4]">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>2 Clean ATS Templates (Minimalist Zurich &amp; Timeline Classic)</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-2 text-[#57534E] dark:text-[#E7E0D4]">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>1 High-Quality PDF Export</span>
           </div>
-          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
+          <div className="flex items-center gap-2 text-[#57534E] dark:text-[#E7E0D4]">
             <Check className="w-4 h-4 text-emerald-600 shrink-0" />
             <span>Full AI Content Polishing &amp; Roman Urdu Translation</span>
           </div>
@@ -104,7 +104,7 @@ export const WelcomeUpgradeModal: React.FC<WelcomeUpgradeModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 py-2.5 px-4 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors"
+            className="flex-1 py-2.5 px-4 text-xs font-semibold text-[#44403C] dark:text-[#FAF8F5] bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20] rounded-xl transition-colors"
           >
             Start with Free Plan
           </button>

@@ -151,17 +151,17 @@ export const ServiceBookCalculatorTool: React.FC = () => {
       {/* =================================================================== */}
       {/* INPUT CONFIGURATION PANEL (HIDDEN IN PRINT)                         */}
       {/* =================================================================== */}
-      <div className="no-print bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-6 shadow-xs">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200">
+      <div className="no-print bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl p-5 sm:p-6 space-y-6 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E7E0D4]">
           <div>
-            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#5b21b6]">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#7F1D1D]">
               <BookCheck className="w-4 h-4" />
               <span>Sindh SELD &amp; Finance Rules</span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-slate-900 mt-0.5">
+            <h2 className="text-lg sm:text-xl font-bold text-[#1C1917] mt-0.5">
               Service Book, Pension, Time Scale &amp; Leave Encashment Calculator
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#57534E] mt-0.5">
               Compute Qualifying Service (6+ months = 1 year, max 30 yrs), Monthly &amp; Commuted Pension, JEST/HST Time Scale Upgradation dates, and 365-day Leave Encashment.
             </p>
           </div>
@@ -169,7 +169,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
             <button
               type="button"
               onClick={handleReset}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-[#57534E] bg-[#F3EFEA] hover:bg-[#E7E0D4] rounded-lg transition-colors cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Reset
@@ -177,7 +177,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
             <button
               type="button"
               onClick={triggerPrintDocument}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#5b21b6] hover:bg-[#4c1d95] rounded-lg transition-colors cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#7F1D1D] hover:bg-[#651414] rounded-lg transition-colors cursor-pointer shadow-xs"
             >
               <Printer className="w-4 h-4" />
               Print Service Book Estimate (A4)
@@ -193,12 +193,12 @@ export const ServiceBookCalculatorTool: React.FC = () => {
 
         {/* Section A: Employee Profile & Pensionable Emoluments */}
         <div className="space-y-3">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-[#57534E]">
             1. Employee Details &amp; Pensionable Emoluments (Last Basic Pay)
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
             <div className="lg:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Teacher / Employee Name
               </label>
               <input
@@ -206,12 +206,12 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 value={employeeName}
                 onChange={(e) => setEmployeeName(e.target.value)}
                 placeholder="Enter Full Name as per Service Book"
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+                className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 BPS Scale
               </label>
               <select
@@ -220,7 +220,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                   setSelectedBps(Number(e.target.value));
                   setCustomEmoluments('');
                 }}
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+                className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
               >
                 {SINDH_BPS_CHART_2026.map((row) => (
                   <option key={row.bps} value={row.bps}>
@@ -231,7 +231,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Pay Stage (0–30)
               </label>
               <select
@@ -240,7 +240,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                   setSelectedStage(Number(e.target.value));
                   setCustomEmoluments('');
                 }}
-                className="w-full px-3 py-2 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+                className="w-full px-3 py-2 text-sm font-mono tabular-nums bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
               >
                 {Array.from({ length: 31 }, (_, i) => (
                   <option key={i} value={i}>
@@ -251,7 +251,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Pensionable Emoluments (PKR)
               </label>
               <input
@@ -259,14 +259,14 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 min={0}
                 value={customEmoluments !== '' ? customEmoluments : autoEmoluments}
                 onChange={(e) => setCustomEmoluments(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-mono font-bold text-[#5b21b6] bg-purple-50/60 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+                className="w-full px-3 py-2 text-sm font-mono font-bold text-[#7F1D1D] bg-[#FEF2F2]/60 border border-[#FECACA] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Current Designation
               </label>
               <input
@@ -274,11 +274,11 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 value={designation}
                 onChange={(e) => setDesignation(e.target.value)}
                 placeholder="e.g., PST / JEST / HST / Subject Specialist"
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+                className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 School / Office / Taluka
               </label>
               <input
@@ -286,22 +286,22 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 value={schoolOffice}
                 onChange={(e) => setSchoolOffice(e.target.value)}
                 placeholder="e.g., GBHS Latifabad, Hyderabad"
-                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6] focus:bg-white"
+                className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] focus:bg-[#FFFDF9]"
               />
             </div>
           </div>
         </div>
 
         {/* Section B: Qualifying Service Calculator Inputs */}
-        <div className="pt-4 border-t border-slate-200 space-y-3">
+        <div className="pt-4 border-t border-[#E7E0D4] space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#57534E]">
               2. Qualifying Service Calculator (Appointment + Previous Service → Retirement Date)
             </h3>
             <button
               type="button"
               onClick={handleAutoSuperannuation}
-              className="text-[11px] font-semibold text-[#5b21b6] hover:underline cursor-pointer"
+              className="text-[11px] font-semibold text-[#7F1D1D] hover:underline cursor-pointer"
             >
               Auto-set Retirement Date = DOB + 60 Years
             </button>
@@ -309,40 +309,40 @@ export const ServiceBookCalculatorTool: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Date of Birth (Optional)
               </label>
               <input
                 type="date"
                 value={dob}
                 onChange={(e) => setDob(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm font-mono bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Date of Appointment (Govt Service)
               </label>
               <input
                 type="date"
                 value={appointmentDate}
                 onChange={(e) => setAppointmentDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm font-mono bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Date of Retirement
               </label>
               <input
                 type="date"
                 value={retirementDate}
                 onChange={(e) => setRetirementDate(e.target.value)}
-                className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm font-mono bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-xs font-semibold text-[#44403C] mb-1">
                 Non-Qualifying EOL (Days)
               </label>
               <input
@@ -350,14 +350,14 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 min={0}
                 value={eolDeductionDays}
                 onChange={(e) => setEolDeductionDays(Math.max(0, Number(e.target.value) || 0))}
-                className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                className="w-full px-3 py-2 text-sm font-mono bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-slate-50 border border-slate-200 rounded-lg p-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 bg-[#FAF8F5] border border-[#E7E0D4] rounded-lg p-3">
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              <label className="block text-[11px] font-semibold text-[#57534E] mb-1">
                 Previous Countable Service (Years)
               </label>
               <input
@@ -368,11 +368,11 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 onChange={(e) =>
                   setPreviousServiceYears(Math.max(0, Number(e.target.value) || 0))
                 }
-                className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg"
+                className="w-full px-3 py-1.5 text-xs font-mono bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              <label className="block text-[11px] font-semibold text-[#57534E] mb-1">
                 Previous Countable Service (Months)
               </label>
               <input
@@ -385,11 +385,11 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                     Math.max(0, Math.min(11, Number(e.target.value) || 0))
                   )
                 }
-                className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg"
+                className="w-full px-3 py-1.5 text-xs font-mono bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+              <label className="block text-[11px] font-semibold text-[#57534E] mb-1">
                 Previous Countable Service (Days)
               </label>
               <input
@@ -402,7 +402,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                     Math.max(0, Math.min(29, Number(e.target.value) || 0))
                   )
                 }
-                className="w-full px-3 py-1.5 text-xs font-mono bg-white border border-slate-300 rounded-lg"
+                className="w-full px-3 py-1.5 text-xs font-mono bg-[#FFFDF9] border border-[#D6CCC2] rounded-lg"
               />
             </div>
           </div>
@@ -415,15 +415,15 @@ export const ServiceBookCalculatorTool: React.FC = () => {
         </div>
 
         {/* Section C: Pension Commutation, Time Scale Cadre & Leave Encashment */}
-        <div className="pt-4 border-t border-slate-200 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="pt-4 border-t border-[#E7E0D4] grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Commutation & Leave Encashment Controls */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#57534E]">
               3. Pension Commutation (Max 35%) &amp; Leave Encashment (Max 365 Days)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403C] mb-1">
                   Commuted Portion (%)
                 </label>
                 <input
@@ -436,19 +436,19 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                       Math.max(0, Math.min(35, Number(e.target.value) || 0))
                     )
                   }
-                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                 />
-                <span className="text-[10px] text-slate-400">Max allowed: 35%</span>
+                <span className="text-[10px] text-[#78716C]">Max allowed: 35%</span>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403C] mb-1">
                   Age Next Birthday
                 </label>
                 <select
                   value={ageNextBirthday}
                   onChange={(e) => setAgeNextBirthday(Number(e.target.value))}
-                  className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                  className="w-full px-3 py-2 text-sm font-mono bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                 >
                   {Object.entries(COMMUTATION_AGE_FACTORS).map(([age, factor]) => (
                     <option key={age} value={Number(age)}>
@@ -459,7 +459,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403C] mb-1">
                   Earned Leave Days (Max 365)
                 </label>
                 <input
@@ -472,27 +472,27 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                       Math.max(0, Math.min(365, Number(e.target.value) || 0))
                     )
                   }
-                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                  className="w-full px-3 py-2 text-sm font-mono font-bold bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                 />
-                <span className="text-[10px] text-slate-400">365 days = 12 months pay</span>
+                <span className="text-[10px] text-[#78716C]">365 days = 12 months pay</span>
               </div>
             </div>
           </div>
 
           {/* Time Scale Higher Grade Tracker Controls */}
           <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-[#57534E]">
               4. Time Scale Higher Grade Tracker (JEST / HST / PST)
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403C] mb-1">
                   Teacher Cadre / Entry Grade
                 </label>
                 <select
                   value={cadreId}
                   onChange={(e) => setCadreId(e.target.value as TeacherCadreId)}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                  className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                 >
                   {SINDH_TIME_SCALE_RULES.map((rule) => (
                     <option key={rule.id} value={rule.id}>
@@ -502,14 +502,14 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-[#44403C] mb-1">
                   Date of Joining in Current Cadre
                 </label>
                 <input
                   type="date"
                   value={cadreJoinDate}
                   onChange={(e) => setCadreJoinDate(e.target.value)}
-                  className="w-full px-3 py-2 text-sm font-mono bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                  className="w-full px-3 py-2 text-sm font-mono bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                 />
               </div>
             </div>
@@ -520,23 +520,23 @@ export const ServiceBookCalculatorTool: React.FC = () => {
       {/* =================================================================== */}
       {/* PRINTABLE A4 SERVICE BOOK & RETIREMENT BENEFIT STATEMENT            */}
       {/* =================================================================== */}
-      <div className="printable-a4-sheet bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs space-y-6">
+      <div className="printable-a4-sheet bg-white border border-[#E7E0D4] rounded-xl p-6 sm:p-8 shadow-xs space-y-6">
         {/* Official Header */}
-        <div className="border-b-2 border-[#5b21b6] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="border-b-2 border-[#7F1D1D] pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-[#5b21b6]">
+            <p className="text-xs font-semibold uppercase tracking-wider text-[#7F1D1D]">
               Government of Sindh · School Education &amp; Literacy Department (SELD)
             </p>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
+            <h1 className="text-xl sm:text-2xl font-bold text-[#1C1917] mt-0.5">
               Service Book Summary, Pension &amp; Time Scale Estimate
             </h1>
           </div>
-          <div className="text-xs font-mono text-slate-600 sm:text-right">
+          <div className="text-xs font-mono text-[#57534E] sm:text-right">
             <div>
-              Employee: <strong className="text-slate-900">{employeeName || 'Govt Servant'}</strong>
+              Employee: <strong className="text-[#1C1917]">{employeeName || 'Govt Servant'}</strong>
             </div>
             <div>
-              Cadre: <strong className="text-[#5b21b6]">{designation} · BPS-{selectedBps}</strong>
+              Cadre: <strong className="text-[#7F1D1D]">{designation} · BPS-{selectedBps}</strong>
             </div>
             <div>{schoolOffice}</div>
           </div>
@@ -544,9 +544,9 @@ export const ServiceBookCalculatorTool: React.FC = () => {
 
         {/* 4 Key Summary KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-[#5b21b6] text-white rounded-xl p-4 flex flex-col justify-between">
+          <div className="bg-[#7F1D1D] text-white rounded-xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-purple-200">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#FED7AA]">
                 Qualifying Service
               </span>
               <Calendar className="w-4 h-4 text-pink-300" />
@@ -555,7 +555,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
               <div className="text-2xl font-extrabold font-mono tabular-nums">
                 {qualifyingService.qualifyingYearsCapped} Years
               </div>
-              <p className="text-[11px] text-purple-200 mt-1">
+              <p className="text-[11px] text-[#FED7AA] mt-1">
                 Exact: {qualifyingService.totalYears}y {qualifyingService.totalMonths}m{' '}
                 {qualifyingService.totalDays}d{' '}
                 {qualifyingService.isCappedAt30
@@ -585,18 +585,18 @@ export const ServiceBookCalculatorTool: React.FC = () => {
             </div>
           </div>
 
-          <div className="bg-blue-700 text-white rounded-xl p-4 flex flex-col justify-between">
+          <div className="bg-[#7F1D1D] text-white rounded-xl p-4 flex flex-col justify-between">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-blue-100">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[#FED7AA]">
                 Commutation Lump Sum
               </span>
-              <TrendingUp className="w-4 h-4 text-blue-200" />
+              <TrendingUp className="w-4 h-4 text-[#FED7AA]" />
             </div>
             <div className="mt-2.5">
               <div className="text-2xl font-extrabold font-mono tabular-nums">
                 {formatPKR(pensionEstimate.commutationLumpSum)}
               </div>
-              <p className="text-[11px] text-blue-100 mt-1">
+              <p className="text-[11px] text-[#FED7AA] mt-1">
                 Factor {pensionEstimate.commutationFactor} (Age {ageNextBirthday})
               </p>
             </div>
@@ -623,56 +623,56 @@ export const ServiceBookCalculatorTool: React.FC = () => {
         {/* Detailed Breakdown Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Part I & II: Qualifying Service + Pension Formula Breakdown */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
-            <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+          <div className="border border-[#E7E0D4] rounded-xl overflow-hidden">
+            <div className="bg-slate-100 px-4 py-2.5 border-b border-[#E7E0D4]">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-[#1C1917]">
                 Part I: Qualifying Service &amp; Pension Formula Breakdown
               </h3>
             </div>
             <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse text-xs">
-              <tbody className="divide-y divide-slate-200">
+              <tbody className="divide-y divide-[#E7E0D4]">
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-600">Current Spell Duration</td>
-                  <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">
+                  <td className="py-2.5 px-4 text-[#57534E]">Current Spell Duration</td>
+                  <td className="py-2.5 px-4 text-right font-mono font-semibold text-[#1C1917]">
                     {qualifyingService.currentYears}y {qualifyingService.currentMonths}m{' '}
                     {qualifyingService.currentDays}d
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-600">
+                  <td className="py-2.5 px-4 text-[#57534E]">
                     Total Net Service (incl. Previous − EOL)
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">
+                  <td className="py-2.5 px-4 text-right font-mono font-semibold text-[#1C1917]">
                     {qualifyingService.totalYears}y {qualifyingService.totalMonths}m{' '}
                     {qualifyingService.totalDays}d
                   </td>
                 </tr>
-                <tr className="bg-purple-50/60">
-                  <td className="py-2.5 px-4 font-semibold text-[#5b21b6]">
+                <tr className="bg-[#FEF2F2]/60">
+                  <td className="py-2.5 px-4 font-semibold text-[#7F1D1D]">
                     Countable Qualifying Years (≥6m = 1 yr, Max 30 yrs)
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-bold text-[#5b21b6]">
+                  <td className="py-2.5 px-4 text-right font-mono font-bold text-[#7F1D1D]">
                     {pensionEstimate.effectiveQualifyingYears} Years
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-600">Pensionable Emoluments</td>
-                  <td className="py-2.5 px-4 text-right font-mono font-semibold text-slate-900">
+                  <td className="py-2.5 px-4 text-[#57534E]">Pensionable Emoluments</td>
+                  <td className="py-2.5 px-4 text-right font-mono font-semibold text-[#1C1917]">
                     {formatPKR(pensionEstimate.pensionableEmoluments)}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-700 font-medium">
+                  <td className="py-2.5 px-4 text-[#44403C] font-medium">
                     Gross Monthly Pension = ({pensionEstimate.pensionableEmoluments.toLocaleString()} ×{' '}
                     {pensionEstimate.effectiveQualifyingYears} × 7) / 300
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-bold text-slate-900">
+                  <td className="py-2.5 px-4 text-right font-mono font-bold text-[#1C1917]">
                     {formatPKR(pensionEstimate.grossMonthlyPension)}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-600">
+                  <td className="py-2.5 px-4 text-[#57534E]">
                     Commuted Portion ({pensionEstimate.effectiveCommutationPercent}% of Gross)
                   </td>
                   <td className="py-2.5 px-4 text-right font-mono font-semibold text-rose-700">
@@ -686,16 +686,16 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-700">
+                  <td className="py-2.5 px-4 text-[#44403C]">
                     Commutation Lump Sum ({formatPKR(pensionEstimate.commutedMonthlyPortion)} × 12 ×{' '}
                     {pensionEstimate.commutationFactor})
                   </td>
-                  <td className="py-2.5 px-4 text-right font-mono font-bold text-blue-800">
+                  <td className="py-2.5 px-4 text-right font-mono font-bold text-[#7F1D1D]">
                     {formatPKR(pensionEstimate.commutationLumpSum)}
                   </td>
                 </tr>
                 <tr>
-                  <td className="py-2.5 px-4 text-slate-700">
+                  <td className="py-2.5 px-4 text-[#44403C]">
                     Leave Encashment ({leaveEncashment.cappedDays} / 365 days ={' '}
                     {leaveEncashment.equivalentMonths} months pay)
                   </td>
@@ -709,14 +709,14 @@ export const ServiceBookCalculatorTool: React.FC = () => {
           </div>
 
           {/* Part II: Time Scale Higher Grade Tracker */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden flex flex-col justify-between">
+          <div className="border border-[#E7E0D4] rounded-xl overflow-hidden flex flex-col justify-between">
             <div>
-              <div className="bg-slate-100 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5 text-[#5b21b6]" />
+              <div className="bg-slate-100 px-4 py-2.5 border-b border-[#E7E0D4] flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#1C1917] flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#7F1D1D]" />
                   Part II: Time Scale Higher Grade Milestones
                 </h3>
-                <span className="text-[11px] font-mono text-slate-500">
+                <span className="text-[11px] font-mono text-[#57534E]">
                   Joined: {cadreJoinDate}
                 </span>
               </div>
@@ -729,14 +729,14 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                       m.status === 'achieved'
                         ? 'bg-emerald-50/70 border-emerald-300'
                         : m.status === 'post-retirement'
-                        ? 'bg-slate-50 border-slate-200 opacity-75'
-                        : 'bg-purple-50/60 border-purple-200'
+                        ? 'bg-slate-50 border-[#E7E0D4] opacity-75'
+                        : 'bg-[#FEF2F2]/60 border-[#FECACA]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <span className="font-bold text-slate-900 block">{m.title}</span>
-                        <span className="text-[11px] text-slate-600 mt-0.5 block">
+                        <span className="font-bold text-[#1C1917] block">{m.title}</span>
+                        <span className="text-[11px] text-[#57534E] mt-0.5 block">
                           {m.ruleNote}
                         </span>
                       </div>
@@ -746,7 +746,7 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                             ? 'bg-emerald-600 text-white'
                             : m.status === 'post-retirement'
                             ? 'bg-slate-400 text-white'
-                            : 'bg-[#5b21b6] text-white'
+                            : 'bg-[#7F1D1D] text-white'
                         }`}
                       >
                         {m.status === 'achieved' ? (
@@ -757,12 +757,12 @@ export const ServiceBookCalculatorTool: React.FC = () => {
                         {m.remainingLabel}
                       </span>
                     </div>
-                    <div className="mt-2 pt-2 border-t border-slate-200/70 flex items-center justify-between font-mono text-[11px]">
-                      <span className="text-slate-600">
+                    <div className="mt-2 pt-2 border-t border-[#E7E0D4]/70 flex items-center justify-between font-mono text-[11px]">
+                      <span className="text-[#57534E]">
                         Milestone: <strong>{m.yearsRequired} Years Service</strong> →{' '}
-                        <strong className="text-[#5b21b6]">BS-{m.targetBps}</strong>
+                        <strong className="text-[#7F1D1D]">BS-{m.targetBps}</strong>
                       </span>
-                      <span className="font-bold text-slate-900">Due Date: {m.dueDate}</span>
+                      <span className="font-bold text-[#1C1917]">Due Date: {m.dueDate}</span>
                     </div>
                   </div>
                 ))}

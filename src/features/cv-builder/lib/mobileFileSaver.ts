@@ -1,13 +1,31 @@
 /**
- * Mobile & WebView-Compatible File Saver Utility
- * Supports Capacitor Native Filesystem, Web Share API (Android Native Share sheet),
- * and standard Blob ObjectURL anchor downloads.
+ * Desktop, Mobile & WebView-Compatible File Saver Utility
+ * Supports Desktop Electron Native Save Dialog (IPC), Capacitor Native Filesystem,
+ * Web Share API (Android Native Share sheet), and standard Blob ObjectURL anchor downloads.
  */
 export async function saveFileUniversal(
   blob: Blob,
   fileName: string,
   mimeType: string
 ): Promise<void> {
+  // Strategy 0: Desktop Electron Native Save Dialog via IPC
+  if (typeof window !== 'undefined' && typeof window.electronAPI?.saveFile === 'function') {
+    const arrayBuffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(arrayBuffer);
+    const result = await window.electronAPI.saveFile({
+      data: bytes,
+      fileName,
+      mimeType,
+    });
+    if (result?.canceled) {
+      return;
+    }
+    if (result?.error) {
+      throw new Error(result.error);
+    }
+    return;
+  }
+
   // Strategy 1: Check for Capacitor native runtime
   try {
     const win = typeof window !== 'undefined' ? (window as unknown as Record<string, unknown>) : null;

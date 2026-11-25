@@ -935,16 +935,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     <div
       className={
         isMandatoryGate
-          ? 'no-print min-h-[100dvh] w-full flex flex-col items-center justify-center p-0 sm:p-4 lg:p-6 bg-slate-950 relative overflow-y-auto'
-          : 'no-print fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/75 backdrop-blur-sm animate-fadeIn overflow-y-auto'
-      }
-      style={
-        isMandatoryGate
-          ? {
-              background:
-                'radial-gradient(circle at top right, #1e1b4b 0%, #090e1a 55%, #0f172a 100%)',
-            }
-          : undefined
+          ? 'no-print min-h-[100dvh] w-full flex flex-col items-center justify-center p-0 sm:p-4 lg:p-6 bg-[#F3EFEA] relative overflow-y-auto'
+          : 'no-print fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-[#2C1215]/75 backdrop-blur-sm animate-fadeIn overflow-y-auto'
       }
       role="dialog"
       aria-modal="true"
@@ -953,45 +945,45 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       {isMandatoryGate && <div className="allforu-progress-bar no-print" />}
 
       {isMandatoryGate && (
-        <div className="hidden sm:flex w-full max-w-5xl mb-3 items-center justify-between text-white px-2">
+        <div className="hidden sm:flex w-full max-w-5xl mb-3 items-center justify-between text-[#1C1917] px-2">
           <div className="flex items-center gap-2.5">
-            <span className="text-xl font-extrabold tracking-tight text-white">
+            <span className="text-xl font-extrabold tracking-tight text-[#1C1917]">
               PakEdu Portal
             </span>
-            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-200 border border-indigo-400/30">
+            <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[#E7E0D4] text-[#57534E] border border-[#D6CCC2]">
               Allforu × Sindh SELD Enterprise ERP
             </span>
           </div>
-          <span className="text-xs font-mono text-indigo-200/80">
+          <span className="text-xs font-mono text-[#57534E]">
             Unified Authentication &amp; Role Portal
           </span>
         </div>
       )}
 
       {/* Split-Screen Layout: Desktop = Form LEFT (7 cols) + Branding RIGHT (5 cols) | Mobile = Slim Top Banner + Primary Form */}
-      <div className="relative w-full max-w-5xl bg-white dark:bg-slate-900 sm:rounded-2xl lg:rounded-3xl shadow-2xl border-0 sm:border border-indigo-500/25 overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[100dvh] sm:min-h-0">
+      <div className="relative w-full max-w-5xl bg-[#FFFDF9] dark:bg-[#211415] sm:rounded-2xl lg:rounded-3xl shadow-2xl border-0 sm:border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] overflow-hidden grid grid-cols-1 lg:grid-cols-12 min-h-[100dvh] sm:min-h-0">
         {/* Right Branding Panel on Desktop | Slim Top Banner on Mobile */}
         <div
-          className="order-1 lg:order-2 lg:col-span-5 p-4 sm:p-6 lg:p-8 text-white flex flex-col justify-between relative overflow-hidden"
+          className="order-1 lg:order-2 lg:col-span-5 p-4 sm:p-6 lg:p-8 text-[#FAF8F5] flex flex-col justify-between relative overflow-hidden"
           style={{
-            background: 'linear-gradient(155deg, #0b1120 0%, #1e1b4b 52%, #312e81 100%)',
+            background: 'linear-gradient(155deg, #58181D 0%, #3F1014 100%)',
           }}
         >
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full bg-indigo-400/15 blur-2xl"
+            className="pointer-events-none absolute -top-12 -right-12 w-44 h-44 rounded-full bg-[#C2410C]/20 blur-2xl"
           />
           <div className="relative z-10">
             <div className="flex items-center justify-between gap-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-[11px] font-semibold tracking-wider uppercase text-sky-300 border border-white/15">
-                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#FFFDF9]/10 backdrop-blur-xs text-[11px] font-semibold tracking-wider uppercase text-[#FAF8F5] border border-[rgba(255,253,249,0.18)]">
+                <Sparkles className="w-3.5 h-3.5 text-[#FED7AA]" />
                 PakEdu × AtlierCV ID
               </div>
               {!isMandatoryGate && (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-300 hover:text-white rounded-xl cursor-pointer"
+                  className="lg:hidden min-h-[44px] min-w-[44px] flex items-center justify-center text-[#E7E0D4] hover:text-[#FAF8F5] rounded-xl cursor-pointer"
                   aria-label="Close authentication modal"
                 >
                   <X className="w-5 h-5" />
@@ -1001,44 +993,62 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <h2
               id="auth-modal-title"
-              className="text-lg sm:text-xl lg:text-3xl font-extrabold tracking-tight mt-3 lg:mt-5 leading-tight"
+              className="text-lg sm:text-xl lg:text-3xl font-extrabold tracking-tight text-[#FAF8F5] mt-3 lg:mt-5 leading-tight"
             >
               PakEdu SELD ERP &amp; School Portal
             </h2>
-            <p className="text-xs sm:text-sm text-indigo-100/85 mt-1.5 lg:mt-3 leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#E7E0D4] mt-1.5 lg:mt-3 leading-relaxed">
               One unified login for School Admins, Teachers, Parents, and Sindh SELD AI Educators.
             </p>
 
             {/* Full Feature Highlights (Visible on Desktop Split-Screen) */}
-            <div className="hidden lg:flex flex-col mt-6 space-y-3 text-xs text-indigo-100/90">
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <ShieldCheck className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+            <div className="hidden lg:flex flex-col mt-6 space-y-3 text-xs text-[#E7E0D4]">
+              <div
+                className="flex items-start gap-2.5 p-2.5 rounded-xl"
+                style={{
+                  backgroundColor: 'rgba(255, 253, 249, 0.06)',
+                  border: '1px solid rgba(255, 253, 249, 0.14)',
+                }}
+              >
+                <ShieldCheck className="w-4 h-4 text-[#FED7AA] shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Complete School ERP:</strong> Admissions, Daily Roll Call, Timetable, Homework &amp; A4 Certificates.
+                  <strong className="text-[#FAF8F5]">Complete School ERP:</strong> Admissions, Daily Roll Call, Timetable, Homework &amp; A4 Certificates.
                 </span>
               </div>
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <div
+                className="flex items-start gap-2.5 p-2.5 rounded-xl"
+                style={{
+                  backgroundColor: 'rgba(255, 253, 249, 0.06)',
+                  border: '1px solid rgba(255, 253, 249, 0.14)',
+                }}
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-300 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Fees, Exams &amp; Parent Portal:</strong> Dynamic fee vouchers, published report cards &amp; parent read-only tracking.
+                  <strong className="text-[#FAF8F5]">Fees, Exams &amp; Parent Portal:</strong> Dynamic fee vouchers, published report cards &amp; parent read-only tracking.
                 </span>
               </div>
-              <div className="flex items-start gap-2.5 p-2.5 rounded-xl bg-white/5 border border-white/10">
-                <ShieldCheck className="w-4 h-4 text-indigo-300 shrink-0 mt-0.5" />
+              <div
+                className="flex items-start gap-2.5 p-2.5 rounded-xl"
+                style={{
+                  backgroundColor: 'rgba(255, 253, 249, 0.06)',
+                  border: '1px solid rgba(255, 253, 249, 0.14)',
+                }}
+              >
+                <ShieldCheck className="w-4 h-4 text-[#FED7AA] shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white">Educator AI Studio &amp; AtlierCV:</strong> Sindh STBB/PTB lessons, 2026 Salary calculator &amp; ATS CV builder.
+                  <strong className="text-[#FAF8F5]">Educator AI Studio &amp; AtlierCV:</strong> Sindh STBB/PTB lessons, 2026 Salary calculator &amp; ATS CV builder.
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="hidden lg:flex relative z-10 mt-8 pt-4 border-t border-white/15 items-center justify-between text-[11px] text-indigo-200/80">
+          <div className="hidden lg:flex relative z-10 mt-8 pt-4 border-t border-[rgba(255,253,249,0.16)] items-center justify-between text-[11px] text-[#E7E0D4]">
             <span>Firebase: {UNIFIED_FIREBASE_PROJECT_ID}</span>
             <a
               href={ATLIER_CV_LIVE_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sky-300 hover:text-white font-semibold"
+              className="inline-flex items-center gap-1 text-[#FED7AA] hover:text-[#FAF8F5] font-semibold"
             >
               AtlierCV Live <ExternalLink className="w-3 h-3" />
             </a>
@@ -1046,19 +1056,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         </div>
 
         {/* Left Authentication Form Panel on Desktop | Primary Focus on Mobile */}
-        <div className="order-2 lg:order-1 lg:col-span-7 p-4 sm:p-6 lg:p-8 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col justify-between overflow-y-auto lg:max-h-[92vh]">
+        <div className="order-2 lg:order-1 lg:col-span-7 p-4 sm:p-6 lg:p-8 bg-[#FFFDF9] dark:bg-[#211415] text-[#1C1917] dark:text-[#FAF8F5] flex flex-col justify-between overflow-y-auto lg:max-h-[92vh]">
           <div>
             {/* Logout Notice Banner (Shown when user logs out from Portal or AtlierCV) */}
             {logoutNotice && (
-              <div className="mb-4 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/60 border border-purple-200 dark:border-purple-800 text-xs font-medium text-[#5b21b6] dark:text-purple-200 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-[#ec4899] shrink-0" />
+              <div className="mb-4 p-3 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 border border-[#FECACA] dark:border-[#7F1D1D]/60 text-xs font-medium text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-[#C2410C] shrink-0" />
                 <span>{logoutNotice}</span>
               </div>
             )}
 
             {/* Top Mode Switcher & Close Button */}
-            <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-200 dark:border-slate-800">
-              <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl bg-slate-100 dark:bg-slate-800 p-1 gap-1">
+            <div className="flex items-center justify-between gap-2 pb-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+              <div className="grid grid-cols-3 w-full sm:w-auto rounded-xl bg-[#F3EFEA] dark:bg-[#2C1215] p-1 gap-1">
                 <button
                   type="button"
                   onClick={() => {
@@ -1068,8 +1078,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   className={`min-h-[44px] sm:min-h-[38px] px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === 'signin'
-                      ? 'bg-indigo-700 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#7F1D1D] text-white shadow-xs'
+                      : 'text-[#57534E] dark:text-[#E7E0D4] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Sign In
@@ -1083,8 +1093,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   className={`min-h-[44px] sm:min-h-[38px] px-3 sm:px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === 'signup'
-                      ? 'bg-indigo-700 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#7F1D1D] text-white shadow-xs'
+                      : 'text-[#57534E] dark:text-[#E7E0D4] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Create Account
@@ -1098,8 +1108,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   }}
                   className={`min-h-[44px] sm:min-h-[38px] px-2 sm:px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                     mode === 'reset'
-                      ? 'bg-indigo-700 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#7F1D1D] text-white shadow-xs'
+                      : 'text-[#57534E] dark:text-[#E7E0D4] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Reset Password
@@ -1110,13 +1120,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-white rounded-lg cursor-pointer"
+                  className="p-1.5 text-[#78716C] hover:text-[#1C1917] dark:hover:text-[#FAF8F5] rounded-lg cursor-pointer"
                   aria-label="Close authentication modal"
                 >
                   <X className="w-5 h-5" />
                 </button>
               ) : (
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-pink-100 dark:bg-pink-950/70 text-[#ec4899] border border-pink-200 dark:border-pink-800">
+                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#FFF7ED] dark:bg-[#7C2D12]/40 text-[#C2410C] dark:text-[#FDBA74] border border-[#FED7AA] dark:border-[#C2410C]/50">
                   Login Required
                 </span>
               )}
@@ -1129,7 +1139,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   type="button"
                   disabled={loading}
                   onClick={handleGoogleAuth}
-                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/70 rounded-xl shadow-2xs transition-all cursor-pointer disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-3 py-2.5 px-4 text-xs sm:text-sm font-semibold text-[#1C1917] dark:text-[#FAF8F5] bg-[#FFFDF9] dark:bg-[#2C1215] border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] hover:bg-[#FAF8F5] dark:hover:bg-[#4A1C20]/70 rounded-xl shadow-2xs transition-all cursor-pointer disabled:opacity-60"
                 >
                   <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                     <path
@@ -1153,21 +1163,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </button>
 
                 <div className="relative my-4 flex items-center justify-center">
-                  <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
-                  <span className="bg-white dark:bg-slate-900 px-3 text-[11px] uppercase tracking-wider text-slate-400 font-medium whitespace-nowrap">
+                  <div className="border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] w-full" />
+                  <span className="bg-[#FFFDF9] dark:bg-[#211415] px-3 text-[11px] uppercase tracking-wider text-[#78716C] font-medium whitespace-nowrap">
                     or continue with email
                   </span>
-                  <div className="border-t border-slate-200 dark:border-slate-800 w-full" />
+                  <div className="border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] w-full" />
                 </div>
               </div>
             )}
 
             {/* Email / Student ID Sign-In Form Hint */}
             {mode === 'signin' && (
-              <div className="p-3 bg-purple-50/80 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-xl text-xs text-purple-950 dark:text-purple-200 flex items-start gap-2.5 my-2">
-                <Sparkles className="w-4 h-4 text-[#5b21b6] dark:text-purple-400 shrink-0 mt-0.5" />
-                <p className="text-[11px] leading-relaxed">
-                  Sign in with your registered <strong>Email</strong> (Admin, Teacher, Parent) or <strong>Student GR / ID</strong> (e.g. <span className="font-mono font-semibold">GR-1001</span>) for Students. You will be routed automatically to your dashboard.
+              <div className="p-3 bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#1C1917] dark:text-[#FAF8F5] flex items-start gap-2.5 my-2">
+                <Sparkles className="w-4 h-4 text-[#C2410C] dark:text-[#FDBA74] shrink-0 mt-0.5" />
+                <p className="text-[11px] leading-relaxed text-[#57534E] dark:text-[#E7E0D4]">
+                  Sign in with your registered <strong className="text-[#1C1917] dark:text-[#FAF8F5]">Email</strong> (Admin, Teacher, Parent) or <strong className="text-[#1C1917] dark:text-[#FAF8F5]">Student GR / ID</strong> (e.g. <span className="font-mono font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">GR-1001</span>) for Students. You will be routed automatically to your dashboard.
                 </p>
               </div>
             )}
@@ -1176,7 +1186,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <>
                   {/* Step 1: Account Intent Selection (General vs School Management) */}
                   <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4]">
                       Select Account Type (اکاؤنٹ کی قسم منتخب کریں):
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -1185,13 +1195,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onClick={() => setAccountIntent('general')}
                         className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left ${
                           accountIntent === 'general'
-                            ? 'border-[#5b21b6] bg-purple-50/70 dark:bg-purple-950/40 text-slate-900 dark:text-white shadow-xs'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            ? 'border-[#7F1D1D] bg-[#FEF2F2]/70 dark:bg-[#3F1014]/40 text-[#1C1917] dark:text-[#FAF8F5] shadow-xs'
+                            : 'border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] hover:border-[#D6CCC2] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-2">
-                            <div className={`p-1 rounded-md ${accountIntent === 'general' ? 'bg-[#5b21b6] text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                            <div className={`p-1 rounded-md ${accountIntent === 'general' ? 'bg-[#7F1D1D] text-white' : 'bg-[#F3EFEA] dark:bg-[#3F1014] text-[#78716C]'}`}>
                               <Sparkles className="w-3.5 h-3.5" />
                             </div>
                             <span className="text-xs font-bold leading-tight">General User</span>
@@ -1201,10 +1211,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             name="accountIntent"
                             checked={accountIntent === 'general'}
                             onChange={() => setAccountIntent('general')}
-                            className="text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer"
+                            className="text-[#7F1D1D] focus:ring-[#7F1D1D] cursor-pointer"
                           />
                         </div>
-                        <p className="text-[11px] mt-1.5 text-slate-500 dark:text-slate-400 leading-snug">
+                        <p className="text-[11px] mt-1.5 text-[#57534E] dark:text-[#D6CCC2] leading-snug">
                           AI Tools (Lesson Plans, Papers, Salary &amp; CV Studio)
                         </p>
                       </div>
@@ -1214,13 +1224,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onClick={() => setAccountIntent('sms')}
                         className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left ${
                           accountIntent === 'sms'
-                            ? 'border-[#5b21b6] bg-purple-50/70 dark:bg-purple-950/40 text-slate-900 dark:text-white shadow-xs'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            ? 'border-[#7F1D1D] bg-[#FEF2F2]/70 dark:bg-[#3F1014]/40 text-[#1C1917] dark:text-[#FAF8F5] shadow-xs'
+                            : 'border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] hover:border-[#D6CCC2] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-2">
-                            <div className={`p-1 rounded-md ${accountIntent === 'sms' ? 'bg-[#5b21b6] text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                            <div className={`p-1 rounded-md ${accountIntent === 'sms' ? 'bg-[#7F1D1D] text-white' : 'bg-[#F3EFEA] dark:bg-[#3F1014] text-[#78716C]'}`}>
                               <Building className="w-3.5 h-3.5" />
                             </div>
                             <span className="text-xs font-bold leading-tight">School Staff</span>
@@ -1230,10 +1240,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             name="accountIntent"
                             checked={accountIntent === 'sms'}
                             onChange={() => setAccountIntent('sms')}
-                            className="text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer"
+                            className="text-[#7F1D1D] focus:ring-[#7F1D1D] cursor-pointer"
                           />
                         </div>
-                        <p className="text-[11px] mt-1.5 text-slate-500 dark:text-slate-400 leading-snug">
+                        <p className="text-[11px] mt-1.5 text-[#57534E] dark:text-[#D6CCC2] leading-snug">
                           Admin / Teacher (Register or Join School, Classes, Attendance)
                         </p>
                       </div>
@@ -1243,13 +1253,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onClick={() => setAccountIntent('parent')}
                         className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left ${
                           accountIntent === 'parent'
-                            ? 'border-[#5b21b6] bg-purple-50/70 dark:bg-purple-950/40 text-slate-900 dark:text-white shadow-xs'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            ? 'border-[#7F1D1D] bg-[#FEF2F2]/70 dark:bg-[#3F1014]/40 text-[#1C1917] dark:text-[#FAF8F5] shadow-xs'
+                            : 'border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] hover:border-[#D6CCC2] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-2">
-                            <div className={`p-1 rounded-md ${accountIntent === 'parent' ? 'bg-[#5b21b6] text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                            <div className={`p-1 rounded-md ${accountIntent === 'parent' ? 'bg-[#7F1D1D] text-white' : 'bg-[#F3EFEA] dark:bg-[#3F1014] text-[#78716C]'}`}>
                               <GraduationCap className="w-3.5 h-3.5" />
                             </div>
                             <span className="text-xs font-bold leading-tight">Parent / Guardian</span>
@@ -1259,10 +1269,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             name="accountIntent"
                             checked={accountIntent === 'parent'}
                             onChange={() => setAccountIntent('parent')}
-                            className="text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer"
+                            className="text-[#7F1D1D] focus:ring-[#7F1D1D] cursor-pointer"
                           />
                         </div>
-                        <p className="text-[11px] mt-1.5 text-slate-500 dark:text-slate-400 leading-snug">
+                        <p className="text-[11px] mt-1.5 text-[#57534E] dark:text-[#D6CCC2] leading-snug">
                           Link Child GR# for Attendance, Fees &amp; Report Cards (Read-Only)
                         </p>
                       </div>
@@ -1272,13 +1282,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         onClick={() => setAccountIntent('student')}
                         className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left sm:col-span-3 ${
                           accountIntent === 'student'
-                            ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/40 text-slate-900 dark:text-white shadow-xs'
-                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                            ? 'border-[#C2410C] bg-[#FFF7ED]/70 dark:bg-[#7C2D12]/40 text-[#1C1917] dark:text-[#FAF8F5] shadow-xs'
+                            : 'border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] hover:border-[#D6CCC2] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2]'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <div className="flex items-center gap-2">
-                            <div className={`p-1 rounded-md ${accountIntent === 'student' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                            <div className={`p-1 rounded-md ${accountIntent === 'student' ? 'bg-[#C2410C] text-white' : 'bg-[#F3EFEA] dark:bg-[#3F1014] text-[#78716C]'}`}>
                               <GraduationCap className="w-3.5 h-3.5" />
                             </div>
                             <span className="text-xs font-bold leading-tight">Student Account (Read-Only Portal)</span>
@@ -1288,10 +1298,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             name="accountIntent"
                             checked={accountIntent === 'student'}
                             onChange={() => setAccountIntent('student')}
-                            className="text-sky-600 focus:ring-sky-600 cursor-pointer"
+                            className="text-[#C2410C] focus:ring-[#C2410C] cursor-pointer"
                           />
                         </div>
-                        <p className="text-[11px] mt-1 text-slate-500 dark:text-slate-400 leading-snug">
+                        <p className="text-[11px] mt-1 text-[#57534E] dark:text-[#D6CCC2] leading-snug">
                           Link your GR# &amp; Student Invite Code to view your Attendance, Homework, Class Timetable &amp; Report Cards.
                         </p>
                       </div>
@@ -1299,12 +1309,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                     {/* Step 2: Conditional Role Selection for School Management */}
                     {accountIntent === 'sms' && (
-                      <div className="p-3 bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800/60 rounded-xl space-y-2 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      <div className="p-3 bg-[#FEF2F2]/70 dark:bg-[#3F1014]/30 border border-[#FECACA] dark:border-[#7F1D1D]/60 rounded-xl space-y-2 mt-2 animate-in fade-in slide-in-from-top-1 duration-200">
                         <div className="flex items-center justify-between">
-                          <label className="block text-[11px] font-bold text-[#5b21b6] dark:text-purple-300">
+                          <label className="block text-[11px] font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                             Select your School Role (ادارہ جاتی کردار منتخب کریں):
                           </label>
-                          <span className="text-[10px] text-purple-700 dark:text-purple-300 font-semibold uppercase tracking-wider">
+                          <span className="text-[10px] text-[#7F1D1D] dark:text-[#FCA5A5] font-semibold uppercase tracking-wider">
                             Step 2 of 2
                           </span>
                         </div>
@@ -1315,8 +1325,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             onClick={() => setSmsRoleIntent('admin')}
                             className={`p-2.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-2.5 text-left ${
                               smsRoleIntent === 'admin'
-                                ? 'border-[#5b21b6] bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
-                                : 'border-purple-200/70 dark:border-purple-900/40 hover:border-purple-300 bg-white/60 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400'
+                                ? 'border-[#7F1D1D] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] shadow-xs'
+                                : 'border-[#FECACA]/70 dark:border-[#7F1D1D]/60 hover:border-[#7F1D1D] bg-white/60 dark:bg-[#211415]/50 text-[#57534E] dark:text-[#D6CCC2]'
                             }`}
                           >
                             <input
@@ -1325,17 +1335,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               value="admin"
                               checked={smsRoleIntent === 'admin'}
                               onChange={() => setSmsRoleIntent('admin')}
-                              className="mt-0.5 text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer shrink-0"
+                              className="mt-0.5 text-[#7F1D1D] focus:ring-[#7F1D1D] cursor-pointer shrink-0"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
-                                <Building className="w-3.5 h-3.5 text-[#5b21b6] dark:text-purple-400 shrink-0" />
+                                <Building className="w-3.5 h-3.5 text-[#7F1D1D] dark:text-[#FCA5A5] shrink-0" />
                                 <span className="text-xs font-bold leading-tight truncate">Register a New School</span>
                               </div>
-                              <span className="block text-[11px] text-[#5b21b6] dark:text-purple-300 font-semibold mt-0.5">
+                              <span className="block text-[11px] text-[#7F1D1D] dark:text-[#FCA5A5] font-semibold mt-0.5">
                                 (I am Admin / Principal)
                               </span>
-                              <span className="block text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                              <span className="block text-[10px] text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-snug">
                                 Submit institution for Super Admin review &amp; setup
                               </span>
                             </div>
@@ -1346,8 +1356,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             onClick={() => setSmsRoleIntent('teacher')}
                             className={`p-2.5 rounded-lg border-2 cursor-pointer transition-all flex items-start gap-2.5 text-left ${
                               smsRoleIntent === 'teacher'
-                                ? 'border-[#5b21b6] bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
-                                : 'border-purple-200/70 dark:border-purple-900/40 hover:border-purple-300 bg-white/60 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400'
+                                ? 'border-[#7F1D1D] bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] shadow-xs'
+                                : 'border-[#FECACA]/70 dark:border-[#7F1D1D]/60 hover:border-[#7F1D1D] bg-white/60 dark:bg-[#211415]/50 text-[#57534E] dark:text-[#D6CCC2]'
                             }`}
                           >
                             <input
@@ -1356,7 +1366,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               value="teacher"
                               checked={smsRoleIntent === 'teacher'}
                               onChange={() => setSmsRoleIntent('teacher')}
-                              className="mt-0.5 text-[#5b21b6] focus:ring-[#5b21b6] cursor-pointer shrink-0"
+                              className="mt-0.5 text-[#7F1D1D] focus:ring-[#7F1D1D] cursor-pointer shrink-0"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-1.5">
@@ -1366,7 +1376,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               <span className="block text-[11px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
                                 (I am a Teacher)
                               </span>
-                              <span className="block text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-snug">
+                              <span className="block text-[10px] text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-snug">
                                 Apply to join with SEMIS code &amp; get class roster
                               </span>
                             </div>
@@ -1379,17 +1389,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   {/* Dynamic Fields 1: General User Full Name */}
                   {accountIntent === 'general' && (
                     <div>
-                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                         Full Name (Teacher / Officer Name) <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
-                        <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <UserIcon className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                         <input
                           type="text"
                           value={displayName}
                           onChange={(e) => setDisplayName(e.target.value)}
                           placeholder="e.g., Muhammad Farooq (PST / JEST)"
-                          className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                          className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                           required
                         />
                       </div>
@@ -1398,25 +1408,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   {/* Dynamic Fields 2: Admin Registration Fields */}
                   {accountIntent === 'sms' && smsRoleIntent === 'admin' && (
-                    <div className="space-y-3 pt-2 border-t border-purple-100 dark:border-purple-900/40 animate-in fade-in duration-200">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#5b21b6] dark:text-purple-300">
-                        <Building className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400" />
+                    <div className="space-y-3 pt-2 border-t border-[#FECACA] dark:border-[#7F1D1D]/60 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
+                        <Building className="w-4 h-4 shrink-0 text-[#7F1D1D] dark:text-[#FCA5A5]" />
                         <span>School Institutional Information (اسکول و ایڈمن تفصیلات):</span>
                       </div>
 
                       {/* Admin Full Name */}
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                           Admin / Principal Full Name <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <UserIcon className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             value={adminFullName}
                             onChange={(e) => setAdminFullName(e.target.value)}
                             placeholder="e.g., Muhammad Farooq (Headmaster)"
-                            className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
@@ -1424,17 +1434,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                       {/* Official School Name */}
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                           Official School Name (سرکاری یا پرائیویٹ اسکول کا نام) <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <SchoolIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <SchoolIcon className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             value={schoolName}
                             onChange={(e) => setSchoolName(e.target.value)}
                             placeholder="e.g., Govt. Comprehensive High School Latifabad"
-                            className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
@@ -1443,31 +1453,31 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {/* SEMIS Code & Educational Board */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             SEMIS Code (8–9 digits) <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <KeyRound className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={semisCode}
                               onChange={(e) => setSemisCode(e.target.value)}
                               placeholder="e.g., 403020101"
                               maxLength={10}
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                               required
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Educational Board <span className="text-rose-500">*</span>
                           </label>
                           <select
                             value={board}
                             onChange={(e) => setBoard(e.target.value as any)}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
                           >
                             <option value="Sindh STBB">Sindh STBB (Jamshoro)</option>
                             <option value="Punjab PTB">Punjab PTB (Lahore)</option>
@@ -1479,24 +1489,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {/* District & Taluka */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             District (ضلع) <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <MapPin className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={district}
                               onChange={(e) => setDistrict(e.target.value)}
                               placeholder="e.g., Hyderabad"
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                               required
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Taluka / Tehsil (تعلقہ) <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1504,7 +1514,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             value={taluka}
                             onChange={(e) => setTaluka(e.target.value)}
                             placeholder="e.g., Latifabad"
-                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
@@ -1512,17 +1522,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                       {/* Official Phone Number */}
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                           Official Phone / WhatsApp Number <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <Phone className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             value={adminPhone}
                             onChange={(e) => setAdminPhone(e.target.value)}
                             placeholder="0300-1234567"
-                            className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
@@ -1532,7 +1542,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   {/* Dynamic Fields 3: Teacher Join Fields */}
                   {accountIntent === 'sms' && smsRoleIntent === 'teacher' && (
-                    <div className="space-y-3 pt-2 border-t border-purple-100 dark:border-purple-900/40 animate-in fade-in duration-200">
+                    <div className="space-y-3 pt-2 border-t border-[#FECACA] dark:border-[#7F1D1D]/60 animate-in fade-in duration-200">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                         <GraduationCap className="w-4 h-4 shrink-0" />
                         <span>Teacher Credentials &amp; Target School (استاد کی تفصیلات):</span>
@@ -1541,24 +1551,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {/* Teacher Full Name & Father Name */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Teacher Full Name <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <UserIcon className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={teacherFullName}
                               onChange={(e) => setTeacherFullName(e.target.value)}
                               placeholder="e.g., Ms. Shabana Parveen"
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                               required
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Father's Name (والد کا نام) <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1566,7 +1576,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             value={fatherName}
                             onChange={(e) => setFatherName(e.target.value)}
                             placeholder="e.g., Abdul Sattar"
-                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
@@ -1575,7 +1585,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {/* CNIC & Designation */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             CNIC Number (شناختی کارڈ) <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1584,19 +1594,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             onChange={(e) => setCnic(e.target.value)}
                             placeholder="41303-1234567-1"
                             maxLength={15}
-                            className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full px-3.5 py-2.5 text-sm font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Designation (عہدہ) <span className="text-rose-500">*</span>
                           </label>
                           <select
                             value={designation}
                             onChange={(e) => setDesignation(e.target.value)}
-                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                            className="w-full px-3 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
                           >
                             <option value="PST">PST (Primary School Teacher)</option>
                             <option value="JEST">JEST (Junior Elementary School Teacher)</option>
@@ -1609,28 +1619,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       {/* Phone & Target SEMIS */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Official Phone / WhatsApp <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <Phone className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={teacherPhone}
                               onChange={(e) => setTeacherPhone(e.target.value)}
                               placeholder="0300-1234567"
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                               required
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Target School to Join <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <Building className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                             <select
                               value={isManualSemis ? 'manual' : selectedSchoolId}
                               onChange={(e) => {
@@ -1648,7 +1658,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                   }
                                 }
                               }}
-                              className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
                               required={!isManualSemis}
                             >
                               {isLoadingSchools && (
@@ -1677,15 +1687,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 onChange={(e) => setTargetSemisCode(e.target.value)}
                                 placeholder="Enter 8-9 digit SEMIS Code"
                                 maxLength={10}
-                                className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                                className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                                 required
                               />
                             </div>
                           ) : (
                             targetSemisCode && (
-                              <div className="mt-1 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 px-1">
+                              <div className="mt-1 flex items-center justify-between text-[11px] text-[#57534E] dark:text-[#D6CCC2] px-1">
                                 <span>Official SEMIS Code:</span>
-                                <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">
+                                <span className="font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
                                   {targetSemisCode}
                                 </span>
                               </div>
@@ -1698,53 +1708,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   {/* Parent / Guardian Verification & Child Link Fields */}
                   {accountIntent === 'parent' && (
-                    <div className="space-y-3 p-3.5 bg-indigo-50/70 dark:bg-indigo-950/25 border border-indigo-200 dark:border-indigo-800/60 rounded-xl animate-in fade-in duration-200">
-                      <div className="flex items-center gap-2 text-xs font-bold text-indigo-900 dark:text-indigo-200">
-                        <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <div className="space-y-3 p-3.5 bg-[#FEF2F2]/70 dark:bg-[#3F1014]/25 border border-[#FECACA] dark:border-[#7F1D1D]/60 rounded-xl animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
+                        <GraduationCap className="w-4 h-4 text-[#7F1D1D] dark:text-[#FCA5A5]" />
                         <span>Parent / Guardian &amp; Child Verification (والدین و طالب علم کی تصدیق):</span>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Parent / Guardian Full Name <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <UserIcon className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={parentFullName}
                               onChange={(e) => setParentFullName(e.target.value)}
                               placeholder="e.g., Ghulam Mustafa Solangi"
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                               required
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Guardian Mobile Number
                           </label>
                           <div className="relative">
-                            <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <Phone className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={parentPhone}
                               onChange={(e) => setParentPhone(e.target.value)}
                               placeholder="0300-1234567"
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             />
                           </div>
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                           Child&apos;s School <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Building className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                           <select
                             value={parentIsManualSemis ? 'manual' : parentSelectedSchoolId}
                             onChange={(e) => {
@@ -1762,7 +1772,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 }
                               }
                             }}
-                            className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6] cursor-pointer"
+                            className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D] cursor-pointer"
                             required={!parentIsManualSemis}
                           >
                             {isLoadingSchools && (
@@ -1790,7 +1800,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               onChange={(e) => setParentTargetSemisCode(e.target.value)}
                               placeholder="Enter 8-9 digit School SEMIS Code"
                               maxLength={12}
-                              className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                               required
                             />
                           </div>
@@ -1799,7 +1809,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Child&apos;s GR Number <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1807,28 +1817,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             value={childGrNumber}
                             onChange={(e) => setChildGrNumber(e.target.value.toUpperCase())}
                             placeholder="e.g., GR-1001"
-                            className="w-full px-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                            className="w-full px-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Parent Invite Code (if provided by school)
                           </label>
                           <div className="relative">
-                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <KeyRound className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={parentInviteCode}
                               onChange={(e) => setParentInviteCode(e.target.value.toUpperCase())}
                               placeholder="e.g., PKE-AB12CD"
-                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#5b21b6]"
+                              className="w-full pl-10 pr-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                             />
                           </div>
                         </div>
                       </div>
-                      <p className="text-[11px] text-indigo-800 dark:text-indigo-300 leading-snug">
+                      <p className="text-[11px] text-[#7F1D1D] dark:text-[#FCA5A5] leading-snug">
                         Instant verification matches your email registered with the school, your Parent Invite Code, or your Guardian Phone number.
                       </p>
                     </div>
@@ -1836,35 +1846,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                   {/* Student Verification & Profile Link Fields */}
                   {accountIntent === 'student' && (
-                    <div className="space-y-3 p-3.5 bg-sky-50/70 dark:bg-sky-950/25 border border-sky-200 dark:border-sky-800/60 rounded-xl animate-in fade-in duration-200">
-                      <div className="flex items-center gap-2 text-xs font-bold text-sky-900 dark:text-sky-200">
-                        <GraduationCap className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                    <div className="space-y-3 p-3.5 bg-[#FFF7ED]/70 dark:bg-[#7C2D12]/25 border border-[#FED7AA] dark:border-[#C2410C]/50 rounded-xl animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-xs font-bold text-[#C2410C] dark:text-[#FDBA74]">
+                        <GraduationCap className="w-4 h-4 text-[#C2410C] dark:text-[#FDBA74]" />
                         <span>Student Identity &amp; GR Verification (طالب علم کی تصدیق):</span>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                           Student Full Name <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <UserIcon className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                           <input
                             type="text"
                             value={studentFullName}
                             onChange={(e) => setStudentFullName(e.target.value)}
                             placeholder="e.g., Ali Hassan Solangi"
-                            className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                            className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
                             required
                           />
                         </div>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                           Your School <span className="text-rose-500">*</span>
                         </label>
                         <div className="relative">
-                          <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Building className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                           <select
                             value={studentIsManualSemis ? 'manual' : studentSelectedSchoolId}
                             onChange={(e) => {
@@ -1882,7 +1892,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                                 }
                               }
                             }}
-                            className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
+                            className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C] cursor-pointer"
                             required={!studentIsManualSemis}
                           >
                             {isLoadingSchools && (
@@ -1910,7 +1920,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                               onChange={(e) => setStudentTargetSemisCode(e.target.value)}
                               placeholder="Enter 8-9 digit School SEMIS Code"
                               maxLength={12}
-                              className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                              className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
                               required
                             />
                           </div>
@@ -1919,7 +1929,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Student ID / GR Number <span className="text-rose-500">*</span>
                           </label>
                           <input
@@ -1927,29 +1937,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             value={studentGrNumber}
                             onChange={(e) => setStudentGrNumber(e.target.value.toUpperCase())}
                             placeholder="e.g., GR-1001 or std_001"
-                            className="w-full min-h-[44px] px-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                            className="w-full min-h-[44px] px-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
                             required
                           />
                         </div>
 
                         <div>
-                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                             Student Invite Code <span className="text-rose-500">*</span>
                           </label>
                           <div className="relative">
-                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <KeyRound className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                             <input
                               type="text"
                               value={studentInviteCode}
                               onChange={(e) => setStudentInviteCode(e.target.value.toUpperCase())}
                               placeholder="e.g., STU-1001-XXXX"
-                              className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                              className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
                               required
                             />
                           </div>
                         </div>
                       </div>
-                      <p className="text-[11px] text-sky-800 dark:text-sky-300 leading-snug">
+                      <p className="text-[11px] text-[#C2410C] dark:text-[#FDBA74] leading-snug">
                         No email required! Enter your Student ID / GR Number and the Student Invite Code created on your Admin or Parent Dashboard.
                       </p>
                     </div>
@@ -1960,7 +1970,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {/* Email Address or Student GR/ID (hidden on email-free Student Signup) */}
               {!(mode === 'signup' && accountIntent === 'student') && (
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     {mode === 'signup' && accountIntent === 'sms'
                       ? smsRoleIntent === 'admin'
                         ? 'Admin Official Email (Login ID) *'
@@ -1972,7 +1982,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'Email Address *'}
                   </label>
                   <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type={mode === 'signup' ? 'email' : 'text'}
                       value={email}
@@ -1983,14 +1993,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           ? 'Email (teacher@...) or Student GR / ID (e.g., GR-1001)'
                           : 'teacher@seld.gos.pk or Gmail address'
                       }
-                      className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                       required
                     />
                   </div>
 
                   {mode === 'signin' && isGrOrStudentIdInput(email) && (
-                    <div className="mt-2.5 p-3 rounded-xl bg-sky-50/90 dark:bg-sky-950/35 border border-sky-200 dark:border-sky-800/60 space-y-2">
-                      <label className="block text-[11px] font-bold text-sky-900 dark:text-sky-200">
+                    <div className="mt-2.5 p-3 rounded-xl bg-[#FFF7ED]/90 dark:bg-[#7C2D12]/35 border border-[#FED7AA] dark:border-[#C2410C]/50 space-y-2">
+                      <label className="block text-[11px] font-bold text-[#C2410C] dark:text-[#FDBA74]">
                         Student GR / ID detected — Select Your School *
                       </label>
                       <select
@@ -2009,7 +2019,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                             if (found) setLoginTargetSemisCode(found.semisCode);
                           }
                         }}
-                        className="w-full min-h-[40px] px-3 py-2 text-xs rounded-lg border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                        className="w-full min-h-[40px] px-3 py-2 text-xs rounded-lg border border-[#FED7AA] dark:border-[#C2410C]/50 bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
                       >
                         {isLoadingSchools ? (
                           <option value="">Loading active schools...</option>
@@ -2033,7 +2043,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           onChange={(e) => setLoginTargetSemisCode(e.target.value)}
                           placeholder="Enter School SEMIS Code (e.g., 419030330)"
                           maxLength={12}
-                          className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-sky-300 dark:border-sky-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                          className="w-full px-3 py-2 text-xs font-mono rounded-lg border border-[#FED7AA] dark:border-[#C2410C]/50 bg-[#FFFDF9] dark:bg-[#2C1215] text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#C2410C]"
                           required
                         />
                       )}
@@ -2046,21 +2056,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               {mode !== 'reset' && (
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4]">
                       {mode === 'signup' ? 'Create Password (min. 6 characters) *' : 'Password *'}
                     </label>
                     {mode === 'signin' && (
                       <button
                         type="button"
                         onClick={() => setMode('reset')}
-                        className="text-[11px] font-semibold text-indigo-700 dark:text-indigo-400 hover:underline cursor-pointer"
+                        className="text-[11px] font-semibold text-[#7F1D1D] dark:text-[#FCA5A5] hover:underline cursor-pointer"
                       >
                         Forgot password?
                       </button>
                     )}
                   </div>
                   <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Lock className="w-4 h-4 text-[#78716C] absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="password"
                       value={password}
@@ -2070,7 +2080,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                           ? 'Create password (min. 6 characters)'
                           : 'Enter your account password'
                       }
-                      className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-[#D6CCC2] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5] dark:bg-[#2C1215]/90 text-[#1C1917] dark:text-[#FAF8F5] focus:outline-none focus:ring-2 focus:ring-[#7F1D1D]"
                       required
                     />
                   </div>
@@ -2080,10 +2090,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full min-h-[44px] py-2.5 px-5 rounded-xl text-xs sm:text-sm font-semibold text-white shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60 hover:opacity-95"
-                style={{
-                  background: 'linear-gradient(135deg, #1e1b4b 0%, #4f46e5 100%)',
-                }}
+                className="w-full min-h-[44px] py-2.5 px-5 rounded-xl text-xs sm:text-sm font-semibold text-[#FFFDF9] bg-[#C2410C] hover:bg-[#9A3412] shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 <KeyRound className="w-4 h-4" />
                 <span>
@@ -2123,8 +2130,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 </div>
 
                 {diagnosis?.isUnauthorizedDomain && (
-                  <div className="bg-white dark:bg-slate-800 p-2.5 rounded-lg border border-amber-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 space-y-1.5">
-                    <p className="font-semibold text-slate-900 dark:text-white">
+                  <div className="bg-[#FFFDF9] dark:bg-[#2C1215] p-2.5 rounded-lg border border-amber-200 dark:border-[rgba(255,253,249,0.14)] text-[11px] text-[#44403C] dark:text-[#E7E0D4] space-y-1.5">
+                    <p className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
                       Firebase Console Domain Whitelist Steps:
                     </p>
                     <ol className="list-decimal list-inside space-y-1">
@@ -2144,14 +2151,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       <li className="flex items-center justify-between gap-2 pt-1">
                         <span>
                           Add domain:{' '}
-                          <code className="font-mono font-bold text-[#5b21b6] dark:text-pink-400">
+                          <code className="font-mono font-bold text-[#7F1D1D] dark:text-pink-400">
                             {currentHostname}
                           </code>
                         </span>
                         <button
                           type="button"
                           onClick={handleCopyHostname}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-white font-semibold cursor-pointer"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-[#F3EFEA] dark:bg-[#3F1014] text-[#1C1917] dark:text-[#FAF8F5] font-semibold cursor-pointer"
                         >
                           {copiedHostname ? (
                             <>
@@ -2169,14 +2176,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 )}
 
                 {diagnosis?.isProviderDisabled && (
-                  <div className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-amber-200 dark:border-slate-700 text-[11px] text-slate-700 dark:text-slate-300 space-y-2">
-                    <div className="font-semibold text-slate-900 dark:text-white flex items-center justify-between">
+                  <div className="bg-[#FFFDF9] dark:bg-[#2C1215] p-3 rounded-lg border border-amber-200 dark:border-[rgba(255,253,249,0.14)] text-[11px] text-[#44403C] dark:text-[#E7E0D4] space-y-2">
+                    <div className="font-semibold text-[#1C1917] dark:text-[#FAF8F5] flex items-center justify-between">
                       <span>Enable Email/Password in Firebase Console:</span>
                       <a
                         href={`https://console.firebase.google.com/project/${UNIFIED_FIREBASE_PROJECT_ID}/authentication/providers`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[#5b21b6] dark:text-pink-400 hover:underline font-bold"
+                        className="inline-flex items-center gap-1 text-[#7F1D1D] dark:text-pink-400 hover:underline font-bold"
                       >
                         Open Console <ExternalLink className="w-3 h-3" />
                       </a>
@@ -2192,7 +2199,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   <button
                     type="button"
                     onClick={handleInstantFallbackSession}
-                    className="w-full py-2 px-3 rounded-lg bg-[#5b21b6] hover:bg-[#4c1d95] text-white font-semibold text-xs transition-colors cursor-pointer"
+                    className="w-full py-2 px-3 rounded-lg bg-[#7F1D1D] hover:bg-[#651414] text-white font-semibold text-xs transition-colors cursor-pointer"
                   >
                     Continue with Instant Teacher Session (Offline-Ready Mode)
                   </button>
@@ -2201,12 +2208,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             )}
           </div>
 
-          <div className="mt-5 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500">
+          <div className="mt-5 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-[11px] text-[#57534E]">
             <span>Unified Firebase Auth (`rising-safeguard-8bcxw`)</span>
             <button
               type="button"
               onClick={handleInstantFallbackSession}
-              className="text-[#5b21b6] dark:text-pink-400 font-semibold hover:underline cursor-pointer"
+              className="text-[#7F1D1D] dark:text-pink-400 font-semibold hover:underline cursor-pointer"
             >
               🧪 Try Demo Mode (Sandbox) →
             </button>

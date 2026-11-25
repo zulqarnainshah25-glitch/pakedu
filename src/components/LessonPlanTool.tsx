@@ -747,7 +747,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
   return (
     <div className="space-y-6">
       {/* Google Sheet & Firestore Database Importer Bar (Hidden in Print) */}
-      <div className="no-print bg-white border border-slate-200 rounded-xl p-4 sm:p-5">
+      <div className="no-print bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl p-4 sm:p-5">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#00563B]">
@@ -764,10 +764,10 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                   : `${sheetLessons.length} Sindh STBB Topics Indexed (KG–Class 8)`}
               </span>
             </div>
-            <h2 className="text-base font-bold text-slate-900 mt-1">
+            <h2 className="text-base font-bold text-[#1C1917] mt-1">
               Curriculum Database &amp; AI Lesson Plan Engine (Sindh STBB &amp; Punjab PTB)
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#57534E] mt-0.5">
               Select your Board, Section, Class, Subject, Chapter &amp; Topic below, then click <strong>Generate Lesson Plan</strong>. If the topic exists in the database it is fetched directly; otherwise AI generates a Board- &amp; Class-difficulty calibrated lesson plan.
             </p>
           </div>
@@ -776,7 +776,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
             <button
               type="button"
               onClick={() => setShowDataExplorer(!showDataExplorer)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#44403C] bg-[#F3EFEA] hover:bg-[#E7E0D4] rounded-lg transition-colors cursor-pointer whitespace-nowrap"
             >
               <Table className="w-4 h-4 text-[#00563B]" />
               {showDataExplorer ? 'Hide Sheet Browser' : `Browse ${sheetLessons.length} Sheet Topics`}
@@ -808,7 +808,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 {Math.round((importProgress.done / importProgress.total) * 100)}%)
               </span>
             </div>
-            <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div className="w-full h-2 bg-[#F3EFEA] rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#00563B] transition-all duration-200"
                 style={{
@@ -828,26 +828,26 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
         {/* Interactive Google Sheet Data Browser */}
         {showDataExplorer && (
-          <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+          <div className="mt-4 pt-4 border-t border-[#E7E0D4] space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by Class (e.g. KG, Class 4), Subject (Sindhi, Urdu, English, Math), Chapter, or Topic..."
-                  className="w-full pl-9 pr-4 py-2 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+                  className="w-full pl-9 pr-4 py-2 text-xs bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
                 />
               </div>
-              <span className="text-xs text-slate-500 font-mono whitespace-nowrap">
+              <span className="text-xs text-[#57534E] font-mono whitespace-nowrap">
                 Showing {filteredExplorerLessons.length} of {sheetLessons.length} rows
               </span>
             </div>
 
-            <div className="max-h-72 overflow-y-auto overflow-x-auto border border-slate-200 rounded-lg w-full">
+            <div className="max-h-72 overflow-y-auto overflow-x-auto border border-[#E7E0D4] rounded-lg w-full">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-slate-100 sticky top-0 border-b border-slate-200 text-slate-700">
+                <thead className="bg-[#F3EFEA] sticky top-0 border-b border-[#E7E0D4] text-[#44403C]">
                   <tr>
                     <th className="py-2 px-3 font-semibold">Class</th>
                     <th className="py-2 px-3 font-semibold">Subject</th>
@@ -856,7 +856,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                     <th className="py-2 px-3 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-[#E7E0D4]">
                   {filteredExplorerLessons.map((item) => (
                     <tr
                       key={item.id}
@@ -870,16 +870,16 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                       }}
                       className="hover:bg-emerald-50/60 cursor-pointer transition-colors"
                     >
-                      <td className="py-2 px-3 font-semibold text-slate-900 whitespace-nowrap">
+                      <td className="py-2 px-3 font-semibold text-[#1C1917] whitespace-nowrap">
                         {item.className}
                       </td>
                       <td className="py-2 px-3 text-[#00563B] font-medium whitespace-nowrap">
                         {item.subject}
                       </td>
-                      <td className="py-2 px-3 text-slate-600 max-w-48 truncate">
+                      <td className="py-2 px-3 text-[#57534E] max-w-48 truncate">
                         {item.chapter}
                       </td>
-                      <td className="py-2 px-3 font-semibold text-slate-900 max-w-64 truncate">
+                      <td className="py-2 px-3 font-semibold text-[#1C1917] max-w-64 truncate">
                         {item.topic}
                       </td>
                       <td className="py-2 px-3 text-right whitespace-nowrap">
@@ -899,18 +899,18 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
       {/* Lesson Plan Input Form (Hidden in Print) */}
       <form
         onSubmit={handleGenerateLessonPlan}
-        className="no-print bg-white border border-slate-200 rounded-xl p-5 sm:p-6 space-y-5"
+        className="no-print bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl p-5 sm:p-6 space-y-5"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-[#E7E0D4]">
           <div>
-            <h3 className="text-lg font-bold text-slate-900">
+            <h3 className="text-lg font-bold text-[#1C1917]">
               AI Lesson Plan Configuration
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-[#57534E] mt-0.5">
               Select Board, Section, Class, Subject, Chapter, and Topic, then click <strong>Generate Lesson Plan</strong>.
             </p>
           </div>
-          <div className="text-xs text-slate-500 font-mono">
+          <div className="text-xs text-[#57534E] font-mono">
             {board} · {section} ({className}) · {planType} ({duration})
           </div>
         </div>
@@ -919,7 +919,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* 1. Teacher Name */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               1. Teacher Name
             </label>
             <input
@@ -928,13 +928,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
               placeholder="e.g., Ustad Ahmed Ali"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             />
           </div>
 
           {/* 2. Mobile Number */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               2. Mobile Number
             </label>
             <input
@@ -943,13 +943,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               value={mobileNumber}
               onChange={(e) => setMobileNumber(e.target.value)}
               placeholder="0300-1234567"
-              className="w-full px-3 py-2 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm font-mono tabular-nums bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             />
           </div>
 
           {/* 3. School Name */}
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               3. School Name
             </label>
             <input
@@ -958,13 +958,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               value={schoolName}
               onChange={(e) => setSchoolName(e.target.value)}
               placeholder="e.g., GBHS Latifabad No. 7, Hyderabad"
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             />
           </div>
 
           {/* 4. Start Date */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               4. Start Date
             </label>
             <input
@@ -972,19 +972,19 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               required
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full px-3 py-2 text-sm font-mono tabular-nums bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm font-mono tabular-nums bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             />
           </div>
 
           {/* 5. Duration */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               5. Duration
             </label>
             <select
               value={duration}
               onChange={(e) => setDuration(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             >
               <option value="35 Minutes">35 Minutes</option>
               <option value="40 Minutes">40 Minutes</option>
@@ -996,13 +996,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 6. Plan Type */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               6. Plan Type
             </label>
             <select
               value={planType}
               onChange={(e) => setPlanType(e.target.value as 'Daily' | 'Weekly')}
-              className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             >
               <option value="Daily">Daily</option>
               <option value="Weekly">Weekly</option>
@@ -1011,13 +1011,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 7. Select Board */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               7. Select Board
             </label>
             <select
               value={board}
               onChange={(e) => handleBoardChange(e.target.value as 'Sindh STBB' | 'Punjab PTB')}
-              className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             >
               <option value="Sindh STBB">Sindh STBB (Jamshoro)</option>
               <option value="Punjab PTB">Punjab PTB (Lahore)</option>
@@ -1026,7 +1026,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 8. Section (Strictly filters Class options in #9) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               8. Section
             </label>
             <select
@@ -1036,7 +1036,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                   e.target.value as 'Primary' | 'Middle' | 'Secondary' | 'Higher Secondary'
                 )
               }
-              className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             >
               <option value="Primary">Primary (KG – Class 5)</option>
               <option value="Middle">Middle (Class 6 – Class 8)</option>
@@ -1047,13 +1047,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 9. Class (Strictly shows ONLY classes belonging to the selected Section) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               9. Class ({section} Section Only)
             </label>
             <select
               value={className}
               onChange={(e) => handleClassChange(e.target.value)}
-              className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+              className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
             >
               {classesForSelectedSection.map((c) => (
                 <option key={c} value={c}>
@@ -1065,7 +1065,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 10. Subject (Cascading from Board + Class, or Blank with Example when unavailable) */}
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               10. Subject{' '}
               {hasDatabaseContentForClass
                 ? `(${subjectsForClass.length} Available in ${board} for ${className})`
@@ -1078,7 +1078,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                   onChange={(e) => {
                     if (e.target.value) handleSubjectChange(e.target.value);
                   }}
-                  className="w-full px-3 py-2 text-sm font-medium bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+                  className="w-full px-3 py-2 text-sm font-medium bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
                 >
                   <option value="" disabled>
                     -- Select Subject from Database --
@@ -1099,7 +1099,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                     setHasGeneratedPlan(false);
                   }}
                   placeholder={fieldExamples.subjectPlaceholder}
-                  className="w-full px-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+                  className="w-full px-3 py-1.5 text-xs bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
                 />
               </div>
             ) : (
@@ -1114,9 +1114,9 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                     setHasGeneratedPlan(false);
                   }}
                   placeholder={fieldExamples.subjectPlaceholder}
-                  className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+                  className="w-full px-3 py-2 text-sm bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
                 />
-                <span className="block text-[11px] text-slate-500 mt-1">
+                <span className="block text-[11px] text-[#57534E] mt-1">
                   {fieldExamples.subjectPlaceholder}
                 </span>
               </>
@@ -1130,7 +1130,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 11. Chapter (Cascading Dropdown when available, or Blank with Example when unavailable) */}
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               11. Chapter{' '}
               {chaptersForClassAndSubject.length > 0
                 ? `(${chaptersForClassAndSubject.length} Available in Database)`
@@ -1143,7 +1143,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                   onChange={(e) => {
                     if (e.target.value) handleChapterChange(e.target.value);
                   }}
-                  className="w-full px-3 py-2 text-sm bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+                  className="w-full px-3 py-2 text-sm bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
                 >
                   <option value="" disabled>
                     -- Select Chapter from Database --
@@ -1166,10 +1166,10 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 placeholder={fieldExamples.chapterPlaceholder}
                 className={`w-full px-3 ${
                   chaptersForClassAndSubject.length > 0 ? 'py-1.5 text-xs' : 'py-2 text-sm'
-                } bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white`}
+                } bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]`}
               />
               {chaptersForClassAndSubject.length === 0 && (
-                <span className="block text-[11px] text-slate-500">
+                <span className="block text-[11px] text-[#57534E]">
                   {fieldExamples.chapterPlaceholder}
                 </span>
               )}
@@ -1178,7 +1178,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
           {/* 12. Topic (Cascading Dropdown when available, or Blank with Example when unavailable) */}
           <div className="sm:col-span-2">
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+            <label className="block text-xs font-semibold text-[#44403C] mb-1.5">
               12. Lesson Topic{' '}
               {topicsForSelection.length > 0
                 ? `(${topicsForSelection.length} Available in Database)`
@@ -1193,7 +1193,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                   onChange={(e) => {
                     if (e.target.value) handleTopicChange(e.target.value);
                   }}
-                  className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white"
+                  className="w-full px-3 py-2 text-sm font-semibold text-[#00563B] bg-emerald-50/50 border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]"
                 >
                   <option value="" disabled>
                     -- Select Topic from Database --
@@ -1216,10 +1216,10 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 placeholder={fieldExamples.topicPlaceholder}
                 className={`w-full px-3 ${
                   topicsForSelection.length > 0 ? 'py-1.5 text-xs' : 'py-2 text-sm'
-                } bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-white`}
+                } bg-[#FAF8F5] border border-[#D6CCC2] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#00563B] focus:bg-[#FFFDF9]`}
               />
               {topicsForSelection.length === 0 && (
-                <span className="block text-[11px] text-slate-500">
+                <span className="block text-[11px] text-[#57534E]">
                   {fieldExamples.topicPlaceholder}
                 </span>
               )}
@@ -1229,35 +1229,35 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
         {/* Helper Banner when Selected Class/Board is not in Pre-loaded Sheet */}
         {!hasDatabaseContentForClass && (
-          <div className="bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl px-4 py-3.5 text-xs text-indigo-950 dark:text-indigo-200 space-y-2">
+          <div className="bg-[#FEF2F2]/90 dark:bg-[#3F1014]/40 border border-[#FECACA] dark:border-[#7F1D1D]/60 rounded-xl px-4 py-3.5 text-xs text-[#7F1D1D] dark:text-[#FCA5A5] space-y-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="font-bold flex items-center gap-1.5 text-indigo-900 dark:text-indigo-100">
-                <Sparkles className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              <div className="font-bold flex items-center gap-1.5 text-[#7F1D1D] dark:text-[#FCA5A5]">
+                <Sparkles className="w-4 h-4 text-[#7F1D1D] dark:text-[#FCA5A5]" />
                 <span>AI Lesson Generator Active: {board} — {className} ({section})</span>
               </div>
               <button
                 type="button"
                 onClick={() => handleGenerateLessonPlan()}
                 disabled={isGenerating}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 rounded-lg shadow-sm transition cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#7F1D1D] hover:bg-[#651414] active:scale-95 rounded-lg shadow-sm transition cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{isGenerating ? 'Generating with AI...' : '✨ Generate with Gemini AI Now'}</span>
               </button>
             </div>
-            <p className="text-slate-600 dark:text-slate-300 leading-relaxed">
+            <p className="text-[#57534E] dark:text-[#E7E0D4] leading-relaxed">
               Pre-loaded static sheet data is not found, but AI Lesson Generation is fully active! Enter your custom topic above or click <strong>Generate with Gemini AI Now</strong> to create a complete board-aligned lesson plan featuring 5 Q&amp;As, 8 Word Meanings, and 3 Exercises.
             </p>
-            <p className="text-[11px] text-indigo-700 dark:text-indigo-300">
+            <p className="text-[11px] text-[#7F1D1D] dark:text-[#FCA5A5]">
               <strong>Curriculum Profile:</strong> {difficultyProfile.cognitiveLevel} · {difficultyProfile.boardStandard}
             </p>
           </div>
         )}
 
         <div className="pt-2 flex flex-wrap items-center justify-between gap-3">
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-[#57534E]">
             Firestore Document ID:{' '}
-            <code className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+            <code className="font-mono text-[#44403C] bg-[#F3EFEA] px-1.5 py-0.5 rounded">
               {getSyllabusDocId(
                 board,
                 className,
@@ -1289,14 +1289,14 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
       {/* Requirement 2: Only display Action Buttons and Printable A4 Lesson Plan AFTER clicking "Generate Lesson Plan" */}
       {!hasGeneratedPlan ? (
-        <div className="no-print bg-white border border-dashed border-slate-300 rounded-xl p-8 text-center space-y-2">
+        <div className="no-print bg-[#FFFDF9] border border-dashed border-[#D6CCC2] rounded-xl p-8 text-center space-y-2">
           <div className="w-11 h-11 rounded-full bg-emerald-50 text-[#00563B] flex items-center justify-center mx-auto">
             <BookOpen className="w-5 h-5" />
           </div>
-          <h4 className="text-base font-bold text-slate-900">
+          <h4 className="text-base font-bold text-[#1C1917]">
             Ready to Generate Your {board} ({className}) Lesson Plan
           </h4>
-          <p className="text-xs text-slate-600 max-w-xl mx-auto leading-relaxed">
+          <p className="text-xs text-[#57534E] max-w-xl mx-auto leading-relaxed">
             Configure your <strong>Board ({board})</strong>, <strong>Section ({section})</strong>,{' '}
             <strong>Class ({className})</strong>, <strong>Subject</strong>, <strong>Chapter</strong>,
             and <strong>Lesson Topic</strong> above, then click{' '}
@@ -1308,7 +1308,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
       ) : (
         <>
           {/* Action Buttons Bar (After Generation - Hidden in Print) */}
-          <div className="no-print bg-white border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="no-print bg-[#FFFDF9] border border-[#E7E0D4] rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -1316,7 +1316,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   activeView === 'lesson-plan'
                     ? 'bg-[#00563B] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    : 'bg-[#F3EFEA] text-[#44403C] hover:bg-[#E7E0D4]'
                 }`}
               >
                 <BookOpen className="w-4 h-4" />
@@ -1329,7 +1329,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   activeView === 'flashcards'
                     ? 'bg-[#00563B] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    : 'bg-[#F3EFEA] text-[#44403C] hover:bg-[#E7E0D4]'
                 }`}
               >
                 <Layers className="w-4 h-4" />
@@ -1342,7 +1342,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   activeView === 'worksheet'
                     ? 'bg-[#00563B] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    : 'bg-[#F3EFEA] text-[#44403C] hover:bg-[#E7E0D4]'
                 }`}
               >
                 <FileText className="w-4 h-4" />
@@ -1355,7 +1355,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 className={`inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                   activeView === 'assessment'
                     ? 'bg-[#00563B] text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    : 'bg-[#F3EFEA] text-[#44403C] hover:bg-[#E7E0D4]'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
@@ -1366,7 +1366,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
             <button
               type="button"
               onClick={triggerPrintDocument}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#2C1215] hover:bg-[#58181D] rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
             >
               <Download className="w-4 h-4" />
               📥 Download PDF / Print A4
@@ -1376,7 +1376,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
           {/* =================================================================== */}
           {/* PRINTABLE A4 DOCUMENT CONTAINER                                     */}
           {/* =================================================================== */}
-          <div className="printable-a4-sheet bg-white border border-slate-200 rounded-xl p-6 sm:p-8 shadow-xs">
+          <div className="printable-a4-sheet bg-white border border-[#E7E0D4] rounded-xl p-6 sm:p-8 shadow-xs">
             {/* Official Institutional Header */}
             <div className="border-b-2 border-[#00563B] pb-4 mb-5">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -1386,14 +1386,14 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                       ? 'School Education & Literacy Department · Sindh Textbook Board (STBB)'
                       : 'School Education Department · Punjab Curriculum & Textbook Board (PTB)'}
                   </p>
-                  <h1 className="text-xl sm:text-2xl font-bold text-slate-900 mt-0.5">
+                  <h1 className="text-xl sm:text-2xl font-bold text-[#1C1917] mt-0.5">
                     {activeView === 'lesson-plan' && `${planType} Instructional Lesson Plan`}
                     {activeView === 'flashcards' && `Printable Vocabulary Flash Cards`}
                     {activeView === 'worksheet' && `Student Activity & Creative Worksheet`}
                     {activeView === 'assessment' && `Bloom's Taxonomy Cognitive Assessment`}
                   </h1>
                 </div>
-                <div className="text-left sm:text-right text-xs text-slate-600 font-mono tabular-nums">
+                <div className="text-left sm:text-right text-xs text-[#57534E] font-mono tabular-nums">
                   <div>Date: {startDate}</div>
                   <div>Duration: {duration}</div>
                   <div className="no-print text-[11px] text-[#00563B] font-semibold mt-0.5">
@@ -1408,35 +1408,35 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               </div>
 
               {/* Teacher & Class Metadata Strip */}
-              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs">
+              <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 border border-[#E7E0D4] rounded-lg p-3 text-xs">
                 <div>
-                  <span className="text-slate-500 block">Teacher Name:</span>
-                  <span className="font-semibold text-slate-900">{teacherName}</span>
+                  <span className="text-[#57534E] block">Teacher Name:</span>
+                  <span className="font-semibold text-[#1C1917]">{teacherName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Mobile Number:</span>
-                  <span className="font-semibold font-mono tabular-nums text-slate-900">
+                  <span className="text-[#57534E] block">Mobile Number:</span>
+                  <span className="font-semibold font-mono tabular-nums text-[#1C1917]">
                     {mobileNumber}
                   </span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-slate-500 block">School / Institution:</span>
-                  <span className="font-semibold text-slate-900">{schoolName}</span>
+                  <span className="text-[#57534E] block">School / Institution:</span>
+                  <span className="font-semibold text-[#1C1917]">{schoolName}</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Board &amp; Section:</span>
-                  <span className="font-semibold text-slate-900">
+                  <span className="text-[#57534E] block">Board &amp; Section:</span>
+                  <span className="font-semibold text-[#1C1917]">
                     {board} ({section})
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block">Class &amp; Subject:</span>
-                  <span className="font-semibold text-slate-900">
+                  <span className="text-[#57534E] block">Class &amp; Subject:</span>
+                  <span className="font-semibold text-[#1C1917]">
                     {className} · {subject}
                   </span>
                 </div>
                 <div className="col-span-2">
-                  <span className="text-slate-500 block">Chapter &amp; Topic:</span>
+                  <span className="text-[#57534E] block">Chapter &amp; Topic:</span>
                   <span
                     dir={hasRtlScript(`${chapter} ${topic}`) ? 'rtl' : 'ltr'}
                     className="font-semibold text-[#00563B] block"
@@ -1451,14 +1451,14 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
         {activeView === 'lesson-plan' && (
           <div
             dir={isContentRtl ? 'rtl' : 'ltr'}
-            className="space-y-4 text-sm text-slate-800"
+            className="space-y-4 text-sm text-[#1C1917]"
           >
             {/* 1. SLOs */}
-            <section className="border border-slate-200 rounded-lg p-4">
+            <section className="border border-[#E7E0D4] rounded-lg p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                 1. SLOs (Student Learning Outcomes / حاصلاتِ تعلم)
               </h3>
-              <ul className="list-disc list-inside space-y-1 text-sm text-slate-800 leading-relaxed">
+              <ul className="list-disc list-inside space-y-1 text-sm text-[#1C1917] leading-relaxed">
                 {sloList.map((slo, idx) => (
                   <li key={idx}>{slo.replace(/^[-•*]\s*/, '')}</li>
                 ))}
@@ -1467,35 +1467,35 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
             {/* 2. Previous Knowledge & 3. Teaching Aids */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   2. Previous Knowledge (سابقہ معلومات)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.previousKnowledge}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.previousKnowledge}</p>
               </section>
 
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   3. Teaching Aids (تدریسی معاونات)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.teachingAids}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.teachingAids}</p>
               </section>
             </div>
 
             {/* 4. Introduction */}
-            <section className="border border-slate-200 rounded-lg p-4">
+            <section className="border border-[#E7E0D4] rounded-lg p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                 4. Introduction (تعارف / تمہید)
               </h3>
-              <p className="leading-relaxed text-slate-700">{lessonContent.introduction}</p>
+              <p className="leading-relaxed text-[#44403C]">{lessonContent.introduction}</p>
             </section>
 
             {/* 5. Procedure (List) */}
-            <section className="border border-slate-200 rounded-lg p-4">
+            <section className="border border-[#E7E0D4] rounded-lg p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                 5. Procedure (طریقہ کار / تدریسی مراحل)
               </h3>
-              <ol className="list-decimal list-inside space-y-1.5 text-slate-800 leading-relaxed">
+              <ol className="list-decimal list-inside space-y-1.5 text-[#1C1917] leading-relaxed">
                 {procedureList.map((step, idx) => (
                   <li key={idx}>
                     {step.replace(/^(Step\s*\d+[:.)]?\s*|\d+[.)]\s*)/i, '')}
@@ -1506,40 +1506,40 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
             {/* 6. Teacher Activities & 7. Student Activities */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   6. Teacher Activities (استاد کی سرگرمیاں)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.teacherActivities}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.teacherActivities}</p>
               </section>
 
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   7. Student Activities (طلبہ کی سرگرمیاں)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.studentActivities}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.studentActivities}</p>
               </section>
             </div>
 
             {/* 8. Assessment & 9. Homework */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   8. Assessment (جائزہ / تشخیص)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.assessment}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.assessment}</p>
               </section>
 
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   9. Homework (گھر کا کام)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.homework}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.homework}</p>
               </section>
             </div>
 
             {/* 10. Vocabulary / Word Meanings */}
-            <section className="border border-slate-200 rounded-lg p-4">
+            <section className="border border-[#E7E0D4] rounded-lg p-4">
               <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                 10. Vocabulary &amp; Word Meanings (الفاظ معنی / نوان لفظ)
               </h3>
@@ -1547,10 +1547,10 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 {vocabItems.map((item, idx) => (
                   <div
                     key={idx}
-                    className="bg-slate-50 border border-slate-200 rounded px-3 py-2 text-xs"
+                    className="bg-slate-50 border border-[#E7E0D4] rounded px-3 py-2 text-xs"
                   >
-                    <span className="font-bold text-slate-900">{item.term}:</span>{' '}
-                    <span className="text-slate-700">{item.definition}</span>
+                    <span className="font-bold text-[#1C1917]">{item.term}:</span>{' '}
+                    <span className="text-[#44403C]">{item.definition}</span>
                   </div>
                 ))}
               </div>
@@ -1558,18 +1558,18 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
             {/* 11. Life Skills & 12. Teacher's Reflection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   11. Life Skills (زندگی کی مہارتیں)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.lifeSkills}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.lifeSkills}</p>
               </section>
 
-              <section className="border border-slate-200 rounded-lg p-4">
+              <section className="border border-[#E7E0D4] rounded-lg p-4">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                   12. Teacher&apos;s Reflection (تاثرات / جائزہ)
                 </h3>
-                <p className="leading-relaxed text-slate-700">{lessonContent.teacherReflection}</p>
+                <p className="leading-relaxed text-[#44403C]">{lessonContent.teacherReflection}</p>
               </section>
             </div>
 
@@ -1577,11 +1577,11 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
             {(questionItems.length > 0 || worksheetQuestions.length > 0) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {questionItems.length > 0 && (
-                  <section className="border border-slate-200 rounded-lg p-4 bg-slate-50/40">
+                  <section className="border border-[#E7E0D4] rounded-lg p-4 bg-slate-50/40">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                       Questions &amp; Answers (سوال و جواب / Q&amp;A)
                     </h3>
-                    <ul className="space-y-1.5 text-xs sm:text-sm text-slate-800 leading-relaxed">
+                    <ul className="space-y-1.5 text-xs sm:text-sm text-[#1C1917] leading-relaxed">
                       {questionItems.map((q, idx) => (
                         <li key={idx}>{q}</li>
                       ))}
@@ -1590,11 +1590,11 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 )}
 
                 {worksheetQuestions.length > 0 && (
-                  <section className="border border-slate-200 rounded-lg p-4 bg-slate-50/40">
+                  <section className="border border-[#E7E0D4] rounded-lg p-4 bg-slate-50/40">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B] mb-2">
                       Exercises &amp; Practice (مشقی سرگرمیاں)
                     </h3>
-                    <ul className="space-y-1.5 text-xs sm:text-sm text-slate-800 leading-relaxed">
+                    <ul className="space-y-1.5 text-xs sm:text-sm text-[#1C1917] leading-relaxed">
                       {worksheetQuestions.map((ex, idx) => (
                         <li key={idx}>{ex}</li>
                       ))}
@@ -1607,16 +1607,16 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
             {/* Signature Footer for Official School Record */}
             <div
               dir="ltr"
-              className="pt-6 mt-4 border-t border-slate-200 grid grid-cols-2 gap-8 text-xs text-slate-600"
+              className="pt-6 mt-4 border-t border-[#E7E0D4] grid grid-cols-2 gap-8 text-xs text-[#57534E]"
             >
               <div>
-                <div className="h-10 border-b border-slate-400 mb-1.5" />
-                <p className="font-semibold text-slate-900">Signature of Subject Teacher</p>
+                <div className="h-10 border-b border-[#C2B7A8] mb-1.5" />
+                <p className="font-semibold text-[#1C1917]">Signature of Subject Teacher</p>
                 <p>{teacherName}</p>
               </div>
               <div>
-                <div className="h-10 border-b border-slate-400 mb-1.5" />
-                <p className="font-semibold text-slate-900">
+                <div className="h-10 border-b border-[#C2B7A8] mb-1.5" />
+                <p className="font-semibold text-[#1C1917]">
                   Checked &amp; Verified By (Headmaster / Principal)
                 </p>
                 <p>{schoolName}</p>
@@ -1628,7 +1628,7 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
         {/* VIEW 2: FLASH CARDS (Term on Left, Definition on Right, Dashed Cutting Line in Middle) */}
         {activeView === 'flashcards' && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5">
+            <div className="flex items-center justify-between text-xs text-[#57534E] bg-slate-50 border border-[#E7E0D4] rounded-lg px-4 py-2.5">
               <span>
                 Classroom Cut-Out Activity: Cut along the horizontal card borders and fold or cut along the center vertical dashed line.
               </span>
@@ -1641,32 +1641,32 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               {vocabItems.map((item, idx) => (
                 <div
                   key={idx}
-                  className="grid grid-cols-1 sm:grid-cols-2 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden bg-white"
+                  className="grid grid-cols-1 sm:grid-cols-2 border-2 border-dashed border-[#D6CCC2] rounded-xl overflow-hidden bg-white"
                 >
                   {/* Left Side: Term */}
-                  <div className="p-5 flex flex-col justify-center bg-[#00563B]/5 border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-slate-400 relative">
+                  <div className="p-5 flex flex-col justify-center bg-[#00563B]/5 border-b-2 sm:border-b-0 sm:border-r-2 border-dashed border-[#C2B7A8] relative">
                     <span className="text-[11px] font-mono uppercase tracking-wider text-[#00563B] font-semibold">
                       TERM #{idx + 1} · {subject}
                     </span>
                     <h4
                       dir={hasRtlScript(item.term) ? 'rtl' : 'ltr'}
-                      className="text-lg font-bold text-slate-900 mt-1"
+                      className="text-lg font-bold text-[#1C1917] mt-1"
                     >
                       {item.term}
                     </h4>
-                    <span className="hidden sm:flex items-center justify-center w-6 h-6 rounded-full bg-white border border-slate-300 text-slate-500 absolute -right-3 top-1/2 -translate-y-1/2">
+                    <span className="hidden sm:flex items-center justify-center w-6 h-6 rounded-full bg-white border border-[#D6CCC2] text-[#57534E] absolute -right-3 top-1/2 -translate-y-1/2">
                       <Scissors className="w-3.5 h-3.5" />
                     </span>
                   </div>
 
                   {/* Right Side: Definition */}
                   <div className="p-5 flex flex-col justify-center bg-white">
-                    <span className="text-[11px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
+                    <span className="text-[11px] font-mono uppercase tracking-wider text-[#78716C] font-semibold">
                       DEFINITION / MEANING (معنی)
                     </span>
                     <p
                       dir={hasRtlScript(item.definition) ? 'rtl' : 'ltr'}
-                      className="text-sm text-slate-800 leading-relaxed mt-1 font-medium"
+                      className="text-sm text-[#1C1917] leading-relaxed mt-1 font-medium"
                     >
                       {item.definition}
                     </p>
@@ -1681,17 +1681,17 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
         {activeView === 'worksheet' && (
           <div className="space-y-6 text-sm">
             {/* Student Fill-In Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-slate-300 rounded-lg p-3.5 bg-slate-50/50 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-[#D6CCC2] rounded-lg p-3.5 bg-slate-50/50 text-xs">
               <div className="flex items-end gap-2">
-                <span className="font-semibold text-slate-700 shrink-0">Student Name:</span>
+                <span className="font-semibold text-[#44403C] shrink-0">Student Name:</span>
                 <div className="flex-1 border-b border-dotted border-slate-500 h-5" />
               </div>
               <div className="flex items-end gap-2">
-                <span className="font-semibold text-slate-700 shrink-0">Roll No / Sec:</span>
+                <span className="font-semibold text-[#44403C] shrink-0">Roll No / Sec:</span>
                 <div className="flex-1 border-b border-dotted border-slate-500 h-5" />
               </div>
               <div className="flex items-end gap-2">
-                <span className="font-semibold text-slate-700 shrink-0">Marks Obtained:</span>
+                <span className="font-semibold text-[#44403C] shrink-0">Marks Obtained:</span>
                 <div className="flex-1 border-b border-dotted border-slate-500 h-5 font-mono text-right">
                   / 20
                 </div>
@@ -1709,12 +1709,12 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
               {worksheetQuestions.map((qText, idx) => (
                 <div key={idx} className="space-y-2.5">
-                  <p className="font-semibold text-slate-900">
+                  <p className="font-semibold text-[#1C1917]">
                     {qText}
                   </p>
                   <div className="space-y-2.5 pt-1">
-                    <div className="border-b-2 border-dotted border-slate-400 h-6" />
-                    <div className="border-b-2 border-dotted border-slate-400 h-6" />
+                    <div className="border-b-2 border-dotted border-[#C2B7A8] h-6" />
+                    <div className="border-b-2 border-dotted border-[#C2B7A8] h-6" />
                   </div>
                 </div>
               ))}
@@ -1731,10 +1731,10 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               <div className="grid grid-cols-1 gap-3">
                 {vocabItems.slice(0, 5).map((v, i) => (
                   <div key={i} className="flex items-end gap-2 text-xs">
-                    <span className="font-bold text-slate-900 w-40 shrink-0">
+                    <span className="font-bold text-[#1C1917] w-40 shrink-0">
                       {i + 1}. {v.term}:
                     </span>
-                    <div className="flex-1 border-b-2 border-dotted border-slate-400 h-5" />
+                    <div className="flex-1 border-b-2 border-dotted border-[#C2B7A8] h-5" />
                   </div>
                 ))}
               </div>
@@ -1746,13 +1746,13 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B]">
                   Part C: Creative Drawing, Labeled Diagram &amp; Activity Box
                 </h3>
-                <span className="text-xs font-mono text-slate-500">5 Marks</span>
+                <span className="text-xs font-mono text-[#57534E]">5 Marks</span>
               </div>
               <div className="border-2 border-dashed border-[#00563B]/50 rounded-xl h-64 bg-slate-50/40 flex flex-col justify-between p-4">
-                <p className="text-xs text-slate-500 italic">
+                <p className="text-xs text-[#57534E] italic">
                   Draw and label a neat diagram, picture, or visual chart illustrating &ldquo;{topic}&rdquo; ({chapter}):
                 </p>
-                <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-dotted border-slate-300 pt-2">
+                <div className="flex items-center justify-between text-[11px] text-[#78716C] border-t border-dotted border-[#D6CCC2] pt-2">
                   <span>Label key parts clearly with pencil</span>
                   <span>Teacher Initials: _______________</span>
                 </div>
@@ -1764,22 +1764,22 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
         {/* VIEW 4: BLOOM'S TAXONOMY ASSESSMENT */}
         {activeView === 'assessment' && (
           <div className="space-y-5 text-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-[#E7E0D4] rounded-lg px-4 py-3">
               <div>
                 <h3 className="text-xs font-bold uppercase tracking-wider text-[#00563B]">
                   Bloom&apos;s Taxonomy Cognitive Assessment &amp; Q&amp;A
                 </h3>
-                <p className="text-xs text-slate-600 mt-0.5">
+                <p className="text-xs text-[#57534E] mt-0.5">
                   Evaluates Lower-Order Thinking Skills (LOTS) to Higher-Order Thinking Skills (HOTS) using curriculum Q&amp;A.
                 </p>
               </div>
-              <div className="text-xs font-mono font-bold text-slate-900 tabular-nums">
+              <div className="text-xs font-mono font-bold text-[#1C1917] tabular-nums">
                 Total Marks:{' '}
                 {bloomQuestions.reduce((acc, q) => acc + (Number(q.marks) || 3), 0)}
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+            <div className="overflow-x-auto border border-[#E7E0D4] rounded-lg">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-[#00563B] text-white text-xs uppercase">
@@ -1789,15 +1789,15 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                     <th className="py-2.5 px-3.5 font-semibold text-right w-24">Marks</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200 text-xs sm:text-sm">
+                <tbody className="divide-y divide-[#E7E0D4] text-xs sm:text-sm">
                   {bloomQuestions.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="py-3 px-3.5 font-mono tabular-nums text-slate-500">
+                    <tr key={idx} className="hover:bg-[#FAF8F5]">
+                      <td className="py-3 px-3.5 font-mono tabular-nums text-[#57534E]">
                         0{idx + 1}
                       </td>
                       <td className="py-3 px-3.5">
                         <span className="font-bold text-[#00563B] block">{item.level}</span>
-                        <span className="text-[11px] text-slate-500">
+                        <span className="text-[11px] text-[#57534E]">
                           {idx < 2
                             ? 'Recall & Comprehension'
                             : idx < 4
@@ -1807,12 +1807,12 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
                       </td>
                       <td
                         dir={hasRtlScript(item.question) ? 'rtl' : 'ltr'}
-                        className="py-3 px-3.5 text-slate-800 leading-relaxed"
+                        className="py-3 px-3.5 text-[#1C1917] leading-relaxed"
                       >
                         {item.question}
-                        <div className="mt-2 border-b border-dotted border-slate-300 h-4" />
+                        <div className="mt-2 border-b border-dotted border-[#D6CCC2] h-4" />
                       </td>
-                      <td className="py-3 px-3.5 text-right font-mono tabular-nums font-semibold text-slate-900">
+                      <td className="py-3 px-3.5 text-right font-mono tabular-nums font-semibold text-[#1C1917]">
                         {item.marks} Marks
                       </td>
                     </tr>

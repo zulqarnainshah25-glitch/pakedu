@@ -117,32 +117,32 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Unified AI School Management & SELD Education ERP',
     badge: 'Overview',
     icon: <Home className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-dashboard': {
     title: 'SMS Command Center',
     subtitle: 'Institutional metrics, class enrollment, and school administrative overview',
     badge: 'SMS Center',
     icon: <SchoolIcon className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-classes': {
     title: 'Classes & Sections',
     subtitle: 'Grade levels (KG–12), instruction mediums, and class teacher allocations',
     badge: 'Phase 1 Ready',
     icon: <GraduationCap className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-students': {
     title: 'Student Register (SIS)',
     subtitle: 'General Register (GR) admissions, B-Form records, and student demographics',
     badge: 'Active · Phase 2',
     icon: <Users className="w-5 h-5" />,
-    iconBg: 'bg-sky-50 dark:bg-sky-950/60',
-    iconColor: 'text-sky-600 dark:text-sky-400',
+    iconBg: 'bg-[#FFF7ED] dark:bg-[#7C2D12]/60',
+    iconColor: 'text-[#C2410C] dark:text-[#FDBA74]',
   },
   'sms-attendance': {
     title: 'Daily Attendance Register',
@@ -157,16 +157,16 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Register your school or apply to join an existing faculty roster',
     badge: 'Verification Gateway',
     icon: <Building className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-staff': {
     title: 'Faculty & Teacher Management',
     subtitle: 'Manage faculty assignments and review pending teacher join requests',
     badge: 'Admin Authority',
     icon: <UserCheck className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-profile': {
     title: 'Teacher Profile & Portfolio',
@@ -189,16 +189,16 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Exam setup, subject-wise marks entry, class positions, and printable A4 report cards',
     badge: 'Academics · Phase B',
     icon: <Award className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-timetable': {
     title: 'Class Timetable & Schedules',
     subtitle: 'Weekly period-by-period class routine, subject teachers & mobile daily schedule',
     badge: 'Schedule · Phase D',
     icon: <CalendarDays className="w-5 h-5" />,
-    iconBg: 'bg-sky-50 dark:bg-sky-950/60',
-    iconColor: 'text-sky-600 dark:text-sky-400',
+    iconBg: 'bg-[#FFF7ED] dark:bg-[#7C2D12]/60',
+    iconColor: 'text-[#C2410C] dark:text-[#FDBA74]',
   },
   'sms-homework': {
     title: 'Homework & Class Diary',
@@ -221,16 +221,16 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Read-only student attendance, fee ledger, and published A4 exam report cards',
     badge: 'Parent Portal',
     icon: <Users className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'sms-student-portal': {
     title: 'Student Portal & Academic Progress',
     subtitle: 'Read-only attendance, homework diary, class timetable, and exam report cards',
     badge: 'Student Portal',
     icon: <GraduationCap className="w-5 h-5" />,
-    iconBg: 'bg-sky-50 dark:bg-sky-950/60',
-    iconColor: 'text-sky-600 dark:text-sky-400',
+    iconBg: 'bg-[#FFF7ED] dark:bg-[#7C2D12]/60',
+    iconColor: 'text-[#C2410C] dark:text-[#FDBA74]',
   },
   'super-admin': {
     title: 'Portal Super Admin Console',
@@ -245,16 +245,16 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Official Sindh STBB & Punjab PTB curriculum lesson plans with SLOs and assessment',
     badge: 'STBB / PTB Aligned',
     icon: <BookOpen className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'salary-calculator': {
     title: 'Sindh Salary Calculator 2026',
     subtitle: 'Automated BPS-01 to BPS-22 salary, allowances, and net pay breakdown',
     badge: 'Budget 2026',
     icon: <Calculator className="w-5 h-5" />,
-    iconBg: 'bg-sky-50 dark:bg-sky-950/60',
-    iconColor: 'text-sky-600 dark:text-sky-400',
+    iconBg: 'bg-[#FFF7ED] dark:bg-[#7C2D12]/60',
+    iconColor: 'text-[#C2410C] dark:text-[#FDBA74]',
   },
   'leave-generator': {
     title: 'SELD FRAMES Leave Application',
@@ -269,8 +269,8 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'AI-Powered executive ATS resume studio with live inline editing & PDF/Word export',
     badge: 'ATS Studio',
     icon: <Briefcase className="w-5 h-5" />,
-    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
-    iconColor: 'text-indigo-600 dark:text-indigo-400',
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
   },
   'service-book': {
     title: 'Service Book & Pension Calculator',
@@ -285,8 +285,8 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Class 1–12 exam paper builder with English, Urdu & Sindhi support and school logo',
     badge: 'Exam Builder',
     icon: <FileSpreadsheet className="w-5 h-5" />,
-    iconBg: 'bg-violet-50 dark:bg-violet-950/60',
-    iconColor: 'text-violet-600 dark:text-violet-400',
+    iconBg: 'bg-[#FFF7ED] dark:bg-[#7C2D12]/60',
+    iconColor: 'text-[#C2410C] dark:text-[#FDBA74]',
   },
 };
 
@@ -740,9 +740,9 @@ function AppContent() {
   if (portalAccess.isInitializing) {
     return (
       <div
-        className="min-h-[100dvh] w-[100vw] max-w-full flex flex-col items-center justify-center px-[6vw] py-[5vh] text-white relative overflow-hidden select-none"
+        className="min-h-[100dvh] w-[100vw] max-w-full flex flex-col items-center justify-center px-[6vw] py-[5vh] text-[#FAF8F5] relative overflow-hidden select-none"
         style={{
-          background: 'linear-gradient(145deg, #090e1a 0%, #1e1b4b 55%, #0f172a 100%)',
+          background: 'linear-gradient(145deg, #2C1215 0%, #58181D 55%, #3F1014 100%)',
         }}
       >
         <div className="allforu-progress-bar" />
@@ -750,41 +750,41 @@ function AppContent() {
         {/* Ambient responsive glow orbs (viewport-bounded so zero clipping on mobile) */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-[12vh] -right-[12vw] w-[55vw] h-[55vw] max-w-[320px] max-h-[320px] rounded-full bg-indigo-500/20 blur-3xl"
+          className="pointer-events-none absolute -top-[12vh] -right-[12vw] w-[55vw] h-[55vw] max-w-[320px] max-h-[320px] rounded-full bg-[#C2410C]/20 blur-3xl"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-[12vh] -left-[12vw] w-[55vw] h-[55vw] max-w-[320px] max-h-[320px] rounded-full bg-sky-500/15 blur-3xl"
+          className="pointer-events-none absolute -bottom-[12vh] -left-[12vw] w-[55vw] h-[55vw] max-w-[320px] max-h-[320px] rounded-full bg-[#B45309]/15 blur-3xl"
         />
 
         <div className="relative z-10 w-full max-w-[90vw] sm:max-w-md flex flex-col items-center justify-center text-center space-y-4">
           {/* Responsive animated emblem */}
           <div className="relative flex items-center justify-center">
-            <div className="pakedu-splash-ring w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border border-indigo-400/35 bg-indigo-500/15 backdrop-blur-md flex items-center justify-center shadow-2xl">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-500 flex items-center justify-center shadow-lg">
-                <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-white" />
+            <div className="pakedu-splash-ring w-20 h-20 sm:w-24 sm:h-24 rounded-3xl border border-[#FED7AA]/30 bg-[#FFFDF9]/10 backdrop-blur-md flex items-center justify-center shadow-2xl">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#7F1D1D] to-[#C2410C] flex items-center justify-center shadow-lg">
+                <ShieldCheck className="w-7 h-7 sm:w-8 sm:h-8 text-[#FFFDF9]" />
               </div>
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-indigo-200">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFFDF9]/10 border border-[rgba(255,253,249,0.18)] text-[10px] sm:text-xs font-bold uppercase tracking-wider text-[#FED7AA]">
               PakEdu · SELD Enterprise ERP
             </span>
-            <h1 className="text-[clamp(1.125rem,4.5vw,1.5rem)] font-extrabold tracking-tight text-white leading-snug">
+            <h1 className="text-[clamp(1.125rem,4.5vw,1.5rem)] font-extrabold tracking-tight text-[#FAF8F5] leading-snug">
               Launching Your School Workspace
             </h1>
-            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed max-w-[32ch] mx-auto">
+            <p className="text-xs sm:text-sm text-[#E7E0D4] leading-relaxed max-w-[32ch] mx-auto">
               Verifying secure institutional session and syncing modules...
             </p>
           </div>
 
           {/* Mobile-safe indeterminate progress shimmer */}
-          <div className="w-[68vw] max-w-[240px] h-1.5 rounded-full bg-white/10 overflow-hidden">
-            <div className="pakedu-splash-bar h-full w-1/2 rounded-full bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-400" />
+          <div className="w-[68vw] max-w-[240px] h-1.5 rounded-full bg-[#FFFDF9]/15 overflow-hidden">
+            <div className="pakedu-splash-bar h-full w-1/2 rounded-full bg-gradient-to-r from-[#7F1D1D] via-[#C2410C] to-[#B45309]" />
           </div>
 
-          <p className="text-[10px] font-mono text-slate-400">
+          <p className="text-[10px] font-mono text-[#D6CCC2]">
             Unified ID · {UNIFIED_FIREBASE_PROJECT_ID}
           </p>
         </div>
@@ -817,7 +817,7 @@ function AppContent() {
   return (
     <div
       className={`min-h-screen flex flex-col lg:flex-row transition-colors w-full max-w-full overflow-x-hidden ${
-        darkMode ? 'bg-[#0b0f19] text-[#f8fafc]' : 'bg-[#f8fafc] text-[#0f172a]'
+        darkMode ? 'bg-[#160D0E] text-[#FAF8F5]' : 'bg-[#FAF8F5] text-[#1C1917]'
       }`}
     >
       {/* Top 3px Progress / Accent Bar */}
@@ -834,19 +834,19 @@ function AppContent() {
 
       {/* Floating Exit Button when in A4 Print Preview Mode */}
       {isPrintPreview && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg border border-slate-700">
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-[#2C1215] text-white px-4 py-2.5 rounded-xl shadow-lg border border-[rgba(255,253,249,0.14)]">
           <span className="text-xs font-medium">A4 Print Mode Active</span>
           <button
             type="button"
             onClick={triggerPrintDocument}
-            className="px-3 py-1 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 rounded-lg cursor-pointer"
+            className="px-3 py-1 text-xs font-semibold bg-[#7F1D1D] hover:bg-[#651414] rounded-lg cursor-pointer"
           >
             Send to Printer
           </button>
           <button
             type="button"
             onClick={togglePrintPreview}
-            className="px-3 py-1 text-xs font-semibold bg-white/15 hover:bg-white/25 rounded-lg cursor-pointer"
+            className="px-3 py-1 text-xs font-semibold bg-white/15 hover:bg-[#FFFDF9]/25 rounded-lg cursor-pointer"
           >
             Exit Preview
           </button>
@@ -854,16 +854,16 @@ function AppContent() {
       )}
 
       {/* =================================================================== */}
-      {/* DESKTOP & MOBILE SIDEBAR NAVIGATION (Deep Navy & Slate)             */}
+      {/* DESKTOP & MOBILE SIDEBAR NAVIGATION (Deep Espresso-Burgundy)        */}
       {/* =================================================================== */}
       <aside
-        className={`app-sidebar no-print fixed inset-y-0 left-0 z-40 w-72 bg-slate-900 border-r border-slate-800 text-slate-300 flex flex-col justify-between transition-transform duration-200 ease-out lg:static lg:translate-x-0 shrink-0 shadow-xl ${
+        className={`app-sidebar no-print fixed inset-y-0 left-0 z-40 w-72 bg-[#2C1215] border-r border-[rgba(255,253,249,0.10)] text-[#FAF8F5] flex flex-col justify-between transition-transform duration-200 ease-out lg:static lg:translate-x-0 shrink-0 shadow-xl ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
         <div>
           {/* Sidebar Brand Header */}
-          <div className="px-5 py-5 border-b border-slate-800 flex items-center justify-between">
+          <div className="px-5 py-5 border-b border-[rgba(255,253,249,0.10)] flex items-center justify-between">
             <div
               onClick={() =>
                 selectTool(
@@ -882,19 +882,19 @@ function AppContent() {
               }
               className="flex items-center gap-3 cursor-pointer group"
             >
-              <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
-                <GraduationCap className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-xl bg-[#C2410C] text-[#FFFDF9] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+                <GraduationCap className="w-5 h-5 text-[#FFFDF9]" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-lg font-bold tracking-tight text-white leading-none">
+                  <span className="text-lg font-bold tracking-tight text-[#FAF8F5] leading-none">
                     PakEdu
                   </span>
-                  <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-[#C2410C]/25 text-[#FED7AA] border border-[#C2410C]/40">
                     ENTERPRISE
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 block mt-1">
+                <span className="text-[11px] text-[#D6CCC2] block mt-1">
                   Sindh SELD Portal
                 </span>
               </div>
@@ -902,7 +902,7 @@ function AppContent() {
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden p-1.5 text-slate-400 hover:text-white rounded-lg cursor-pointer"
+              className="lg:hidden p-1.5 text-[#D6CCC2] hover:text-[#FAF8F5] rounded-lg cursor-pointer"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
@@ -918,14 +918,14 @@ function AppContent() {
                 onClick={() => selectTool('dashboard')}
                 className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                   activeTool === 'dashboard'
-                    ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                    ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                    : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                 }`}
               >
-                <Home className={`w-4 h-4 shrink-0 ${activeTool === 'dashboard' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                <Home className={`w-4 h-4 shrink-0 ${activeTool === 'dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                 <div className="truncate">
                   <span className="block truncate">Platform Overview</span>
-                  <span className="text-[11px] block truncate text-slate-500">
+                  <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                     ERP Suite Dashboard
                   </span>
                 </div>
@@ -935,7 +935,7 @@ function AppContent() {
             {/* Strict Read-Only Parent Portal Section */}
             {isParentUser && (
               <>
-                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
+                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between">
                   <span>Parent Portal</span>
                   <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                     Read-Only
@@ -946,14 +946,14 @@ function AppContent() {
                   onClick={() => selectTool('sms-parent')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-parent'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <Users className="w-4 h-4 shrink-0 text-indigo-400" />
+                  <Users className="w-4 h-4 shrink-0 text-[#FED7AA]" />
                   <div className="truncate flex-1">
                     <span className="block truncate">Child Progress Portal</span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       Attendance, Fees &amp; Results
                     </span>
                   </div>
@@ -964,7 +964,7 @@ function AppContent() {
             {/* Strict Read-Only Student Portal Section */}
             {isStudentUser && (
               <>
-                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center justify-between">
+                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between">
                   <span>Student Portal</span>
                   <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                     Read-Only
@@ -975,14 +975,14 @@ function AppContent() {
                   onClick={() => selectTool('sms-student-portal')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-student-portal'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-sky-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <GraduationCap className="w-4 h-4 shrink-0 text-sky-400" />
+                  <GraduationCap className="w-4 h-4 shrink-0 text-[#FED7AA]" />
                   <div className="truncate flex-1">
                     <span className="block truncate">My Student Portal</span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       Attendance, Homework &amp; Results
                     </span>
                   </div>
@@ -992,23 +992,23 @@ function AppContent() {
 
             {/* Affiliated School Context Card (Shown for Verified School Users; excluded for Super Admin) */}
             {isAffiliatedUser && !isSuperAdminActive && (
-              <div className="mb-2 p-3 rounded-xl bg-slate-800/90 border border-indigo-500/30 text-xs">
-                <div className="flex items-center justify-between text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-1.5">
+              <div className="mb-2 p-3 rounded-xl bg-[#3F1014]/90 border border-[#7F1D1D]/30 text-xs">
+                <div className="flex items-center justify-between text-[10px] text-[#FED7AA] font-bold uppercase tracking-wider mb-1.5">
                   <span className="flex items-center gap-1.5">
-                    <Building className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <Building className="w-3.5 h-3.5 text-[#FED7AA] shrink-0" />
                     School Workspace
                   </span>
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 font-mono text-[9px] font-bold border border-indigo-500/30">
+                  <span className="px-1.5 py-0.5 rounded bg-[#7F1D1D]/20 text-[#FED7AA] font-mono text-[9px] font-bold border border-[#7F1D1D]/30">
                     {activeSchool?.semisCode || 'SEMIS'}
                   </span>
                 </div>
                 <div className="font-semibold text-white truncate text-xs" title={activeSchool?.name || currentUserProfile?.schoolName}>
                   {activeSchool?.name || currentUserProfile?.schoolName || 'Govt. High School'}
                 </div>
-                <div className="mt-2 pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+                <div className="mt-2 pt-2 border-t border-[rgba(255,253,249,0.10)] flex items-center justify-between text-[11px]">
                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
                     userRole === 'admin'
-                      ? 'bg-indigo-500/20 text-indigo-300'
+                      ? 'bg-[#7F1D1D]/20 text-[#FED7AA]'
                       : 'bg-emerald-500/20 text-emerald-300'
                   }`}>
                     {userRole === 'admin' ? '👑 School Admin' : '🧑‍🏫 Faculty'}
@@ -1016,7 +1016,7 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => selectTool('sms-onboarding')}
-                    className="text-indigo-400 hover:text-indigo-300 font-semibold hover:underline cursor-pointer"
+                    className="text-[#FED7AA] hover:text-[#FAF8F5] font-semibold hover:underline cursor-pointer"
                   >
                     Switch School
                   </button>
@@ -1042,14 +1042,14 @@ function AppContent() {
                   }}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'super-admin' && superAdminTab === 'analytics'
-                      ? 'bg-indigo-950/70 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3.5'
                   }`}
                 >
-                  <TrendingUp className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'analytics' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                  <TrendingUp className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'analytics' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
                   <div className="truncate flex-1">
                     <span className="block truncate font-semibold">Platform Overview</span>
-                    <span className="text-[11px] block truncate text-slate-400">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]">
                       Analytics &amp; System KPIs
                     </span>
                   </div>
@@ -1063,7 +1063,7 @@ function AppContent() {
                   }}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
-                      ? 'bg-rose-950/70 text-white font-semibold shadow-xs border-l-[3px] border-rose-500 pl-3'
+                      ? 'bg-[#7F1D1D] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
                       : 'text-rose-200/80 hover:text-white hover:bg-rose-950/40 pl-3.5'
                   }`}
                 >
@@ -1075,7 +1075,7 @@ function AppContent() {
                         Root
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-400">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]">
                       Schools Directory &amp; Approvals
                     </span>
                   </div>
@@ -1089,14 +1089,14 @@ function AppContent() {
                   }}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'super-admin' && superAdminTab === 'notices'
-                      ? 'bg-amber-950/70 text-white font-semibold shadow-xs border-l-[3px] border-amber-400 pl-3'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3.5'
                   }`}
                 >
-                  <Megaphone className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'notices' ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <Megaphone className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'notices' ? 'text-amber-400' : 'text-[#D6CCC2]'}`} />
                   <div className="truncate flex-1">
                     <span className="block truncate font-semibold">Notice Board</span>
-                    <span className="text-[11px] block truncate text-slate-400">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]">
                       Global Announcements
                     </span>
                   </div>
@@ -1116,12 +1116,12 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('sms-dashboard')}
-                  className="w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-amber-400 pl-3 cursor-pointer"
+                  className="w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3 cursor-pointer"
                 >
                   <Eye className="w-4 h-4 shrink-0 text-amber-400" />
                   <div className="truncate">
                     <span className="block truncate">School Admin View</span>
-                    <span className="text-[11px] block truncate text-slate-400">Strict Read-Only Oversight</span>
+                    <span className="text-[11px] block truncate text-[#D6CCC2]">Strict Read-Only Oversight</span>
                   </div>
                 </button>
                 <button
@@ -1145,12 +1145,12 @@ function AppContent() {
             {/* ======================================================= */}
             {(isAffiliatedUser || (demoMode && userRole !== 'super-admin')) && !isSuperAdminActive && (
               <>
-                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
+                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between">
                   <span>{isAffiliatedUser ? 'School Operations' : 'School Management (SMS)'}</span>
                   {demoMode ? (
                     <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider ${
                       userRole === 'admin'
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                        ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/40'
                         : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
                     }`}>
                       {userRole === 'admin' ? '👑 Admin (Demo)' : '🧑‍🏫 Teacher (Demo)'}
@@ -1172,16 +1172,16 @@ function AppContent() {
                   onClick={() => selectTool('sms-dashboard')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-dashboard'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <SchoolIcon className={`w-4 h-4 shrink-0 ${activeTool === 'sms-dashboard' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <SchoolIcon className={`w-4 h-4 shrink-0 ${activeTool === 'sms-dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <span className="block truncate">
                       {userRole === 'teacher' ? 'My Dashboard' : 'SMS Command Center'}
                     </span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'teacher' ? 'Teaching Overview & Schedule' : 'School Admin & Overview'}
                     </span>
                   </div>
@@ -1193,11 +1193,11 @@ function AppContent() {
                   onClick={() => selectTool('sms-classes')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-classes'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <GraduationCap className={`w-4 h-4 shrink-0 ${activeTool === 'sms-classes' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <GraduationCap className={`w-4 h-4 shrink-0 ${activeTool === 'sms-classes' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">
@@ -1205,13 +1205,13 @@ function AppContent() {
                       </span>
                       <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
                         userRole === 'admin'
-                          ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                          ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30'
                           : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                       }`}>
                         {userRole === 'admin' ? 'Admin' : 'Assigned'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'admin' ? 'Manage KG–12 & Incharges' : 'Assigned Sections & Subjects'}
                     </span>
                   </div>
@@ -1226,11 +1226,11 @@ function AppContent() {
                   }}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-students'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <Users className={`w-4 h-4 shrink-0 ${activeTool === 'sms-students' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <Users className={`w-4 h-4 shrink-0 ${activeTool === 'sms-students' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">
@@ -1240,7 +1240,7 @@ function AppContent() {
                         {userRole === 'teacher' ? 'Roster' : 'Active'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'teacher' ? 'Assigned Class Students' : 'GR Admissions & B-Form'}
                     </span>
                   </div>
@@ -1255,11 +1255,11 @@ function AppContent() {
                   }}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-attendance'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <CalendarCheck2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-attendance' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <CalendarCheck2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-attendance' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">
@@ -1269,7 +1269,7 @@ function AppContent() {
                         {userRole === 'teacher' ? 'Roll Call' : 'Active'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'teacher' ? 'Daily Section Register' : 'Roll Call & A4 Register'}
                     </span>
                   </div>
@@ -1281,19 +1281,19 @@ function AppContent() {
                   onClick={() => selectTool('sms-exams')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-exams'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <Award className={`w-4 h-4 shrink-0 ${activeTool === 'sms-exams' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <Award className={`w-4 h-4 shrink-0 ${activeTool === 'sms-exams' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">Exams &amp; Results</span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
                         {userRole === 'teacher' ? 'Marks' : 'Phase B'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'teacher' ? 'Marks Entry & Report Cards' : 'Exam Setup, Marks & PDF Cards'}
                     </span>
                   </div>
@@ -1305,19 +1305,19 @@ function AppContent() {
                   onClick={() => selectTool('sms-timetable')}
                   className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-timetable'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-sky-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <CalendarDays className={`w-4 h-4 shrink-0 ${activeTool === 'sms-timetable' ? 'text-sky-400' : 'text-slate-500'}`} />
+                  <CalendarDays className={`w-4 h-4 shrink-0 ${activeTool === 'sms-timetable' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">Timetable &amp; Routine</span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 shrink-0">
+                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-[#C2410C]/20 text-[#FED7AA] border border-[#C2410C]/30 shrink-0">
                         Phase D
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'admin' ? 'Build Period Schedule' : 'Class Period Routine'}
                     </span>
                   </div>
@@ -1329,11 +1329,11 @@ function AppContent() {
                   onClick={() => selectTool('sms-homework')}
                   className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-homework'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#3F1014] text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'sms-homework' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'sms-homework' ? 'text-emerald-400' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">Homework &amp; Diary</span>
@@ -1341,7 +1341,7 @@ function AppContent() {
                         Diary
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       Daily Subject Assignments
                     </span>
                   </div>
@@ -1354,11 +1354,11 @@ function AppContent() {
                     onClick={() => selectTool('sms-certificates')}
                     className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-certificates'
-                        ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-amber-500 pl-3'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                     }`}
                   >
-                    <FileBadge2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-certificates' ? 'text-amber-400' : 'text-slate-500'}`} />
+                    <FileBadge2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-certificates' ? 'text-amber-400' : 'text-[#D6CCC2]/75'}`} />
                     <div className="truncate flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span className="block truncate">Certificates (TC / CC)</span>
@@ -1366,7 +1366,7 @@ function AppContent() {
                           Admin
                         </span>
                       </div>
-                      <span className="text-[11px] block truncate text-slate-500">
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                         Transfer &amp; Character A4
                       </span>
                     </div>
@@ -1380,11 +1380,11 @@ function AppContent() {
                     onClick={() => selectTool('sms-staff')}
                     className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-staff'
-                        ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                     }`}
                   >
-                    <UserCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-staff' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                    <UserCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-staff' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="truncate flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span className="block truncate">Faculty &amp; Requests</span>
@@ -1393,12 +1393,12 @@ function AppContent() {
                             {pendingJoinRequests.length} Pending
                           </span>
                         ) : (
-                          <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                          <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
                             Admin
                           </span>
                         )}
                       </div>
-                      <span className="text-[11px] block truncate text-slate-500">
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                         Incharges &amp; Approvals
                       </span>
                     </div>
@@ -1412,23 +1412,23 @@ function AppContent() {
                     onClick={() => selectTool('sms-fees')}
                     className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-fees'
-                        ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                        ? 'bg-[#3F1014] text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                     }`}
                   >
-                    <Receipt className={`w-4 h-4 shrink-0 ${activeTool === 'sms-fees' ? 'text-emerald-400' : 'text-slate-500'}`} />
+                    <Receipt className={`w-4 h-4 shrink-0 ${activeTool === 'sms-fees' ? 'text-emerald-400' : 'text-[#D6CCC2]/75'}`} />
                     <div className="truncate flex-1">
                       <div className="flex items-center justify-between gap-1">
                         <span className="block truncate">Fee Management</span>
                         <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
                           userRole === 'admin'
-                            ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                            ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30'
                             : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                         }`}>
                           {userRole === 'admin' ? 'Accounts' : 'Incharge'}
                         </span>
                       </div>
-                      <span className="text-[11px] block truncate text-slate-500">
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                         Structure, Vouchers &amp; Reports
                       </span>
                     </div>
@@ -1441,16 +1441,16 @@ function AppContent() {
                   onClick={() => selectTool('sms-profile')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-profile'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-profile' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-profile' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <span className="block truncate">
                       {userRole === 'teacher' ? 'My Profile' : 'My School Profile'}
                     </span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       {userRole === 'teacher' ? 'Institutional Credentials & Roles' : 'Admin Credentials & School Info'}
                     </span>
                   </div>
@@ -1463,14 +1463,14 @@ function AppContent() {
                     onClick={() => selectTool('sms-onboarding')}
                     className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-onboarding'
-                        ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                     }`}
                   >
-                    <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                    <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="truncate flex-1">
                       <span className="block truncate">{isAffiliatedUser ? 'Switch / Add School' : 'Join / Register School'}</span>
-                      <span className="text-[11px] block truncate text-slate-500">
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                         Affiliation &amp; Verification
                       </span>
                     </div>
@@ -1485,10 +1485,10 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => setShowPublicTools(true)}
-                  className="w-full py-2 px-3 rounded-xl border border-dashed border-slate-700 hover:border-slate-500 bg-slate-900/40 hover:bg-slate-800/50 text-slate-400 hover:text-slate-200 text-xs font-medium flex items-center justify-between transition cursor-pointer"
+                  className="w-full py-2 px-3 rounded-xl border border-dashed border-[rgba(255,253,249,0.10)] hover:border-[rgba(255,253,249,0.28)] bg-[#2C1215]/40 hover:bg-[#58181D]/50 text-[#D6CCC2] hover:text-[#FAF8F5] text-xs font-medium flex items-center justify-between transition cursor-pointer"
                 >
                   <span>Explore Public Tools</span>
-                  <span className="text-[10px] text-indigo-400 font-semibold">AI Studio →</span>
+                  <span className="text-[10px] text-[#FED7AA] font-semibold">AI Studio →</span>
                 </button>
               </div>
             )}
@@ -1502,10 +1502,10 @@ function AppContent() {
                     setShowPublicTools(false);
                     setActiveTool('sms-dashboard');
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-indigo-600/20 hover:bg-indigo-600/30 border border-indigo-500/40 text-indigo-300 text-xs font-medium flex items-center justify-between transition cursor-pointer"
+                  className="w-full py-2 px-3 rounded-xl bg-[#7F1D1D]/20 hover:bg-[#651414]/30 border border-[#7F1D1D]/40 text-[#FED7AA] text-xs font-medium flex items-center justify-between transition cursor-pointer"
                 >
                   <span>← Return to School SMS</span>
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-indigo-500/30">Focused</span>
+                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#7F1D1D]/30">Focused</span>
                 </button>
               </div>
             )}
@@ -1516,10 +1516,10 @@ function AppContent() {
             {/* ======================================================= */}
             {!isParentUser && !isStudentUser && !isSuperAdminActive && (!isAffiliatedUser || showPublicTools) && (
               <>
-                <div className="pt-4 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
+                <div className="pt-4 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#D6CCC2]/75 flex items-center justify-between">
                   <span>Teacher's AI Studio</span>
                   {isAffiliatedUser && (
-                    <span className="text-[9px] text-indigo-400 font-semibold uppercase">Public</span>
+                    <span className="text-[9px] text-[#FED7AA] font-semibold uppercase">Public</span>
                   )}
                 </div>
 
@@ -1529,14 +1529,14 @@ function AppContent() {
                   onClick={() => selectTool('lesson-plan')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'lesson-plan'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'lesson-plan' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'lesson-plan' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate">
                     <span className="block truncate">1. AI Lesson Planner</span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       STBB / PTB Plans
                     </span>
                   </div>
@@ -1548,14 +1548,14 @@ function AppContent() {
                   onClick={() => selectTool('salary-calculator')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'salary-calculator'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <Calculator className={`w-4 h-4 shrink-0 ${activeTool === 'salary-calculator' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <Calculator className={`w-4 h-4 shrink-0 ${activeTool === 'salary-calculator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate">
                     <span className="block truncate">2. Sindh Salary Calculator</span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       Budget 2026 · BPS-01 to 22
                     </span>
                   </div>
@@ -1567,14 +1567,14 @@ function AppContent() {
                   onClick={() => selectTool('leave-generator')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'leave-generator'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <FileSignature className={`w-4 h-4 shrink-0 ${activeTool === 'leave-generator' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <FileSignature className={`w-4 h-4 shrink-0 ${activeTool === 'leave-generator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate">
                     <span className="block truncate">3. SELD FRAMES Leave</span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       38 Leave Types · A4 Proforma
                     </span>
                   </div>
@@ -1586,19 +1586,19 @@ function AppContent() {
                   onClick={() => selectTool('atlier-cv')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'atlier-cv'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <Briefcase className={`w-4 h-4 shrink-0 ${activeTool === 'atlier-cv' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <Briefcase className={`w-4 h-4 shrink-0 ${activeTool === 'atlier-cv' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">4. AtlierCV Studio</span>
-                      <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                      <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
                         ATS
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       AI Resume Studio
                     </span>
                   </div>
@@ -1610,14 +1610,14 @@ function AppContent() {
                   onClick={() => selectTool('service-book')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'service-book'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <BookCheck className={`w-4 h-4 shrink-0 ${activeTool === 'service-book' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <BookCheck className={`w-4 h-4 shrink-0 ${activeTool === 'service-book' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <span className="block truncate">5. Service Book &amp; Pension</span>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       Time Scale &amp; 365d Leave
                     </span>
                   </div>
@@ -1629,19 +1629,19 @@ function AppContent() {
                   onClick={() => selectTool('question-paper')}
                   className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'question-paper'
-                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
-                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
                   }`}
                 >
-                  <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTool === 'question-paper' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTool === 'question-paper' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="truncate flex-1">
                     <div className="flex items-center justify-between gap-1">
                       <span className="block truncate">6. AI Question Paper</span>
-                      <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                      <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
                         AI
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-slate-500">
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
                       Class 1–12 Exam Maker
                     </span>
                   </div>
@@ -1652,7 +1652,7 @@ function AppContent() {
         </div>
 
         {/* Sidebar Footer: Unified Auth Card */}
-        <div className="p-4 border-t border-slate-800 bg-slate-950/60 space-y-3">
+        <div className="p-4 border-t border-[rgba(255,253,249,0.10)] bg-black/20 space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
               <UserCheck className="w-4 h-4 text-emerald-400" />
@@ -1669,7 +1669,7 @@ function AppContent() {
           <button
             type="button"
             onClick={() => performUnifiedLogout()}
-            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-rose-600/80 rounded-xl transition-colors cursor-pointer"
+            className="w-full inline-flex items-center justify-center gap-2 px-3 py-2 text-xs font-semibold text-[#E7E0D4] hover:text-white bg-[#3F1014] hover:bg-rose-600/80 rounded-xl transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign Out</span>
@@ -1681,7 +1681,7 @@ function AppContent() {
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="no-print fixed inset-0 z-30 bg-slate-900/60 backdrop-blur-xs lg:hidden"
+          className="no-print fixed inset-0 z-30 bg-[#2C1215]/60 backdrop-blur-xs lg:hidden"
         />
       )}
 
@@ -1691,9 +1691,9 @@ function AppContent() {
       <div className="app-main-wrapper flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden">
         {/* Impersonation Mode Banner */}
         {isImpersonating && (
-          <div className="no-print bg-amber-400 text-slate-950 px-4 sm:px-6 py-2.5 text-xs font-semibold flex items-center justify-between shadow-xs">
+          <div className="no-print bg-amber-400 text-[#1C1917] px-4 sm:px-6 py-2.5 text-xs font-semibold flex items-center justify-between shadow-xs">
             <div className="flex items-center gap-2 truncate">
-              <ShieldAlert className="w-4 h-4 text-slate-950 shrink-0" />
+              <ShieldAlert className="w-4 h-4 text-[#1C1917] shrink-0" />
               <span className="truncate">
                 <strong>You are viewing as School Admin - Read Only</strong> · <strong>{activeSchool.name}</strong> (SEMIS {activeSchool.semisCode})
               </span>
@@ -1704,7 +1704,7 @@ function AppContent() {
                 exitImpersonation();
                 setActiveTool('super-admin');
               }}
-              className="px-3 py-1 bg-slate-950 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ml-2"
+              className="px-3 py-1 bg-[#2C1215] hover:bg-[#58181D] text-white rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ml-2"
             >
               Exit Read-Only View →
             </button>
@@ -1713,9 +1713,9 @@ function AppContent() {
 
         {/* Persistent Demo Mode Sandbox Banner */}
         {demoMode && (
-          <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-slate-950 px-4 py-2 text-xs font-semibold flex items-center justify-between sticky top-0 z-30 shadow-md">
+          <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 text-[#1C1917] px-4 py-2 text-xs font-semibold flex items-center justify-between sticky top-0 z-30 shadow-md">
             <div className="flex items-center gap-2">
-              <span className="bg-slate-950 text-amber-300 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider">
+              <span className="bg-[#2C1215] text-amber-300 px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider">
                 🧪 Demo Sandbox Mode
               </span>
               <span className="hidden sm:inline">
@@ -1728,7 +1728,7 @@ function AppContent() {
             <button
               type="button"
               onClick={() => setDemoMode(false)}
-              className="bg-slate-950 hover:bg-slate-800 text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors cursor-pointer shrink-0 ml-3"
+              className="bg-[#2C1215] hover:bg-[#58181D] text-white font-bold text-xs px-3 py-1 rounded-lg transition-colors cursor-pointer shrink-0 ml-3"
             >
               Exit Demo Mode ✕
             </button>
@@ -1736,12 +1736,12 @@ function AppContent() {
         )}
 
         {/* Top Navbar */}
-        <header className="app-topbar allforu-glass no-print px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3 sticky top-0 z-20 w-full max-w-full">
+        <header className="app-topbar no-print bg-[#FFFDF9] dark:bg-[#211415] border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.12)] shadow-2xs px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3 sticky top-0 z-20 w-full max-w-full">
           <div className="flex items-center gap-2 sm:gap-3 shrink min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="lg:hidden p-1.5 -ml-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 rounded-lg cursor-pointer shrink-0"
+              className="lg:hidden p-1.5 -ml-1 text-[#57534E] dark:text-[#E7E0D4] hover:text-[#1C1917] rounded-lg cursor-pointer shrink-0"
               aria-label="Open navigation menu"
             >
               <Menu className="w-5 h-5" />
@@ -1766,24 +1766,24 @@ function AppContent() {
                       : 'dashboard'
                   )
                 }
-                className="font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
+                className="font-medium text-[#57534E] dark:text-[#D6CCC2] hover:text-[#651414] dark:hover:text-[#FED7AA] cursor-pointer shrink-0"
               >
                 PakEdu
               </button>
-              <span className="text-slate-400 shrink-0">/</span>
-              <span className="font-semibold text-slate-900 dark:text-white truncate max-w-[120px] sm:max-w-[200px]">
+              <span className="text-[#78716C] shrink-0">/</span>
+              <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5] truncate max-w-[120px] sm:max-w-[200px]">
                 {currentToolMeta.title}
               </span>
             </div>
 
             {/* If Parent, Student, Affiliated, or Read-Only Oversight: Show Connected School Badge in Header */}
             {(isAffiliatedUser || isParentUser || isStudentUser || isImpersonating) && (
-              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs shrink-0">
-                <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
-                <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px]" title={activeSchool?.name || currentUserProfile?.schoolName}>
+              <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#FEF2F2]/80 dark:bg-[#3F1014]/40 border border-[#FECACA]/80 dark:border-[#7F1D1D]/60 text-xs shrink-0">
+                <Building className="w-3.5 h-3.5 text-[#7F1D1D] dark:text-[#FCA5A5] shrink-0" />
+                <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5] truncate max-w-[160px]" title={activeSchool?.name || currentUserProfile?.schoolName}>
                   {activeSchool?.name || currentUserProfile?.schoolName || 'School Portal'}
                 </span>
-                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-200/70 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300">
+                <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-[#FEE2E2]/70 dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]">
                   {isParentUser || isStudentUser || isImpersonating ? 'READ-ONLY' : `SEMIS ${activeSchool?.semisCode || '401020304'}`}
                 </span>
               </div>
@@ -1791,12 +1791,12 @@ function AppContent() {
           </div>
 
           {/* Center Horizontal Quick Links (Large Screens) */}
-          <nav className="hidden xl:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-400">
+          <nav className="hidden xl:flex items-center gap-1 text-xs font-medium text-[#57534E] dark:text-[#D6CCC2]">
             {isParentUser ? (
               <button
                 type="button"
                 onClick={() => selectTool('sms-parent')}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold cursor-pointer"
+                className="px-3 py-1.5 rounded-t-lg border-b-2 border-[#C2410C] bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold cursor-pointer"
               >
                 Parent Portal (Read-Only)
               </button>
@@ -1804,7 +1804,7 @@ function AppContent() {
               <button
                 type="button"
                 onClick={() => selectTool('sms-student-portal')}
-                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold cursor-pointer"
+                className="px-3 py-1.5 rounded-t-lg border-b-2 border-[#C2410C] bg-[#FFF7ED] dark:bg-[#2C1215] text-[#C2410C] dark:text-[#FDBA74] font-bold cursor-pointer"
               >
                 Student Portal (Read-Only)
               </button>
@@ -1825,7 +1825,7 @@ function AppContent() {
                       setSuperAdminTab('directory');
                       setActiveTool('super-admin');
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-[#2C1215] text-white font-semibold hover:bg-[#58181D] cursor-pointer"
                   >
                     Exit Read-Only View
                   </button>
@@ -1840,8 +1840,8 @@ function AppContent() {
                     }}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       activeTool === 'super-admin' && superAdminTab === 'analytics'
-                        ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                        : 'hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Platform Overview
@@ -1854,8 +1854,8 @@ function AppContent() {
                     }}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
-                        ? 'bg-slate-100 dark:bg-slate-800 text-rose-600 dark:text-rose-400 font-bold'
-                        : 'hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Super Admin Fleet
@@ -1868,8 +1868,8 @@ function AppContent() {
                     }}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       activeTool === 'super-admin' && superAdminTab === 'notices'
-                        ? 'bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold'
-                        : 'hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Notice Board
@@ -1883,8 +1883,8 @@ function AppContent() {
                   onClick={() => selectTool('sms-dashboard')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-dashboard'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'My Dashboard' : 'Command Center'}
@@ -1894,8 +1894,8 @@ function AppContent() {
                   onClick={() => selectTool('sms-classes')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-classes'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'My Classes' : 'Classes'}
@@ -1908,8 +1908,8 @@ function AppContent() {
                   }}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-students'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'My Students' : 'Students'}
@@ -1922,8 +1922,8 @@ function AppContent() {
                   }}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-attendance'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'Take Attendance' : 'Attendance'}
@@ -1933,8 +1933,8 @@ function AppContent() {
                   onClick={() => selectTool('sms-exams')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-exams'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Exams &amp; Results
@@ -1944,8 +1944,8 @@ function AppContent() {
                   onClick={() => selectTool('sms-timetable')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-timetable'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-sky-600 dark:text-sky-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Timetable
@@ -1955,8 +1955,8 @@ function AppContent() {
                   onClick={() => selectTool('sms-homework')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-homework'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Homework
@@ -1967,8 +1967,8 @@ function AppContent() {
                     onClick={() => selectTool('sms-certificates')}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       activeTool === 'sms-certificates'
-                        ? 'bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold'
-                        : 'hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Certificates
@@ -1980,8 +1980,8 @@ function AppContent() {
                     onClick={() => selectTool('sms-staff')}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       activeTool === 'sms-staff'
-                        ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                        : 'hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Faculty
@@ -1993,8 +1993,8 @@ function AppContent() {
                     onClick={() => selectTool('sms-fees')}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       activeTool === 'sms-fees'
-                        ? 'bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-bold'
-                        : 'hover:text-slate-900 dark:hover:text-white'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Fees &amp; Accounts
@@ -2005,8 +2005,8 @@ function AppContent() {
                   onClick={() => selectTool('sms-profile')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'sms-profile'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   My Profile
@@ -2019,8 +2019,8 @@ function AppContent() {
                   onClick={() => selectTool('dashboard')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'dashboard'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Overview
@@ -2030,8 +2030,8 @@ function AppContent() {
                   onClick={() => selectTool(demoMode || isAffiliatedUser ? 'sms-dashboard' : 'sms-onboarding')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool.startsWith('sms-')
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {isAffiliatedUser ? 'School Operations' : demoMode ? 'School SMS' : 'Join School'}
@@ -2041,8 +2041,8 @@ function AppContent() {
                   onClick={() => selectTool('lesson-plan')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'lesson-plan'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Lesson Plans
@@ -2052,8 +2052,8 @@ function AppContent() {
                   onClick={() => selectTool('salary-calculator')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'salary-calculator'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Salary
@@ -2063,8 +2063,8 @@ function AppContent() {
                   onClick={() => selectTool('leave-generator')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'leave-generator'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Leave
@@ -2074,8 +2074,8 @@ function AppContent() {
                   onClick={() => selectTool('atlier-cv')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'atlier-cv'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   CV Studio
@@ -2085,8 +2085,8 @@ function AppContent() {
                   onClick={() => selectTool('service-book')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'service-book'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Service Book
@@ -2096,8 +2096,8 @@ function AppContent() {
                   onClick={() => selectTool('question-paper')}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                     activeTool === 'question-paper'
-                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
-                      : 'hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                      : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Exam Maker
@@ -2125,8 +2125,8 @@ function AppContent() {
                   onClick={() => setUserRole('admin')}
                   className={`px-1.5 sm:px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[9px] sm:text-[10px] ${
                     userRole === 'admin'
-                      ? 'bg-indigo-600 text-white shadow-xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-[#7F1D1D] text-white shadow-xs font-bold'
+                      : 'text-[#57534E] dark:text-[#D6CCC2] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                   title="Switch to School Administrator View"
                 >
@@ -2138,7 +2138,7 @@ function AppContent() {
                   className={`px-1.5 sm:px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[9px] sm:text-[10px] ${
                     userRole === 'teacher'
                       ? 'bg-emerald-600 text-white shadow-xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      : 'text-[#57534E] dark:text-[#D6CCC2] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                   title="Switch to Class Teacher View"
                 >
@@ -2154,7 +2154,7 @@ function AppContent() {
                   className={`hidden sm:flex px-2 py-0.5 rounded-lg transition-all cursor-pointer items-center gap-1 text-[10px] ${
                     userRole === 'super-admin'
                       ? 'bg-rose-600 text-white shadow-xs font-bold'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      : 'text-[#57534E] dark:text-[#D6CCC2] hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                   title="Switch to Portal Super Admin View"
                 >
@@ -2167,13 +2167,13 @@ function AppContent() {
             {currentUser ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <div
-                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700/80 rounded-full"
+                  className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-[#44403C] dark:text-[#FAF8F5] bg-[#F3EFEA] dark:bg-[#2C1215]/90 border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-full"
                   title="Verified Educator Session"
                 >
                   <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                   <span className="max-w-28 sm:max-w-36 truncate">{activeUserDisplay}</span>
                   {currentUserProfile?.status === 'active' && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300">
+                    <span className="text-[10px] px-1.5 py-0.2 rounded font-bold bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]">
                       {currentUserProfile.role === 'super-admin'
                         ? 'Super Admin'
                         : currentUserProfile.role === 'admin' || currentUserProfile.role === 'principal'
@@ -2201,7 +2201,7 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => openAuthModal('signin')}
-                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 rounded-full transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5] bg-[#FEF2F2] dark:bg-[#3F1014]/50 hover:bg-[#FEE2E2] dark:hover:bg-[#58181D]/60 border border-[#FECACA] dark:border-[#7F1D1D]/60 rounded-full transition-colors cursor-pointer"
                 >
                   <span>Sign In</span>
                 </button>
@@ -2219,21 +2219,21 @@ function AppContent() {
             <button
               type="button"
               onClick={toggleDarkMode}
-              className="p-1.5 sm:p-2 rounded-full text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-full text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] transition-colors cursor-pointer"
               aria-label="Toggle Dark Mode"
               title="Toggle Light / Dark Theme"
             >
               {darkMode ? (
                 <Sun className="w-4 h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-slate-700" />
+                <Moon className="w-4 h-4 text-[#44403C]" />
               )}
             </button>
 
             <button
               type="button"
               onClick={togglePrintPreview}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-full transition-colors whitespace-nowrap cursor-pointer"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#44403C] dark:text-[#FAF8F5] bg-[#F3EFEA] dark:bg-[#2C1215] hover:bg-[#E7E0D4] rounded-full transition-colors whitespace-nowrap cursor-pointer"
             >
               <Eye className="w-3.5 h-3.5" />
               A4 Preview
@@ -2242,7 +2242,7 @@ function AppContent() {
             <button
               type="button"
               onClick={triggerPrintDocument}
-              className="hidden xs:inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-500 rounded-full transition-colors whitespace-nowrap cursor-pointer shadow-xs"
+              className="hidden xs:inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white bg-[#2C1215] hover:bg-[#58181D] dark:bg-[#C2410C] dark:hover:bg-[#9A3412] rounded-full transition-colors whitespace-nowrap cursor-pointer shadow-xs"
             >
               <Printer className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Print / PDF</span>
@@ -2253,32 +2253,32 @@ function AppContent() {
         {/* Main Content Container */}
         <main className="app-content-container flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 min-w-0 overflow-x-hidden">
           {/* Animated Updates Ticker */}
-          <div className="no-print flex items-center bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl shadow-xs overflow-hidden">
-            <div className="bg-slate-900 dark:bg-slate-800 text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 z-10">
-              <Bell className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="no-print flex items-center bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-xl shadow-xs overflow-hidden">
+            <div className="bg-[#2C1215] dark:bg-[#2C1215] text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 z-10">
+              <Bell className="w-3.5 h-3.5 text-[#FED7AA]" />
               <span>Updates</span>
             </div>
             <div className="flex-1 overflow-hidden relative py-2">
-              <div className="allforu-ticker-track items-center gap-8 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <div className="allforu-ticker-track items-center gap-8 text-xs font-medium text-[#57534E] dark:text-[#E7E0D4]">
                 <span
                   onClick={() => selectTool('atlier-cv')}
-                  className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-indigo-600"
+                  className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-[#651414]"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#7F1D1D]" />
                   <span>AtlierCV Studio now locally integrated! Build ATS-ready resumes with AI.</span>
-                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+                  <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#FEF2F2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5] border border-[#FECACA]/60 dark:border-[#7F1D1D]/60">
                     NEW
                   </span>
                 </span>
                 <span
                   onClick={() => selectTool('salary-calculator')}
-                  className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-indigo-600"
+                  className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-[#651414]"
                 >
                   <span>Sindh Budget 2026 Pay &amp; Pension scales active for BPS-01 to BPS-22.</span>
                 </span>
                 <span
                   onClick={() => selectTool('question-paper')}
-                  className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-indigo-600"
+                  className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-[#651414]"
                 >
                   <span>Question Paper Maker: Class 1–12 bilingual exam builder with school logo.</span>
                 </span>
@@ -2294,29 +2294,29 @@ function AppContent() {
             <div className="no-print space-y-6">
               {/* SaaS Hero Section */}
               <section
-                className="rounded-3xl px-6 py-9 sm:py-12 text-center text-white shadow-lg relative overflow-hidden"
+                className="rounded-3xl px-6 py-9 sm:py-12 text-center text-[#FAF8F5] shadow-lg relative overflow-hidden"
                 style={{
-                  background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #0f172a 100%)',
+                  background: 'linear-gradient(135deg, #58181D 0%, #3F1014 100%)',
                 }}
               >
                 <div className="relative z-10 max-w-3xl mx-auto">
                   <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-                    <span className="inline-block bg-white/10 backdrop-blur-md text-indigo-200 border border-indigo-400/30 px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase">
+                    <span className="inline-block bg-[#FFFDF9]/10 backdrop-blur-md text-[#FED7AA] border border-[rgba(255,253,249,0.2)] px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase">
                       SELD SINDH OFFICIAL EDUCATION ERP
                     </span>
-                    <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 px-3 py-1 rounded-full text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 px-3 py-1 rounded-full text-xs font-semibold">
                       <UserCheck className="w-3.5 h-3.5" />
                       {activeUserDisplay}
                     </span>
                   </div>
-                  <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight mb-3">
+                  <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#FAF8F5] leading-tight mb-3">
                     The Intelligent Portal That Plans Your Year With AI
                   </h1>
-                  <p className="text-xs sm:text-base text-slate-300 max-w-2xl mx-auto mb-6 leading-relaxed">
+                  <p className="text-xs sm:text-base text-[#E7E0D4] max-w-2xl mx-auto mb-6 leading-relaxed">
                     Generate official Sindh STBB &amp; PTB curriculum lesson plans,
                     calculate 2026 BPS payroll, prepare SELD leave applications,
                     and build ATS-ready resumes with{' '}
-                    <strong className="text-indigo-300">AtlierCV Studio</strong>.
+                    <strong className="text-[#FED7AA]">AtlierCV Studio</strong>.
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <button
@@ -2329,9 +2329,9 @@ function AppContent() {
                     <button
                       type="button"
                       onClick={() => selectTool('atlier-cv')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-white/10 hover:bg-white/20 text-white border border-white/20 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-[#FFFDF9]/10 hover:bg-[#FFFDF9]/20 text-[#FFFDF9] border border-[#FFFDF9]/30 transition-colors cursor-pointer"
                     >
-                      <Sparkles className="w-4 h-4 text-indigo-300" />
+                      <Sparkles className="w-4 h-4 text-[#FED7AA]" />
                       <span>Launch AtlierCV Studio</span>
                     </button>
                     {!demoMode && (
@@ -2341,7 +2341,7 @@ function AppContent() {
                           setDemoMode(true);
                           selectTool('sms-dashboard');
                         }}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all cursor-pointer"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#B45309] hover:bg-[#92400E] text-[#FFFDF9] shadow-md transition-all cursor-pointer"
                       >
                         <span>🧪 Try Demo Mode (Sandbox)</span>
                       </button>
@@ -2352,7 +2352,7 @@ function AppContent() {
                   className="pointer-events-none absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
                   style={{
                     background:
-                      'radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 60%)',
+                      'radial-gradient(circle, rgba(194,65,12,0.16) 0%, transparent 60%)',
                   }}
                 />
               </section>
@@ -2360,20 +2360,20 @@ function AppContent() {
               {/* Highlight Banner: School Management System (SMS) */}
               <div
                 onClick={() => selectTool('sms-dashboard')}
-                className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/30 text-white rounded-2xl p-5 shadow-sm hover:border-indigo-400/50 transition cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                className="bg-gradient-to-r from-[#58181D] via-[#4A1318] to-[#2C1215] border border-[rgba(255,253,249,0.16)] text-[#FAF8F5] rounded-2xl p-5 shadow-sm hover:border-[#FED7AA]/40 transition cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-4"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-indigo-600/30 border border-indigo-400/40 text-indigo-300 flex items-center justify-center shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-[#C2410C]/25 border border-[#FED7AA]/30 text-[#FED7AA] flex items-center justify-center shrink-0">
                     <SchoolIcon className="w-6 h-6" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-white">School Management System (SMS)</span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-indigo-500/30 text-indigo-300 border border-indigo-500/40">
+                      <span className="text-sm font-bold text-[#FAF8F5]">School Management System (SMS)</span>
+                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#FFFDF9]/10 text-[#FED7AA] border border-[#FFFDF9]/20">
                         Phase 1 Ready
                       </span>
                     </div>
-                    <p className="text-xs text-slate-300 mt-0.5">
+                    <p className="text-xs text-[#E7E0D4] mt-0.5">
                       Role-Based Access Control, Grade sections (KG–Class 12), instruction mediums, and faculty allocations.
                     </p>
                   </div>
@@ -2381,7 +2381,7 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); selectTool('sms-classes'); }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shrink-0 transition"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-[#FFFDF9] text-xs font-semibold rounded-xl shrink-0 transition cursor-pointer"
                 >
                   <span>Manage Classes &amp; Sections</span>
                   <ArrowRight className="w-4 h-4" />
@@ -2393,20 +2393,20 @@ function AppContent() {
                 {/* Card 1 */}
                 <div
                   onClick={() => selectTool('lesson-plan')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-indigo-500/50"
+                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#7F1D1D]/50"
                 >
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <BookOpen className="w-6 h-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       Lesson Planning System
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                       AI &amp; Firestore academic plans aligned with Sindh STBB &amp; Punjab PTB.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
                     <span>Open Module</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -2415,20 +2415,20 @@ function AppContent() {
                 {/* Card 2 */}
                 <div
                   onClick={() => selectTool('salary-calculator')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-sky-500/50"
+                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#C2410C]/50"
                 >
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-sky-50 dark:bg-sky-950/60 text-sky-600 dark:text-sky-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <Calculator className="w-6 h-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       Payroll &amp; Finance 2026
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                       Automated BPS-01 to BPS-22 salary &amp; 2026 allowance breakdown.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-sky-600 dark:text-sky-400">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#C2410C] dark:text-[#FDBA74]">
                     <span>Calculate Pay</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -2443,14 +2443,14 @@ function AppContent() {
                     <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <FileSignature className="w-6 h-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       SELD FRAMES Leave
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                       Official A4 leave proforma with 38 Sindh Civil Service leave types.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400">
                     <span>Generate Leave</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -2459,23 +2459,23 @@ function AppContent() {
                 {/* Card 4 */}
                 <div
                   onClick={() => selectTool('atlier-cv')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-indigo-500/50 relative"
+                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#7F1D1D]/50 relative"
                 >
-                  <span className="absolute top-4 right-4 px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-indigo-50 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800">
+                  <span className="absolute top-4 right-4 px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-[#FEF2F2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5] border border-[#FECACA]/60 dark:border-[#7F1D1D]/60">
                     ATS Studio
                   </span>
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <Briefcase className="w-6 h-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       AtlierCV Studio
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                       AI-Powered Professional CV Studio with live A4 editor &amp; PDF/Word export.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-indigo-600 dark:text-indigo-400">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
                     <span>Build Resume</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -2490,14 +2490,14 @@ function AppContent() {
                     <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <BookCheck className="w-6 h-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       Service Book &amp; Pension
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                       Qualifying Service, Pension, JEST/HST Time Scale &amp; 365-Day Encashment.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-teal-600 dark:text-teal-400">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-teal-600 dark:text-teal-400">
                     <span>Open Record</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -2506,20 +2506,20 @@ function AppContent() {
                 {/* Card 6 */}
                 <div
                   onClick={() => selectTool('question-paper')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-violet-500/50"
+                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#C2410C]/50"
                 >
                   <div>
-                    <div className="w-12 h-12 rounded-xl bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <FileSpreadsheet className="w-6 h-6" />
                     </div>
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       AI Question Paper Maker
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
                       Class 1–12 Exam Builder in English, Urdu &amp; Sindhi with School Logo.
                     </p>
                   </div>
-                  <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs font-semibold text-violet-600 dark:text-violet-400">
+                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#C2410C] dark:text-[#FDBA74]">
                     <span>Create Exam</span>
                     <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -2528,7 +2528,7 @@ function AppContent() {
             </div>
           ) : (
             /* COMPACT TOOL HEADER: Shows only when inside a specific tool */
-            <div className="no-print bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="no-print bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div
                   className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${currentToolMeta.iconBg} ${currentToolMeta.iconColor}`}
@@ -2537,17 +2537,17 @@ function AppContent() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                    <span className="text-[11px] font-semibold text-[#78716C] dark:text-[#D6CCC2] uppercase tracking-wider">
                       Dashboard /
                     </span>
-                    <h1 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    <h1 className="text-base sm:text-lg font-bold text-[#1C1917] dark:text-[#FAF8F5]">
                       {currentToolMeta.title}
                     </h1>
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60">
+                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-[#FEF2F2] dark:bg-[#3F1014]/70 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA]/60 dark:border-[#7F1D1D]/60">
                       {currentToolMeta.badge}
                     </span>
                   </div>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-0.5">
                     {currentToolMeta.subtitle}
                   </p>
                 </div>
@@ -2556,7 +2556,7 @@ function AppContent() {
               <button
                 type="button"
                 onClick={() => selectTool('dashboard')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl transition-colors shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] rounded-xl transition-colors shrink-0 cursor-pointer"
               >
                 <Home className="w-3.5 h-3.5" />
                 <span>All Modules</span>
@@ -2723,12 +2723,12 @@ function AppContent() {
         </main>
 
         {/* Enterprise SaaS Footer */}
-        <footer className="app-footer no-print border-t border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 py-4 text-xs text-slate-500 dark:text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <footer className="app-footer no-print border-t border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#211415] px-6 py-4 text-xs text-[#57534E] dark:text-[#D6CCC2] flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-slate-800 dark:text-slate-200">
+            <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
               PakEdu &amp; Sindh SELD Official Portal
             </span>
-            <span className="font-mono text-[11px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
+            <span className="font-mono text-[11px] bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] px-2 py-0.5 rounded">
               v{portalVersion}
             </span>
             <span>·</span>
@@ -2740,7 +2740,7 @@ function AppContent() {
             <button
               type="button"
               onClick={() => performUnifiedLogout()}
-              className="text-slate-500 hover:text-rose-600 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+              className="text-[#57534E] hover:text-rose-600 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
             >
               <LogOut className="w-3 h-3" /> Sign Out
             </button>
