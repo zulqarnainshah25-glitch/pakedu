@@ -15,6 +15,7 @@ export type ActiveToolId =
   | 'sms-homework'
   | 'sms-certificates'
   | 'sms-parent'
+  | 'sms-student-portal'
   | 'super-admin'
   | 'lesson-plan'
   | 'salary-calculator'
@@ -59,8 +60,8 @@ export function hasAdminCapabilities(
     return true;
   }
 
-  // Explicit Parent role strictly has no administrative capabilities
-  if (profile?.role === 'parent') {
+  // Explicit Parent or Student role strictly has no administrative capabilities
+  if (profile?.role === 'parent' || profile?.role === 'student') {
     return false;
   }
 
@@ -161,6 +162,15 @@ export function determineSmartRoute(
       targetTool: 'sms-parent',
       role: 'parent',
       reason: 'Condition P: Parent Portal access.',
+    };
+  }
+
+  // Condition S: Student Portal (strictly read-only self academic progress view)
+  if (profile?.role === 'student') {
+    return {
+      targetTool: 'sms-student-portal',
+      role: 'student',
+      reason: 'Condition S: Student Portal access.',
     };
   }
 

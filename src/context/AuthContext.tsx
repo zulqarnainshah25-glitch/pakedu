@@ -147,6 +147,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         !isSuperAdminClaim &&
         profile.role !== 'super-admin' &&
         profile.role !== 'parent' &&
+        profile.role !== 'student' &&
         (
           isApprovedInMatchedSchool ||
           (isAlreadyAdminRoleInProfile && !isExplicitlyPendingOrRejected)

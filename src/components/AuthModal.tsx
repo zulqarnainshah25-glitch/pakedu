@@ -45,6 +45,7 @@ import {
   saveJoinRequestToFirestore,
   fetchSchoolsFromFirestore,
   verifyAndClaimParentLink,
+  verifyAndClaimStudentLink,
   FirestoreSyncError,
 } from '../features/sms/services/smsFirestoreService';
 import {
@@ -62,7 +63,7 @@ interface AuthModalProps {
   isMandatoryGate?: boolean;
   logoutNotice?: string | null;
   onSignupSuccess?: (
-    intent: 'general' | 'sms' | 'parent',
+    intent: 'general' | 'sms' | 'parent' | 'student',
     smsRole?: 'admin' | 'teacher'
   ) => void;
 }
@@ -80,7 +81,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const { refreshUserProfile } = useAuth();
 
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
-  const [accountIntent, setAccountIntent] = useState<'general' | 'sms' | 'parent'>('general');
+  const [accountIntent, setAccountIntent] = useState<'general' | 'sms' | 'parent' | 'student'>('general');
   const [smsRoleIntent, setSmsRoleIntent] = useState<'admin' | 'teacher'>('admin');
   const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
@@ -94,6 +95,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [parentSelectedSchoolId, setParentSelectedSchoolId] = useState('');
   const [parentTargetSemisCode, setParentTargetSemisCode] = useState('');
   const [parentIsManualSemis, setParentIsManualSemis] = useState(false);
+
+  // Student Portal Signup Fields
+  const [studentFullName, setStudentFullName] = useState('');
+  const [studentGrNumber, setStudentGrNumber] = useState('');
+  const [studentInviteCode, setStudentInviteCode] = useState('');
+  const [studentSelectedSchoolId, setStudentSelectedSchoolId] = useState('');
+  const [studentTargetSemisCode, setStudentTargetSemisCode] = useState('');
+  const [studentIsManualSemis, setStudentIsManualSemis] = useState(false);
 
   // Admin Specific Registration Fields
   const [adminFullName, setAdminFullName] = useState('');
@@ -116,17 +125,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isLoadingSchools, setIsLoadingSchools] = useState(false);
   const [isManualSemis, setIsManualSemis] = useState(false);
 
-  // Auto-parse ?parent_invite=...&school=...&gr=... when opened via Admin Invite Link
+  // Auto-parse ?parent_invite=... or ?student_invite=... when opened via Admin Invite Link
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const inviteCode = params.get('parent_invite');
+    const parentCode = params.get('parent_invite');
+    const studentCode = params.get('student_invite');
     const inviteSchool = params.get('school');
     const inviteGr = params.get('gr');
-    if (inviteCode || inviteGr) {
+    if (studentCode) {
+      setMode('signup');
+      setAccountIntent('student');
+      setStudentInviteCode(studentCode.trim().toUpperCase());
+      if (inviteGr) setStudentGrNumber(inviteGr.trim().toUpperCase());
+      if (inviteSchool) setStudentSelectedSchoolId(inviteSchool.trim());
+    } else if (parentCode || inviteGr) {
       setMode('signup');
       setAccountIntent('parent');
-      if (inviteCode) setParentInviteCode(inviteCode.trim().toUpperCase());
+      if (parentCode) setParentInviteCode(parentCode.trim().toUpperCase());
       if (inviteGr) setChildGrNumber(inviteGr.trim().toUpperCase());
       if (inviteSchool) setParentSelectedSchoolId(inviteSchool.trim());
     }
@@ -136,7 +152,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     const needsSchools =
       isOpen &&
       mode === 'signup' &&
-      ((accountIntent === 'sms' && smsRoleIntent === 'teacher') || accountIntent === 'parent');
+      ((accountIntent === 'sms' && smsRoleIntent === 'teacher') ||
+        accountIntent === 'parent' ||
+        accountIntent === 'student');
     if (needsSchools) {
       let isMounted = true;
       setIsLoadingSchools(true);
@@ -159,6 +177,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             setParentSelectedSchoolId(combined[0].id);
             setParentTargetSemisCode(combined[0].semisCode);
           }
+          if (combined.length > 0 && !studentSelectedSchoolId) {
+            setStudentSelectedSchoolId(combined[0].id);
+            setStudentTargetSemisCode(combined[0].semisCode);
+          }
         })
         .catch(() => {
           if (isMounted) {
@@ -170,6 +192,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             if (registeredSchools && registeredSchools.length > 0 && !parentSelectedSchoolId) {
               setParentSelectedSchoolId(registeredSchools[0].id);
               setParentTargetSemisCode(registeredSchools[0].semisCode);
+            }
+            if (registeredSchools && registeredSchools.length > 0 && !studentSelectedSchoolId) {
+              setStudentSelectedSchoolId(registeredSchools[0].id);
+              setStudentTargetSemisCode(registeredSchools[0].semisCode);
             }
           }
         })
@@ -236,6 +262,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           return;
         }
         effectiveDisplayName = parentFullName.trim();
+      } else if (accountIntent === 'student') {
+        if (!studentFullName.trim()) {
+          setErrorMessage('Student Full Name is required.');
+          return;
+        }
+        if (!studentGrNumber.trim()) {
+          setErrorMessage('Your GR Number is required.');
+          return;
+        }
+        if (studentIsManualSemis && (!studentTargetSemisCode.trim() || studentTargetSemisCode.trim().length < 5)) {
+          setErrorMessage('Please enter a valid School SEMIS Code or select your school.');
+          return;
+        }
+        if (!studentIsManualSemis && !studentSelectedSchoolId && !studentTargetSemisCode.trim()) {
+          setErrorMessage('Please select your school.');
+          return;
+        }
+        effectiveDisplayName = studentFullName.trim();
       } else if (accountIntent === 'sms' && smsRoleIntent === 'admin') {
         if (!adminFullName.trim()) {
           setErrorMessage('Admin Full Name is required.');
@@ -513,69 +557,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 }
               );
             }
-          } else if (accountIntent === 'parent') {
-            const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
-            const matchedSchool = pool.find(
-              (s) =>
-                s.id === parentSelectedSchoolId ||
-                (parentTargetSemisCode.trim() && s.semisCode.trim() === parentTargetSemisCode.trim())
-            );
-            const resolvedSemis = matchedSchool ? matchedSchool.semisCode : parentTargetSemisCode.trim();
-            const sanitizedSemis = resolvedSemis.replace(/[^a-zA-Z0-9_-]/g, '_');
-            const targetSchoolId = matchedSchool
-              ? matchedSchool.id
-              : parentSelectedSchoolId || `sch_${sanitizedSemis}`;
-
-            try {
-              const claimed = await verifyAndClaimParentLink({
-                schoolId: targetSchoolId,
-                grNumber: childGrNumber.trim().toUpperCase(),
-                uid: credential.user.uid,
-                parentEmail: validation.sanitizedEmail,
-                parentPhone: parentPhone.trim(),
-                inviteCode: parentInviteCode.trim().toUpperCase(),
-              });
-
-              const linkedParentProfile: UserProfile = {
-                uid: credential.user.uid,
-                email: validation.sanitizedEmail,
-                fullName: parentFullName.trim(),
-                role: 'parent',
-                status: 'active',
-                schoolId: claimed.schoolId,
-                schoolName: claimed.schoolName || matchedSchool?.name || '',
-                semisCode: claimed.semisCode || resolvedSemis,
-                phone: parentPhone.trim(),
-                childStudentId: claimed.studentId,
-                childGrNumber: claimed.grNumber,
-                childName: claimed.studentName,
-                parentLinkId: claimed.id,
-                linkedInviteCode: parentInviteCode.trim().toUpperCase() || claimed.inviteCode,
-                assignedClassIds: [],
-                isSuperAdmin: false,
-                isAdmissionIncharge: false,
-                createdAt: new Date().toISOString(),
-              };
-              await saveUserProfileToFirestore(linkedParentProfile);
-            } catch {
-              const pendingParentProfile: UserProfile = {
-                uid: credential.user.uid,
-                email: validation.sanitizedEmail,
-                fullName: parentFullName.trim(),
-                role: 'parent',
-                status: 'pending',
-                schoolId: targetSchoolId || undefined,
-                schoolName: matchedSchool?.name,
-                semisCode: resolvedSemis || undefined,
-                phone: parentPhone.trim(),
-                childGrNumber: childGrNumber.trim().toUpperCase(),
-                assignedClassIds: [],
-                isSuperAdmin: false,
-                isAdmissionIncharge: false,
-                createdAt: new Date().toISOString(),
-              };
-              await saveUserProfileToFirestore(pendingParentProfile);
-            }
+          } else if (accountIntent === 'parent' || accountIntent === 'student') {
+            await provisionPortalUserProfile({
+              intent: accountIntent,
+              uid: credential.user.uid,
+              userEmail: validation.sanitizedEmail,
+              fallbackDisplayName: '',
+            });
           } else {
             // General User Signup
             const generalProfile: UserProfile = {
@@ -619,7 +607,138 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setDiagnosis(diag);
       setErrorMessage(diag.userMessage);
     } finally {
+      setAuthSignupTransactionInFlight(false);
       setLoading(false);
+    }
+  };
+
+  const provisionPortalUserProfile = async (params: {
+    intent: 'parent' | 'student';
+    uid: string;
+    userEmail: string;
+    fallbackDisplayName: string;
+  }) => {
+    const { intent, uid, userEmail, fallbackDisplayName } = params;
+    const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
+    const isStudent = intent === 'student';
+    const selectedId = isStudent ? studentSelectedSchoolId : parentSelectedSchoolId;
+    const manualSemis = (isStudent ? studentTargetSemisCode : parentTargetSemisCode).trim();
+    const grUpper = (isStudent ? studentGrNumber : childGrNumber).trim().toUpperCase();
+    const codeUpper = (isStudent ? studentInviteCode : parentInviteCode).trim().toUpperCase();
+    const resolvedName =
+      (isStudent ? studentFullName : parentFullName).trim() ||
+      fallbackDisplayName ||
+      (isStudent ? 'Student' : 'Parent / Guardian');
+
+    const matchedSchool = pool.find(
+      (s) => s.id === selectedId || (manualSemis && s.semisCode.trim() === manualSemis)
+    );
+    const resolvedSemis = matchedSchool ? matchedSchool.semisCode : manualSemis;
+    const sanitizedSemis = resolvedSemis.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const targetSchoolId = matchedSchool
+      ? matchedSchool.id
+      : selectedId || (sanitizedSemis ? `sch_${sanitizedSemis}` : '');
+
+    if (isStudent) {
+      try {
+        if (!targetSchoolId || !grUpper) {
+          throw new Error('School and GR Number required to claim student profile.');
+        }
+        const claimed = await verifyAndClaimStudentLink({
+          schoolId: targetSchoolId,
+          grNumber: grUpper,
+          uid,
+          studentEmail: userEmail,
+          inviteCode: codeUpper,
+        });
+        await saveUserProfileToFirestore({
+          uid,
+          email: userEmail,
+          fullName: resolvedName,
+          role: 'student',
+          status: 'active',
+          schoolId: claimed.schoolId,
+          schoolName: claimed.schoolName || matchedSchool?.name || '',
+          semisCode: claimed.semisCode || resolvedSemis,
+          studentId: claimed.studentId,
+          studentGrNumber: claimed.grNumber,
+          studentLinkId: claimed.id,
+          linkedInviteCode: codeUpper || claimed.inviteCode,
+          assignedClassIds: [],
+          isSuperAdmin: false,
+          isAdmissionIncharge: false,
+          createdAt: new Date().toISOString(),
+        });
+      } catch {
+        await saveUserProfileToFirestore({
+          uid,
+          email: userEmail,
+          fullName: resolvedName,
+          role: 'student',
+          status: 'pending',
+          schoolId: targetSchoolId || undefined,
+          schoolName: matchedSchool?.name,
+          semisCode: resolvedSemis || undefined,
+          studentGrNumber: grUpper || undefined,
+          linkedInviteCode: codeUpper || undefined,
+          assignedClassIds: [],
+          isSuperAdmin: false,
+          isAdmissionIncharge: false,
+          createdAt: new Date().toISOString(),
+        });
+      }
+      return;
+    }
+
+    try {
+      if (!targetSchoolId || !grUpper) {
+        throw new Error('School and GR Number required to claim child profile.');
+      }
+      const claimed = await verifyAndClaimParentLink({
+        schoolId: targetSchoolId,
+        grNumber: grUpper,
+        uid,
+        parentEmail: userEmail,
+        parentPhone: parentPhone.trim(),
+        inviteCode: codeUpper,
+      });
+      await saveUserProfileToFirestore({
+        uid,
+        email: userEmail,
+        fullName: resolvedName,
+        role: 'parent',
+        status: 'active',
+        schoolId: claimed.schoolId,
+        schoolName: claimed.schoolName || matchedSchool?.name || '',
+        semisCode: claimed.semisCode || resolvedSemis,
+        phone: parentPhone.trim(),
+        childStudentId: claimed.studentId,
+        childGrNumber: claimed.grNumber,
+        childName: claimed.studentName,
+        parentLinkId: claimed.id,
+        linkedInviteCode: codeUpper || claimed.inviteCode,
+        assignedClassIds: [],
+        isSuperAdmin: false,
+        isAdmissionIncharge: false,
+        createdAt: new Date().toISOString(),
+      });
+    } catch {
+      await saveUserProfileToFirestore({
+        uid,
+        email: userEmail,
+        fullName: resolvedName,
+        role: 'parent',
+        status: 'pending',
+        schoolId: targetSchoolId || undefined,
+        schoolName: matchedSchool?.name,
+        semisCode: resolvedSemis || undefined,
+        phone: parentPhone.trim(),
+        childGrNumber: grUpper || undefined,
+        assignedClassIds: [],
+        isSuperAdmin: false,
+        isAdmissionIncharge: false,
+        createdAt: new Date().toISOString(),
+      });
     }
   };
 
@@ -637,8 +756,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
 
     setLoading(true);
+    const shouldProvisionPortal =
+      mode === 'signup' && (accountIntent === 'student' || accountIntent === 'parent');
+    if (shouldProvisionPortal) {
+      setAuthSignupTransactionInFlight(true);
+    }
     try {
-      await signInWithPopup(auth, googleProvider);
+      const cred = await signInWithPopup(auth, googleProvider);
+      if (shouldProvisionPortal && cred.user) {
+        await provisionPortalUserProfile({
+          intent: accountIntent as 'parent' | 'student',
+          uid: cred.user.uid,
+          userEmail: (cred.user.email || email || '').trim().toLowerCase(),
+          fallbackDisplayName: cred.user.displayName || '',
+        });
+      }
       await refreshUserProfile();
       onClose();
       if (mode === 'signup' && onSignupSuccess) {
@@ -661,6 +793,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setDiagnosis(diag);
       setErrorMessage(diag.userMessage);
     } finally {
+      setAuthSignupTransactionInFlight(false);
       setLoading(false);
     }
   };
@@ -1019,6 +1152,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         </div>
                         <p className="text-[11px] mt-1.5 text-slate-500 dark:text-slate-400 leading-snug">
                           Link Child GR# for Attendance, Fees &amp; Report Cards (Read-Only)
+                        </p>
+                      </div>
+
+                      {/* Option 4: Student (Read-Only Student Portal) */}
+                      <div
+                        onClick={() => setAccountIntent('student')}
+                        className={`p-3 rounded-xl border-2 cursor-pointer transition-all flex flex-col justify-between text-left sm:col-span-3 ${
+                          accountIntent === 'student'
+                            ? 'border-sky-600 bg-sky-50/70 dark:bg-sky-950/40 text-slate-900 dark:text-white shadow-xs'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-1 rounded-md ${accountIntent === 'student' ? 'bg-sky-600 text-white' : 'bg-slate-100 dark:bg-slate-700 text-slate-400'}`}>
+                              <GraduationCap className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="text-xs font-bold leading-tight">Student Account (Read-Only Portal)</span>
+                          </div>
+                          <input
+                            type="radio"
+                            name="accountIntent"
+                            checked={accountIntent === 'student'}
+                            onChange={() => setAccountIntent('student')}
+                            className="text-sky-600 focus:ring-sky-600 cursor-pointer"
+                          />
+                        </div>
+                        <p className="text-[11px] mt-1 text-slate-500 dark:text-slate-400 leading-snug">
+                          Link your GR# &amp; Student Invite Code to view your Attendance, Homework, Class Timetable &amp; Report Cards.
                         </p>
                       </div>
                     </div>
@@ -1559,6 +1721,126 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       </p>
                     </div>
                   )}
+
+                  {/* Student Verification & Profile Link Fields */}
+                  {accountIntent === 'student' && (
+                    <div className="space-y-3 p-3.5 bg-sky-50/70 dark:bg-sky-950/25 border border-sky-200 dark:border-sky-800/60 rounded-xl animate-in fade-in duration-200">
+                      <div className="flex items-center gap-2 text-xs font-bold text-sky-900 dark:text-sky-200">
+                        <GraduationCap className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                        <span>Student Identity &amp; GR Verification (طالب علم کی تصدیق):</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Student Full Name <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={studentFullName}
+                            onChange={(e) => setStudentFullName(e.target.value)}
+                            placeholder="e.g., Ali Hassan Solangi"
+                            className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                          Your School <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <Building className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <select
+                            value={studentIsManualSemis ? 'manual' : studentSelectedSchoolId}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'manual') {
+                                setStudentIsManualSemis(true);
+                                setStudentSelectedSchoolId('');
+                              } else {
+                                setStudentIsManualSemis(false);
+                                setStudentSelectedSchoolId(val);
+                                const pool = availableSchools.length > 0 ? availableSchools : registeredSchools;
+                                const found = pool.find((s) => s.id === val);
+                                if (found) {
+                                  setStudentTargetSemisCode(found.semisCode);
+                                }
+                              }
+                            }}
+                            className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600 cursor-pointer"
+                            required={!studentIsManualSemis}
+                          >
+                            {isLoadingSchools && (
+                              <option value="">Loading schools directory...</option>
+                            )}
+                            {!isLoadingSchools && (availableSchools.length > 0 || registeredSchools.length > 0) && (
+                              <>
+                                <option value="">-- Select Your School --</option>
+                                {(availableSchools.length > 0 ? availableSchools : registeredSchools).map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} — SEMIS: {s.semisCode}
+                                  </option>
+                                ))}
+                              </>
+                            )}
+                            <option value="manual">Enter School SEMIS Code Manually...</option>
+                          </select>
+                        </div>
+
+                        {studentIsManualSemis && (
+                          <div className="mt-2">
+                            <input
+                              type="text"
+                              value={studentTargetSemisCode}
+                              onChange={(e) => setStudentTargetSemisCode(e.target.value)}
+                              placeholder="Enter 8-9 digit School SEMIS Code"
+                              maxLength={12}
+                              className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                              required
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Your GR Number <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={studentGrNumber}
+                            onChange={(e) => setStudentGrNumber(e.target.value.toUpperCase())}
+                            placeholder="e.g., GR-1001"
+                            className="w-full min-h-[44px] px-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                            Student Invite Code (From School)
+                          </label>
+                          <div className="relative">
+                            <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                              type="text"
+                              value={studentInviteCode}
+                              onChange={(e) => setStudentInviteCode(e.target.value.toUpperCase())}
+                              placeholder="e.g., STU-1001-XXXX"
+                              className="w-full min-h-[44px] pl-10 pr-3.5 py-2.5 text-sm font-mono uppercase rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-600"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-sky-800 dark:text-sky-300 leading-snug">
+                        Instant verification matches your Student Email registered with the school or your Student Invite Code.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -1571,6 +1853,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                       : 'Teacher Official Email (Login ID) *'
                     : mode === 'signup' && accountIntent === 'parent'
                     ? 'Parent Email Address (matches school record if pre-linked) *'
+                    : mode === 'signup' && accountIntent === 'student'
+                    ? 'Student Email Address (Login ID) *'
                     : 'Email Address *'}
                 </label>
                 <div className="relative">
@@ -1642,6 +1926,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                         : 'Submit Join Request & Create Account'
                       : accountIntent === 'parent'
                       ? 'Verify Child & Create Parent Account'
+                      : accountIntent === 'student'
+                      ? 'Verify Student & Create Account'
                       : 'Create Unified Account'
                     : 'Send Password Reset Email'}
                 </span>

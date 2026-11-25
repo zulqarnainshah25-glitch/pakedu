@@ -1419,6 +1419,104 @@ function runAllUnitTests() {
     console.log('✅ PASS: Super Admin RBAC Isolation, Global Notice Board & Read-Only Oversight Tests');
   }
 
+  // 22. Student Portal Authentication, Self-Scoped Queries & Strict Read-Only RBAC Tests
+  {
+    const studentSchool: School = {
+      id: 'sch_student_01',
+      name: 'GBHS Latifabad',
+      semisCode: '403020111',
+      board: 'Sindh STBB',
+      district: 'Hyderabad',
+      taluka: 'Latifabad',
+      adminUids: ['uid_admin_1'],
+      activeAcademicYear: '2025-2026',
+      status: 'active',
+      primaryAdminType: 'principal',
+      primaryAdminName: 'Head Master',
+      primaryAdminEmail: 'student.portal@school.pk', // Collision check: student role never gets admin powers
+    };
+
+    const linkedStudentProfile: UserProfile = {
+      uid: 'uid_student_1',
+      email: 'student.portal@school.pk',
+      fullName: 'Bilal Ahmed',
+      role: 'student',
+      schoolId: 'sch_student_01',
+      schoolName: 'GBHS Latifabad',
+      semisCode: '403020111',
+      status: 'active',
+      studentId: 'std_101',
+      studentGrNumber: 'GR-1042',
+      studentLinkId: 'sch_student_01__GR-1042',
+      assignedClassIds: [],
+      isSuperAdmin: false,
+      isAdmissionIncharge: false,
+    };
+
+    assert.equal(
+      hasAdminCapabilities({ email: 'student.portal@school.pk', uid: 'uid_student_1' }, linkedStudentProfile, [studentSchool]),
+      false,
+      'Student role must NEVER receive administrative privileges even if email collides'
+    );
+
+    const linkedStudentRoute = determineSmartRoute(
+      { email: 'student.portal@school.pk', uid: 'uid_student_1' },
+      linkedStudentProfile,
+      [studentSchool]
+    );
+    assert.equal(linkedStudentRoute.role, 'student');
+    assert.equal(linkedStudentRoute.targetTool, 'sms-student-portal');
+
+    const pendingStudentRoute = determineSmartRoute(
+      { email: 'newstudent@school.pk', uid: 'uid_student_2' },
+      { ...linkedStudentProfile, uid: 'uid_student_2', status: 'pending', studentId: undefined },
+      [studentSchool]
+    );
+    assert.equal(pendingStudentRoute.role, 'student');
+    assert.equal(pendingStudentRoute.targetTool, 'sms-student-portal');
+
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+    const serviceSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/services/smsFirestoreService.ts'), 'utf-8');
+    const smsContextSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+    const studentDirSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/StudentDirectory.tsx'), 'utf-8');
+    const authModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AuthModal.tsx'), 'utf-8');
+    const studentDashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/StudentDashboard.tsx'), 'utf-8');
+    const sharedSectionsSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/StudentAcademicSections.tsx'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+
+    // Firestore rules Student Isolation
+    assert.equal(rulesSrc.includes('function isSchoolStudent(schoolId)'), true);
+    assert.equal(rulesSrc.includes('function isSchoolStudentInClass(schoolId, targetClassId)'), true);
+    assert.equal(rulesSrc.includes('function isVerifiedStudentClaim(data)'), true);
+    assert.equal(rulesSrc.includes('match /studentLinks/{linkId}'), true);
+    assert.equal(rulesSrc.includes("studentId == userDoc().get('studentId', '')"), true);
+    assert.equal(rulesSrc.includes("existing().get('studentId', '') == userDoc().get('studentId', '')"), true);
+
+    // Service & SmsContext student self-link & class-scoped queries
+    assert.equal(serviceSrc.includes('verifyAndClaimStudentLink'), true);
+    assert.equal(serviceSrc.includes('fetchStudentPortalLinksForSchoolFromFirestore'), true);
+    assert.equal(serviceSrc.includes('fetchSingleClassFromFirestore'), true);
+    assert.equal(serviceSrc.includes('fetchSingleFeeStructureFromFirestore'), true);
+    assert.equal(smsContextSrc.includes('fetchSingleFeeStructureFromFirestore'), true);
+    assert.equal(smsContextSrc.includes('generateStudentInviteForStudent'), true);
+    assert.equal(smsContextSrc.includes('linkStudentAccount'), true);
+    assert.equal(smsContextSrc.includes('studentPortalLinks'), true);
+
+    // UI Components & Routing Isolation
+    assert.equal(studentDirSrc.includes('Student Portal Access'), true);
+    assert.equal(studentDirSrc.includes('Generate Student Invite'), true);
+    assert.equal(authModalSrc.includes("accountIntent === 'student'"), true);
+    assert.equal(authModalSrc.includes('verifyAndClaimStudentLink'), true);
+    assert.equal(authModalSrc.includes('student_invite'), true);
+    assert.equal(studentDashSrc.includes('Student Portal · Strict Read-Only'), true);
+    assert.equal(sharedSectionsSrc.includes('Daily Homework Diary'), true);
+    assert.equal(sharedSectionsSrc.includes('Class Timetable (Read-Only)'), true);
+    assert.equal(appSrc.includes('isStudentUser'), true);
+    assert.equal(appSrc.includes("activeTool === 'sms-student-portal'"), true);
+
+    console.log('✅ PASS: Student Portal Auth, Invite Claim, Strict Read-Only RBAC & Isolation Tests');
+  }
+
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
 }
 

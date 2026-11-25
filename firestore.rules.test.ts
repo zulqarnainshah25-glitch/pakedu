@@ -301,7 +301,93 @@ export async function runFirestoreRulesTests() {
     );
     console.log('  ✅ PASS: Teacher A denied attendance write for unassigned class');
 
-    console.log('\n🎉 ALL 7 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
+    console.log('\n--- Test 8: Student Portal strictly Read-Only & scoped to own studentId and class ---');
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const db = context.firestore();
+      await setDoc(doc(db, 'schools', 'school_a', 'students', 'std_a_1'), {
+        id: 'std_a_1',
+        grNumber: 'GR-101',
+        fullName: 'Ali Hassan',
+        fatherName: 'Hassan',
+        gender: 'Male',
+        classId: 'cls_9_a',
+        guardianPhone: '0300-1111111',
+        status: 'active',
+      });
+      await setDoc(doc(db, 'schools', 'school_a', 'students', 'std_a_other'), {
+        id: 'std_a_other',
+        grNumber: 'GR-102',
+        fullName: 'Other Student',
+        fatherName: 'Father',
+        gender: 'Male',
+        classId: 'cls_10_a',
+        guardianPhone: '0300-2222222',
+        status: 'active',
+      });
+      await setDoc(doc(db, 'schools', 'school_a', 'marks', 'm_std_1'), {
+        id: 'm_std_1',
+        examId: 'ex_1',
+        schoolId: 'school_a',
+        studentId: 'std_a_1',
+        classId: 'cls_9_a',
+        subjectMarks: { math: 85 },
+      });
+      await setDoc(doc(db, 'schools', 'school_a', 'marks', 'm_std_other'), {
+        id: 'm_std_other',
+        examId: 'ex_1',
+        schoolId: 'school_a',
+        studentId: 'std_a_other',
+        classId: 'cls_10_a',
+        subjectMarks: { math: 90 },
+      });
+      await setDoc(doc(db, 'schools', 'school_a', 'homework', 'hw_cls_9'), {
+        id: 'hw_cls_9',
+        schoolId: 'school_a',
+        classId: 'cls_9_a',
+        subject: 'Math',
+        description: 'Ex 1.2',
+        dueDate: '2026-12-01',
+        teacherId: 'teacher_a_uid',
+      });
+      await setDoc(doc(db, 'schools', 'school_a', 'homework', 'hw_cls_10'), {
+        id: 'hw_cls_10',
+        schoolId: 'school_a',
+        classId: 'cls_10_a',
+        subject: 'Physics',
+        description: 'Ch 2',
+        dueDate: '2026-12-01',
+        teacherId: 'teacher_a_uid',
+      });
+      await setDoc(doc(db, 'users', 'student_a_uid'), {
+        uid: 'student_a_uid',
+        role: 'student',
+        status: 'active',
+        schoolId: 'school_a',
+        studentId: 'std_a_1',
+        studentGrNumber: 'GR-101',
+      });
+    });
+
+    const studentADb = testEnv.authenticatedContext('student_a_uid').firestore();
+    await assertSucceeds(getDoc(doc(studentADb, 'schools', 'school_a', 'students', 'std_a_1')));
+    await assertFails(getDoc(doc(studentADb, 'schools', 'school_a', 'students', 'std_a_other')));
+    await assertSucceeds(getDoc(doc(studentADb, 'schools', 'school_a', 'marks', 'm_std_1')));
+    await assertFails(getDoc(doc(studentADb, 'schools', 'school_a', 'marks', 'm_std_other')));
+    await assertSucceeds(getDoc(doc(studentADb, 'schools', 'school_a', 'homework', 'hw_cls_9')));
+    await assertFails(getDoc(doc(studentADb, 'schools', 'school_a', 'homework', 'hw_cls_10')));
+    await assertFails(
+      setDoc(doc(studentADb, 'schools', 'school_a', 'marks', 'm_std_1'), {
+        id: 'm_std_1',
+        examId: 'ex_1',
+        schoolId: 'school_a',
+        studentId: 'std_a_1',
+        classId: 'cls_9_a',
+        subjectMarks: { math: 100 },
+      })
+    );
+    console.log('  ✅ PASS: Student A strictly read-only and isolated to own studentId and class');
+
+    console.log('\n🎉 ALL 8 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
   } finally {
     if (testEnv) {
       await testEnv.cleanup();

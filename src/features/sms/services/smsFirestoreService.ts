@@ -26,6 +26,7 @@ import {
   Exam,
   StudentExamMarks,
   ParentStudentLink,
+  StudentPortalLink,
   TimetableEntry,
   HomeworkItem,
   StudentCertificate,
@@ -325,12 +326,14 @@ export async function saveAttendanceToFirestore(
 }
 
 export async function fetchAttendanceFromFirestore(
-  schoolId: string
+  schoolId: string,
+  classId?: string
 ): Promise<Record<string, DailyClassAttendance>> {
   if (!schoolId) return {};
   try {
     const attCol = collection(db, 'schools', schoolId, 'attendance');
-    const snapshot = await getDocs(attCol);
+    const q = classId ? query(attCol, where('classId', '==', classId)) : attCol;
+    const snapshot = await getDocs(q);
     const registers: Record<string, DailyClassAttendance> = {};
     snapshot.forEach((d) => {
       if (d.exists()) {
@@ -514,6 +517,26 @@ export async function fetchFeeStructuresFromFirestore(
     return feeStructures;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchFeeStructures', `schools/${schoolId}/feeStructures`);
+  }
+}
+
+export async function fetchSingleFeeStructureFromFirestore(
+  schoolId: string,
+  classId: string
+): Promise<ClassFeeStructure | null> {
+  if (!schoolId || !classId) return null;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'feeStructures', classId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data() as ClassFeeStructure;
+    return normalizeTimestamps({
+      ...data,
+      id: data.id || snap.id,
+      classId: data.classId || snap.id,
+    });
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchSingleFeeStructure', `schools/${schoolId}/feeStructures/${classId}`);
   }
 }
 
@@ -764,10 +787,18 @@ export function buildParentLinkId(schoolId: string, grNumber: string): string {
   return `${cleanSchool}__${cleanGr}`;
 }
 
-export function generateParentInviteCode(grNumber: string): string {
+export function buildPortalInviteCode(prefix: 'PAR' | 'STU', grNumber: string): string {
   const cleanGr = (grNumber || 'STD').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-6);
   const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `PAR-${cleanGr || 'STD'}-${rand}`;
+  return `${prefix}-${cleanGr || 'STD'}-${rand}`;
+}
+
+export function generateParentInviteCode(grNumber: string): string {
+  return buildPortalInviteCode('PAR', grNumber);
+}
+
+export function generateStudentInviteCode(grNumber: string): string {
+  return buildPortalInviteCode('STU', grNumber);
 }
 
 export async function saveParentStudentLinkToFirestore(
@@ -872,6 +903,142 @@ export async function verifyAndClaimParentLink(params: {
     claimedByUid: uid,
     status: 'linked',
   };
+}
+
+// =========================================================================
+// 14B. Student Portal: Self-Login Invite & Strictly Scoped Verification
+// =========================================================================
+export async function saveStudentPortalLinkToFirestore(
+  link: StudentPortalLink
+): Promise<boolean> {
+  if (!link.id || !link.schoolId || !link.studentId) {
+    throw new FirestoreSyncError('Student link ID, School ID, and Student ID are required', 'invalid-argument', 'saveStudentLink');
+  }
+  try {
+    const ref = doc(db, 'studentLinks', link.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...link,
+        studentEmail: link.studentEmail ? link.studentEmail.trim().toLowerCase() : '',
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveStudentLink', `studentLinks/${link.id}`);
+  }
+}
+
+export async function fetchStudentPortalLinkFromFirestore(
+  schoolId: string,
+  grNumber: string
+): Promise<StudentPortalLink | null> {
+  if (!schoolId || !grNumber.trim()) return null;
+  const linkId = buildParentLinkId(schoolId, grNumber);
+  try {
+    const ref = doc(db, 'studentLinks', linkId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return normalizeTimestamps(snap.data() as StudentPortalLink);
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchStudentLink', `studentLinks/${linkId}`);
+  }
+}
+
+export async function fetchStudentPortalLinksForSchoolFromFirestore(
+  schoolId: string
+): Promise<Record<string, StudentPortalLink>> {
+  if (!schoolId) return {};
+  try {
+    const q = query(collection(db, 'studentLinks'), where('schoolId', '==', schoolId));
+    const snapshot = await getDocs(q);
+    const linksMap: Record<string, StudentPortalLink> = {};
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = normalizeTimestamps(d.data() as StudentPortalLink);
+        if (data.studentId) {
+          linksMap[data.studentId] = data;
+        }
+      }
+    });
+    return linksMap;
+  } catch {
+    return {};
+  }
+}
+
+export async function verifyAndClaimStudentLink(params: {
+  schoolId: string;
+  grNumber: string;
+  uid: string;
+  studentEmail?: string;
+  inviteCode?: string;
+}): Promise<StudentPortalLink> {
+  const { schoolId, grNumber, uid, studentEmail, inviteCode } = params;
+  const link = await fetchStudentPortalLinkFromFirestore(schoolId, grNumber);
+  if (!link) {
+    throw new FirestoreSyncError(
+      `No Student Portal link found for GR "${grNumber.trim()}" at this school. Ask your School Admin to enable Student Portal Access on your student profile.`,
+      'not-found',
+      'verifyStudentLink'
+    );
+  }
+
+  const normalizedEmail = (studentEmail || '').trim().toLowerCase();
+  const linkEmail = (link.studentEmail || '').trim().toLowerCase();
+  const normalizedCode = (inviteCode || '').trim().toUpperCase();
+  const linkCode = (link.inviteCode || '').trim().toUpperCase();
+
+  const emailMatches = Boolean(linkEmail && normalizedEmail && linkEmail === normalizedEmail);
+  const codeMatches = Boolean(linkCode && normalizedCode && linkCode === normalizedCode);
+
+  if (!emailMatches && !codeMatches) {
+    throw new FirestoreSyncError(
+      'Verification failed: Student Email or Student Invite Code does not match the school record for this GR Number.',
+      'permission-denied',
+      'verifyStudentLink'
+    );
+  }
+
+  try {
+    const ref = doc(db, 'studentLinks', link.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        claimedByUid: uid,
+        claimedAt: new Date().toISOString(),
+        status: 'linked',
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+  } catch {
+    // Non-fatal claim marker update
+  }
+
+  return {
+    ...link,
+    claimedByUid: uid,
+    status: 'linked',
+  };
+}
+
+export async function fetchSingleClassFromFirestore(
+  schoolId: string,
+  classId: string
+): Promise<ClassSection | null> {
+  if (!schoolId || !classId) return null;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'classes', classId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data() as ClassSection;
+    return normalizeTimestamps({ ...data, id: data.id || snap.id });
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchSingleClass', `schools/${schoolId}/classes/${classId}`);
+  }
 }
 
 export async function fetchSingleStudentFromFirestore(
@@ -986,11 +1153,15 @@ export async function saveTimetableEntryToFirestore(
   }
 }
 
-export async function fetchTimetableFromFirestore(schoolId: string): Promise<TimetableEntry[]> {
+export async function fetchTimetableFromFirestore(
+  schoolId: string,
+  classId?: string
+): Promise<TimetableEntry[]> {
   if (!schoolId) return [];
   try {
     const col = collection(db, 'schools', schoolId, 'timetable');
-    const snapshot = await getDocs(col);
+    const q = classId ? query(col, where('classId', '==', classId)) : col;
+    const snapshot = await getDocs(q);
     const items: TimetableEntry[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {
@@ -1044,11 +1215,15 @@ export async function saveHomeworkToFirestore(
   }
 }
 
-export async function fetchHomeworkFromFirestore(schoolId: string): Promise<HomeworkItem[]> {
+export async function fetchHomeworkFromFirestore(
+  schoolId: string,
+  classId?: string
+): Promise<HomeworkItem[]> {
   if (!schoolId) return [];
   try {
     const col = collection(db, 'schools', schoolId, 'homework');
-    const snapshot = await getDocs(col);
+    const q = classId ? query(col, where('classId', '==', classId)) : col;
+    const snapshot = await getDocs(q);
     const items: HomeworkItem[] = [];
     snapshot.forEach((d) => {
       if (d.exists()) {

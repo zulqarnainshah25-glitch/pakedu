@@ -64,6 +64,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     feeConcessions,
     applyStudentConcession,
     generateParentInviteForStudent,
+    studentPortalLinks,
+    generateStudentInviteForStudent,
   } = useSms();
 
   const isAdmin = userRole === 'admin' || userRole === 'principal' || userRole === 'super-admin';
@@ -96,6 +98,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const [guardianPhone, setGuardianPhone] = useState('');
   const [address, setAddress] = useState('');
   const [parentEmail, setParentEmail] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [selectedConcessionId, setSelectedConcessionId] = useState('');
@@ -106,6 +109,11 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const [studentInviteEmailInput, setStudentInviteEmailInput] = useState('');
+  const [generatedStudentInvite, setGeneratedStudentInvite] = useState<{ code: string; url: string } | null>(null);
+  const [copiedStudentInvite, setCopiedStudentInvite] = useState(false);
+  const [isGeneratingStudentInvite, setIsGeneratingStudentInvite] = useState(false);
+  const [studentInviteMessage, setStudentInviteMessage] = useState<string | null>(null);
 
   const currentMonthKey = useMemo(() => {
     const now = new Date();
@@ -136,6 +144,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       setGeneratedInvite(null);
       setCopiedInvite(false);
       setInviteMessage(null);
+      setStudentInviteEmailInput('');
+      setGeneratedStudentInvite(null);
+      setCopiedStudentInvite(false);
+      setStudentInviteMessage(null);
       return;
     }
     const latest = students.find((s) => s.id === viewingStudent.id) || viewingStudent;
@@ -143,6 +155,12 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setGeneratedInvite(null);
     setCopiedInvite(false);
     setInviteMessage(null);
+    setStudentInviteEmailInput(
+      latest.studentEmail || studentPortalLinks[latest.id]?.studentEmail || ''
+    );
+    setGeneratedStudentInvite(null);
+    setCopiedStudentInvite(false);
+    setStudentInviteMessage(null);
   }, [viewingStudent?.id]);
 
   // Ensure classes for the active school are fetched from Firestore
@@ -242,12 +260,50 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     }
   };
 
-  const handleCopyParentInviteUrl = (urlText: string) => {
+  const handleGenerateStudentInvite = async () => {
+    if (!activeViewingStudent) return;
+    setIsGeneratingStudentInvite(true);
+    setStudentInviteMessage(null);
+    setCopiedStudentInvite(false);
+    try {
+      const cleanEmail = studentInviteEmailInput.trim().toLowerCase();
+      const result = await generateStudentInviteForStudent(
+        activeViewingStudent.id,
+        cleanEmail || undefined
+      );
+      if (!result) {
+        setStudentInviteMessage('Unable to generate student invite right now.');
+        return;
+      }
+      setGeneratedStudentInvite({ code: result.inviteCode, url: result.inviteUrl });
+      setViewingStudent((prev) =>
+        prev
+          ? {
+              ...prev,
+              studentEmail: cleanEmail || prev.studentEmail,
+              studentInviteCode: result.inviteCode,
+            }
+          : null
+      );
+      setStudentInviteMessage('Student invite code & link generated and synced.');
+    } catch (err: any) {
+      setStudentInviteMessage(err?.message || 'Unable to generate student invite right now.');
+    } finally {
+      setIsGeneratingStudentInvite(false);
+    }
+  };
+
+  const handleCopyParentInviteUrl = (urlText: string, type: 'parent' | 'student' = 'parent') => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(urlText).catch(() => {});
     }
-    setCopiedInvite(true);
-    setTimeout(() => setCopiedInvite(false), 2500);
+    if (type === 'student') {
+      setCopiedStudentInvite(true);
+      setTimeout(() => setCopiedStudentInvite(false), 2500);
+    } else {
+      setCopiedInvite(true);
+      setTimeout(() => setCopiedInvite(false), 2500);
+    }
   };
 
   const openAddModal = () => {
@@ -267,6 +323,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setGuardianPhone('');
     setAddress('');
     setParentEmail('');
+    setStudentEmail('');
     setPhotoUrl('');
     setPhotoError(null);
     setSelectedConcessionId('');
@@ -291,6 +348,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setGuardianPhone(student.guardianPhone || '');
     setAddress(student.address || '');
     setParentEmail(student.parentEmail || '');
+    setStudentEmail(student.studentEmail || '');
     setPhotoUrl(student.photoUrl || '');
     setPhotoError(null);
     setSelectedConcessionId(student.concessionId || '');
@@ -353,6 +411,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       : undefined;
 
     const cleanParentEmail = parentEmail.trim().toLowerCase();
+    const cleanStudentEmail = studentEmail.trim().toLowerCase();
     const cleanPhotoUrl = photoUrl.trim();
     const payload: Omit<Student, 'id'> = {
       fullName: fullName.trim(),
@@ -369,6 +428,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       guardianPhone: guardianPhone.trim(),
       address: address.trim() || undefined,
       parentEmail: editingStudent ? cleanParentEmail : cleanParentEmail || undefined,
+      studentEmail: editingStudent ? cleanStudentEmail : cleanStudentEmail || undefined,
       photoUrl: editingStudent ? cleanPhotoUrl : cleanPhotoUrl || undefined,
       concessionId: matchedRule ? matchedRule.id : '',
       concessionTitle: matchedRule ? matchedRule.title : '',
@@ -1343,6 +1403,149 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               </div>
             )}
 
+            {/* Student Portal Access & Student Login Linkage */}
+            {activeViewingStudent && (() => {
+              const liveStudentLink = studentPortalLinks[activeViewingStudent.id];
+              const isStudentLinked = Boolean(
+                activeViewingStudent.studentUid || liveStudentLink?.status === 'linked'
+              );
+              const activeCode =
+                generatedStudentInvite?.code ||
+                liveStudentLink?.inviteCode ||
+                activeViewingStudent.studentInviteCode ||
+                '';
+              const activeStudentUrl =
+                generatedStudentInvite?.url ||
+                `${typeof window !== 'undefined' ? window.location.origin : ''}/?student_invite=${encodeURIComponent(
+                  activeCode
+                )}&school=${encodeURIComponent(activeSchool.id)}&gr=${encodeURIComponent(
+                  activeViewingStudent.grNumber
+                )}`;
+
+              return (
+                <div className="p-4 rounded-xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/60 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                      <div>
+                        <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                          Student Portal Access
+                        </h4>
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                          Allow student read-only login for attendance, homework, timetable &amp; report cards
+                        </p>
+                      </div>
+                    </div>
+                    {isStudentLinked ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Linked
+                      </span>
+                    ) : activeCode ? (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        <KeyRound className="w-3 h-3" />
+                        Invite Ready
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                        Not Linked
+                      </span>
+                    )}
+                  </div>
+
+                  {isStudentLinked && (
+                    <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-slate-900/60 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                      <span>
+                        Linked Student Email:{' '}
+                        <strong className="font-mono">
+                          {liveStudentLink?.studentEmail ||
+                            activeViewingStudent.studentEmail ||
+                            'Verified Student Account'}
+                        </strong>
+                      </span>
+                      {(liveStudentLink?.claimedAt || activeViewingStudent.studentLinkedAt) && (
+                        <span className="text-[10px] text-slate-500">
+                          Since{' '}
+                          {new Date(
+                            liveStudentLink?.claimedAt || activeViewingStudent.studentLinkedAt!
+                          ).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {canAdmitStudents && (
+                    <div className="space-y-2.5">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <div className="relative flex-1">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="email"
+                            value={studentInviteEmailInput}
+                            onChange={(e) => setStudentInviteEmailInput(e.target.value)}
+                            placeholder="Student login email (optional, e.g., student@gmail.com)"
+                            className="w-full pl-8 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-700 rounded-xl text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleGenerateStudentInvite}
+                          disabled={isGeneratingStudentInvite}
+                          className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>
+                            {isGeneratingStudentInvite
+                              ? 'Generating...'
+                              : 'Generate Student Invite'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {activeCode && (
+                        <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-sky-200 dark:border-sky-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <div className="space-y-0.5 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[11px] text-slate-500">Student Code:</span>
+                              <span className="font-mono font-bold text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded">
+                                {activeCode}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 truncate">
+                              {activeStudentUrl}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyParentInviteUrl(activeStudentUrl, 'student')}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg transition cursor-pointer shrink-0"
+                          >
+                            {copiedStudentInvite ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                                <span>Copied Link</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Copy Invite Link</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+
+                      {studentInviteMessage && (
+                        <p className="text-[11px] font-medium text-sky-700 dark:text-sky-300">
+                          {studentInviteMessage}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* School context */}
             <div className="text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-3 flex items-center justify-between">
               <span>{activeSchool.name}</span>
@@ -1612,7 +1815,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                 />
               </div>
 
-              {/* Parent Email & Student Photo (Optional) */}
+              {/* Parent Email, Student Email & Photo (Optional) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1634,6 +1837,25 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                 </div>
 
                 <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Student Email (for Student Portal Login)
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      value={studentEmail}
+                      onChange={(e) => setStudentEmail(e.target.value)}
+                      placeholder="e.g., student@gmail.com"
+                      className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Optional pre-verified login email for the Student Portal.
+                  </span>
+                </div>
+
+                <div className="sm:col-span-2">
                   <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Student Photo (Optional — JPEG/PNG)
                   </label>
