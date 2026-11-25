@@ -15,6 +15,8 @@ import {
   ClassFeeStructure,
   FeePayment,
   FeeConcessionRule,
+  Exam,
+  StudentExamMarks,
 } from '../types';
 import {
   INITIAL_MOCK_SCHOOL,
@@ -28,6 +30,8 @@ import {
   INITIAL_MOCK_FEE_STRUCTURES,
   INITIAL_MOCK_FEE_PAYMENTS,
   INITIAL_MOCK_FEE_CONCESSIONS,
+  INITIAL_MOCK_EXAMS,
+  INITIAL_MOCK_EXAM_MARKS,
 } from '../data/mockSmsData';
 import {
   FirestoreSyncError,
@@ -56,6 +60,12 @@ import {
   saveFeeConcessionToFirestore,
   fetchFeeConcessionsFromFirestore,
   deleteFeeConcessionFromFirestore,
+  saveExamToFirestore,
+  fetchExamsFromFirestore,
+  deleteExamFromFirestore,
+  saveStudentMarksToFirestore,
+  fetchMarksFromFirestore,
+  deleteStudentMarksFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
 import { hasAdminCapabilities } from '../../../utils/smartRouting';
@@ -222,6 +232,17 @@ interface SmsContextType {
   canManageFeeStructure: boolean;
   canCollectFee: boolean;
 
+  // Phase B: Exams & Results
+  exams: Exam[];
+  examMarks: StudentExamMarks[];
+  saveExam: (exam: Omit<Exam, 'schoolId'>) => Promise<boolean>;
+  deleteExam: (examId: string) => Promise<boolean>;
+  saveStudentMarks: (marks: Omit<StudentExamMarks, 'schoolId'>) => Promise<boolean>;
+  saveBulkStudentMarks: (marksList: Array<Omit<StudentExamMarks, 'schoolId'>>) => Promise<boolean>;
+  canManageExams: boolean;
+  canEnterMarksForClass: (classId: string) => boolean;
+  updateSchoolLogo: (logoUrl: string) => Promise<boolean>;
+
   // Stats
   stats: {
     totalStudents: number;
@@ -244,6 +265,8 @@ const SMS_TEACHERS_STORAGE_KEY = 'pakedu_sms_teachers_v1';
 const SMS_FEE_STRUCTURES_STORAGE_KEY = 'pakedu_sms_fee_structures_v1';
 const SMS_FEE_PAYMENTS_STORAGE_KEY = 'pakedu_sms_fee_payments_v1';
 const SMS_FEE_CONCESSIONS_STORAGE_KEY = 'pakedu_sms_fee_concessions_v1';
+const SMS_EXAMS_STORAGE_KEY = 'pakedu_sms_exams_v1';
+const SMS_EXAM_MARKS_STORAGE_KEY = 'pakedu_sms_exam_marks_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -715,6 +738,42 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [exams, setExams] = useState<Exam[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_EXAMS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_EXAMS;
+          return parsed.filter((e: Exam) => !e.id.startsWith('exam_first_term_2026'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_EXAMS : [];
+    } catch (e) {
+      console.warn('Failed to parse saved exams:', e);
+      return [];
+    }
+  });
+
+  const [examMarks, setExamMarks] = useState<StudentExamMarks[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_EXAM_MARKS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_EXAM_MARKS;
+          return parsed.filter((m: StudentExamMarks) => !m.id.startsWith('exam_first_term_2026_'));
+        }
+      }
+      return isDemo ? INITIAL_MOCK_EXAM_MARKS : [];
+    } catch (e) {
+      console.warn('Failed to parse saved exam marks:', e);
+      return [];
+    }
+  });
+
   const setDemoMode = (enabled: boolean) => {
     if (!import.meta.env.DEV) {
       setDemoModeState(false);
@@ -741,6 +800,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setFeeStructures(INITIAL_MOCK_FEE_STRUCTURES);
       setFeePayments(INITIAL_MOCK_FEE_PAYMENTS);
       setFeeConcessions(INITIAL_MOCK_FEE_CONCESSIONS);
+      setExams(INITIAL_MOCK_EXAMS);
+      setExamMarks(INITIAL_MOCK_EXAM_MARKS);
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -781,6 +842,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsedConcessions = savedConcessions ? JSON.parse(savedConcessions) : [];
         setFeeConcessions(parsedConcessions.filter((c: FeeConcessionRule) => !c.id.startsWith('conc_orphan_') && !c.id.startsWith('conc_staff_') && !c.id.startsWith('conc_merit_')));
 
+        const savedExams = localStorage.getItem(SMS_EXAMS_STORAGE_KEY);
+        const parsedExams = savedExams ? JSON.parse(savedExams) : [];
+        setExams(parsedExams.filter((e: Exam) => !e.id.startsWith('exam_first_term_2026')));
+
+        const savedExamMarks = localStorage.getItem(SMS_EXAM_MARKS_STORAGE_KEY);
+        const parsedExamMarks = savedExamMarks ? JSON.parse(savedExamMarks) : [];
+        setExamMarks(parsedExamMarks.filter((m: StudentExamMarks) => !m.id.startsWith('exam_first_term_2026_')));
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -793,6 +862,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setFeeStructures([]);
         setFeePayments([]);
         setFeeConcessions([]);
+        setExams([]);
+        setExamMarks([]);
         setAttendanceRegisters({});
       }
     }
@@ -869,6 +940,23 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Ignore storage errors
     }
   }, [feeConcessions]);
+
+  // Save exams & exam marks to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_EXAMS_STORAGE_KEY, JSON.stringify(exams));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [exams]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_EXAM_MARKS_STORAGE_KEY, JSON.stringify(examMarks));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [examMarks]);
 
   const setUserRole = (role: UserRole) => {
     setUserRoleState(role);
@@ -1010,6 +1098,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee concessions fetch error:', err));
+
+    // 9. Sync exams for active school
+    fetchExamsFromFirestore(schoolId)
+      .then((remoteExams) => {
+        if (!cancelled) {
+          setExams(remoteExams || []);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Exams fetch error:', err));
+
+    // 10. Sync exam marks for active school
+    fetchMarksFromFirestore(schoolId)
+      .then((remoteMarks) => {
+        if (!cancelled) {
+          setExamMarks(remoteMarks || []);
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Exam marks fetch error:', err));
 
     return () => {
       cancelled = true;
@@ -2064,6 +2170,187 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return canManageFeeStructure || canAdmitStudents;
   }, [canManageFeeStructure, canAdmitStudents]);
 
+  // =========================================================================
+  // Phase B: Exams & Results (Admin setup + Teacher assigned-class marks)
+  // =========================================================================
+  const canManageExams = useMemo(() => {
+    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
+  }, [effectiveRole, isSuperAdmin]);
+
+  const canEnterMarksForClass = (classId: string): boolean => {
+    if (!classId) return false;
+    if (canManageExams) return true;
+    if (effectiveRole === 'teacher') {
+      const assigned =
+        activeTeacher?.assignedClasses?.length
+          ? activeTeacher.assignedClasses
+          : currentUserProfile?.assignedClassIds || [];
+      return assigned.includes(classId);
+    }
+    return false;
+  };
+
+  const saveExam = async (examData: Omit<Exam, 'schoolId'>): Promise<boolean> => {
+    if (!canManageExams) {
+      setSyncError({
+        id: `rbac_exam_${Date.now()}`,
+        message: 'Permission denied: Only School Administrators can create or edit exams.',
+        reason: 'Only Admins can manage exam setup',
+        operation: 'saveExam',
+        retry: async () => {},
+      });
+      return false;
+    }
+
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullExam: Exam = {
+      ...examData,
+      schoolId: targetSchoolId,
+      createdByUid: examData.createdByUid || currentUserProfile?.uid || 'admin',
+      createdByName: examData.createdByName || currentUserProfile?.fullName || 'School Admin',
+      createdAt: examData.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setExams((prev) => {
+      const idx = prev.findIndex((e) => e.id === fullExam.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullExam;
+        return copy;
+      }
+      return [fullExam, ...prev];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveExam', () =>
+        saveExamToFirestore(activeSchool.id, fullExam)
+      );
+    }
+    return true;
+  };
+
+  const deleteExam = async (examId: string): Promise<boolean> => {
+    if (!canManageExams) return false;
+    const linkedMarks = examMarks.filter((m) => m.examId === examId);
+    setExams((prev) => prev.filter((e) => e.id !== examId));
+    setExamMarks((prev) => prev.filter((m) => m.examId !== examId));
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('deleteExam', async () => {
+        await deleteExamFromFirestore(activeSchool.id, examId);
+        await Promise.all(
+          linkedMarks.map((m) => deleteStudentMarksFromFirestore(activeSchool.id, m.id))
+        );
+      });
+    }
+    return true;
+  };
+
+  const saveStudentMarks = async (
+    marksData: Omit<StudentExamMarks, 'schoolId'>
+  ): Promise<boolean> => {
+    if (!canEnterMarksForClass(marksData.classId)) {
+      setSyncError({
+        id: `rbac_marks_${Date.now()}`,
+        message: 'Permission denied: Teachers can only enter marks for their assigned classes.',
+        reason: 'Class not assigned to teacher',
+        operation: 'saveStudentMarks',
+        retry: async () => {},
+      });
+      return false;
+    }
+
+    const fullMarks: StudentExamMarks = {
+      ...marksData,
+      schoolId: activeSchool.id || 'default_school',
+      enteredByUid: marksData.enteredByUid || currentUserProfile?.uid || 'faculty',
+      enteredByName: marksData.enteredByName || currentUserProfile?.fullName || 'Teacher',
+      enteredAt: marksData.enteredAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setExamMarks((prev) => {
+      const idx = prev.findIndex((m) => m.id === fullMarks.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullMarks;
+        return copy;
+      }
+      return [fullMarks, ...prev];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveStudentMarks', () =>
+        saveStudentMarksToFirestore(activeSchool.id, fullMarks)
+      );
+    }
+    return true;
+  };
+
+  const saveBulkStudentMarks = async (
+    marksList: Array<Omit<StudentExamMarks, 'schoolId'>>
+  ): Promise<boolean> => {
+    if (marksList.length === 0) return true;
+    const unauthorized = marksList.find((m) => !canEnterMarksForClass(m.classId));
+    if (unauthorized) {
+      setSyncError({
+        id: `rbac_bulk_marks_${Date.now()}`,
+        message: 'Permission denied: One or more classes are not assigned to your teaching profile.',
+        reason: 'Assigned class scope required for marks entry',
+        operation: 'saveBulkStudentMarks',
+        retry: async () => {},
+      });
+      return false;
+    }
+
+    const nowIso = new Date().toISOString();
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullRecords: StudentExamMarks[] = marksList.map((m) => ({
+      ...m,
+      schoolId: targetSchoolId,
+      enteredByUid: m.enteredByUid || currentUserProfile?.uid || 'faculty',
+      enteredByName: m.enteredByName || currentUserProfile?.fullName || 'Teacher',
+      enteredAt: nowIso,
+      updatedAt: nowIso,
+    }));
+
+    setExamMarks((prev) => {
+      const next = [...prev];
+      fullRecords.forEach((rec) => {
+        const idx = next.findIndex((m) => m.id === rec.id);
+        if (idx >= 0) {
+          next[idx] = rec;
+        } else {
+          next.unshift(rec);
+        }
+      });
+      return next;
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync('saveBulkStudentMarks', () =>
+        Promise.all(fullRecords.map((rec) => saveStudentMarksToFirestore(activeSchool.id, rec)))
+      );
+    }
+    return true;
+  };
+
+  const updateSchoolLogo = async (logoUrl: string): Promise<boolean> => {
+    if (!canManageExams || !activeSchool.id) return false;
+    const updatedSchool: School = { ...activeSchool, logoUrl };
+    setActiveSchool(updatedSchool);
+    setRegisteredSchools((prev) =>
+      prev.map((s) => (s.id === updatedSchool.id ? updatedSchool : s))
+    );
+    if (!demoMode && activeSchool.id) {
+      return await performSync('updateSchoolLogo', () =>
+        saveSchoolToFirestore(updatedSchool)
+      );
+    }
+    return true;
+  };
+
   return (
     <SmsContext.Provider
       value={{
@@ -2127,6 +2414,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         getStudentFeeStatus,
         canManageFeeStructure,
         canCollectFee,
+        exams,
+        examMarks,
+        saveExam,
+        deleteExam,
+        saveStudentMarks,
+        saveBulkStudentMarks,
+        canManageExams,
+        canEnterMarksForClass,
+        updateSchoolLogo,
         attendanceRegisters,
         saveAttendance,
         getAttendance,

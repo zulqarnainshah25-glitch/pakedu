@@ -1,4 +1,4 @@
-import { School, TeacherInfo, ClassSection, ClassFeeStructure, FeePayment, FeeConcessionRule } from '../types';
+import { School, TeacherInfo, ClassSection, ClassFeeStructure, FeePayment, FeeConcessionRule, Exam, StudentExamMarks } from '../types';
 
 export const INITIAL_MOCK_SCHOOL: School = {
   id: 'school_latifabad_403020101',
@@ -544,5 +544,88 @@ export const INITIAL_MOCK_FEE_PAYMENTS: FeePayment[] = [
     recordedByUid: 'uid_admin_latifabad',
     recordedByName: 'Farooq Ahmed',
     createdAt: '2026-11-08T11:15:00.000Z',
+  },
+];
+
+export const INITIAL_MOCK_EXAMS: Exam[] = [
+  {
+    id: 'exam_first_term_2026',
+    schoolId: 'school_latifabad_403020101',
+    title: 'First Term 2026',
+    termType: 'First Term',
+    academicYear: '2025-2026',
+    startDate: '2026-03-10',
+    endDate: '2026-03-22',
+    classIds: ['cls_9_a', 'cls_10_a'],
+    subjects: [
+      { id: 'subj_eng', name: 'English', totalMarks: 100, passingMarks: 33 },
+      { id: 'subj_urdu', name: 'Urdu', totalMarks: 100, passingMarks: 33 },
+      { id: 'subj_math', name: 'Mathematics', totalMarks: 100, passingMarks: 33 },
+      { id: 'subj_sci', name: 'Physics / Science', totalMarks: 100, passingMarks: 33 },
+      { id: 'subj_isl', name: 'Islamiyat', totalMarks: 50, passingMarks: 17 },
+    ],
+    status: 'published',
+    createdByUid: 'admin_user_001',
+    createdByName: 'Sir Ghulam Mustafa',
+    createdAt: '2026-03-01T09:00:00.000Z',
+  },
+];
+
+export const INITIAL_MOCK_EXAM_MARKS: StudentExamMarks[] = [
+  {
+    id: 'exam_first_term_2026_std_001',
+    schoolId: 'school_latifabad_403020101',
+    examId: 'exam_first_term_2026',
+    classId: 'cls_9_a',
+    studentId: 'std_001',
+    studentName: 'Muhammad Ali',
+    grNumber: 'GR-1042',
+    grade: 'Class 9',
+    section: 'A (Science)',
+    subjectMarks: {
+      subj_eng: 84,
+      subj_urdu: 79,
+      subj_math: 92,
+      subj_sci: 88,
+      subj_isl: 45,
+    },
+    absentSubjects: [],
+    remarks: 'Outstanding analytical skills in Mathematics and Science.',
+    totalObtained: 388,
+    totalMax: 450,
+    percentage: 86.22,
+    overallGrade: 'A+',
+    resultStatus: 'Pass',
+    enteredByUid: 't_001',
+    enteredByName: 'Ustad Tariq Aziz',
+    enteredAt: '2026-03-25T10:00:00.000Z',
+  },
+  {
+    id: 'exam_first_term_2026_std_002',
+    schoolId: 'school_latifabad_403020101',
+    examId: 'exam_first_term_2026',
+    classId: 'cls_9_a',
+    studentId: 'std_002',
+    studentName: 'Bilal Ahmed',
+    grNumber: 'GR-1043',
+    grade: 'Class 9',
+    section: 'A (Science)',
+    subjectMarks: {
+      subj_eng: 72,
+      subj_urdu: 74,
+      subj_math: 78,
+      subj_sci: 75,
+      subj_isl: 41,
+    },
+    absentSubjects: [],
+    remarks: 'Consistent progress across all subjects.',
+    totalObtained: 340,
+    totalMax: 450,
+    percentage: 75.56,
+    overallGrade: 'A',
+    resultStatus: 'Pass',
+    enteredByUid: 't_001',
+    enteredByName: 'Ustad Tariq Aziz',
+    enteredAt: '2026-03-25T10:15:00.000Z',
   },
 ];

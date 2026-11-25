@@ -30,7 +30,8 @@ try {
     {
       localCache: persistentLocalCache({
         tabManager: persistentMultipleTabManager()
-      })
+      }),
+      ignoreUndefinedProperties: true
     },
     CV_FIRESTORE_DATABASE_ID
   );

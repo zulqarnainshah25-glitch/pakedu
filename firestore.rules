@@ -112,7 +112,11 @@ service cloud.firestore {
 
     function isValidAttendance(data) {
       return data.keys().hasAll(['id', 'schoolId', 'classId', 'date', 'records']) &&
-        data.keys().hasOnly(['id', 'schoolId', 'classId', 'date', 'records', 'conductedBy', 'conductedByUid', 'markedAt', 'notes', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'classId', 'grade', 'section', 'date', 'records',
+          'conductedBy', 'conductedByUid', 'markedByUid', 'markedByName', 'markedAt',
+          'summary', 'notes', 'updatedAt'
+        ]) &&
         data.id is string && isValidId(data.id) &&
         data.schoolId is string && isValidId(data.schoolId) &&
         data.classId is string && isValidId(data.classId) &&
@@ -157,6 +161,36 @@ service cloud.firestore {
         data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
         (data.discountType == 'percentage' || data.discountType == 'fixed') &&
         data.value is number && data.value >= 0;
+    }
+
+    function isValidExam(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'title', 'classIds', 'subjects', 'status']) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'title', 'termType', 'academicYear', 'startDate', 'endDate',
+          'classIds', 'subjects', 'status', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        data.classIds is list &&
+        data.subjects is list && data.subjects.size() >= 1 &&
+        (data.status in ['draft', 'published', 'archived']);
+    }
+
+    function isValidExamMarks(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'examId', 'classId', 'studentId', 'subjectMarks']) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'examId', 'classId', 'studentId', 'studentName', 'grNumber',
+          'grade', 'section', 'subjectMarks', 'absentSubjects', 'remarks',
+          'totalObtained', 'totalMax', 'percentage', 'overallGrade', 'resultStatus',
+          'enteredByUid', 'enteredByName', 'enteredAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.examId is string && isValidId(data.examId) &&
+        data.classId is string && isValidId(data.classId) &&
+        data.studentId is string && isValidId(data.studentId) &&
+        data.subjectMarks is map;
     }
 
     // =========================================================================
@@ -325,6 +359,7 @@ service cloud.firestore {
             'email',
             'address',
             'activeAcademicYear',
+            'logoUrl',
             'updatedAt'
           ])
         )
@@ -416,6 +451,35 @@ service cloud.firestore {
       match /feeConcessions/{concessionId} {
         allow get, list: if isSchoolMember(schoolId);
         allow create, update: if isSchoolAdmin(schoolId) && isValidId(concessionId) && isValidFeeConcession(incoming());
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Exams (/schools/{schoolId}/exams/{examId}) ---
+      // Admin-only creation/edit; active school members (teachers/parents) can read.
+      match /exams/{examId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isSchoolAdmin(schoolId) &&
+          isValidId(examId) &&
+          isValidExam(incoming()) &&
+          incoming().schoolId == schoolId;
+        allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Exam Marks (/schools/{schoolId}/marks/{markId}) ---
+      // Read allowed to active school members (admins/teachers/future parents).
+      // Writes strictly restricted to School Admins OR Teachers assigned to incoming().classId.
+      match /marks/{markId} {
+        allow get, list: if isSchoolMember(schoolId);
+        allow create, update: if isValidId(markId) &&
+          isValidExamMarks(incoming()) &&
+          incoming().schoolId == schoolId && (
+            isSchoolAdmin(schoolId) || (
+              isSchoolMember(schoolId) &&
+              userDoc().get('role', '') == 'teacher' &&
+              ('assignedClassIds' in userDoc()) &&
+              incoming().classId in userDoc().assignedClassIds
+            )
+          );
         allow delete: if isSchoolAdmin(schoolId);
       }
     }

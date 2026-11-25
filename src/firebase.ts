@@ -53,6 +53,7 @@ function initFirestoreWithOfflinePersistence() {
         localCache: persistentLocalCache({
           tabManager: persistentMultipleTabManager(),
         }),
+        ignoreUndefinedProperties: true,
       },
       resolvedFirebaseConfig.firestoreDatabaseId
     );

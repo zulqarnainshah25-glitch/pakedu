@@ -24,13 +24,20 @@ import {
 } from './authAndSso';
 import { calculateSindhSalary2026 } from '../data/salaryScale2026';
 import { determineSmartRoute, hasAdminCapabilities } from './smartRouting';
-import { School, UserProfile, ClassFeeStructure, FeeConcessionRule, FeePayment, Student } from '../features/sms/types';
+import { School, UserProfile, ClassFeeStructure, FeeConcessionRule, FeePayment, Student, Exam, StudentExamMarks } from '../features/sms/types';
 import {
   calculateStudentDiscount,
   calculateStudentFeeLedger,
   getExpectedClassMonthlyFee,
   getNextMonthKey,
 } from '../features/sms/utils/feeCalculations';
+import {
+  computeAcademicGrade,
+  computeStudentExamResult,
+  computeClassPositions,
+  formatOrdinalPosition,
+} from '../features/sms/utils/examCalculations';
+import { sanitizeFirestoreData } from './firestoreSanitizer';
 import {
   getClassesForSection,
   getFieldExamplesForClass,
@@ -973,6 +980,228 @@ function runAllUnitTests() {
     assert.equal(smsCtxSrc.includes('saveSchoolToFirestore(activatedSchool)'), true);
 
     console.log('✅ PASS: Auto-Role Provisioning, Signup Race Guard & Firestore Rules Security Tests');
+  }
+
+  // 17. Phase B: Exams & Results Calculations, Class Positions & Firestore RBAC Rules Tests
+  {
+    assert.equal(computeAcademicGrade(85).grade, 'A+');
+    assert.equal(computeAcademicGrade(75).grade, 'A');
+    assert.equal(computeAcademicGrade(65).grade, 'B');
+    assert.equal(computeAcademicGrade(55).grade, 'C');
+    assert.equal(computeAcademicGrade(45).grade, 'D');
+    assert.equal(computeAcademicGrade(33).grade, 'E');
+    assert.equal(computeAcademicGrade(25).grade, 'F');
+
+    assert.equal(formatOrdinalPosition(1), '1st');
+    assert.equal(formatOrdinalPosition(2), '2nd');
+    assert.equal(formatOrdinalPosition(3), '3rd');
+    assert.equal(formatOrdinalPosition(11), '11th');
+    assert.equal(formatOrdinalPosition(21), '21st');
+
+    const mockExam: Exam = {
+      id: 'exam_term1',
+      schoolId: 'sch_1',
+      title: 'First Term 2026',
+      termType: 'First Term',
+      academicYear: '2025-2026',
+      classIds: ['cls_9_a'],
+      subjects: [
+        { id: 'eng', name: 'English', totalMarks: 100, passingMarks: 33 },
+        { id: 'math', name: 'Mathematics', totalMarks: 100, passingMarks: 33 },
+        { id: 'isl', name: 'Islamiyat', totalMarks: 50, passingMarks: 17 },
+      ],
+      status: 'published',
+    };
+
+    const s1: Student = {
+      id: 's1',
+      grNumber: 'GR-1',
+      fullName: 'Amina',
+      fatherName: 'Tariq',
+      dob: '2011-01-01',
+      gender: 'Female',
+      classId: 'cls_9_a',
+      grade: 'Class 9',
+      section: 'A',
+      admissionDate: '2025-04-01',
+      status: 'active',
+      guardianPhone: '0300-1111111',
+    };
+    const s2: Student = { ...s1, id: 's2', grNumber: 'GR-2', fullName: 'Bilal' };
+    const s3: Student = { ...s1, id: 's3', grNumber: 'GR-3', fullName: 'Zainab' };
+    const s4: Student = { ...s1, id: 's4', grNumber: 'GR-4', fullName: 'Usman' };
+
+    const resAmina = computeStudentExamResult(mockExam, { eng: 90, math: 95, isl: 45 });
+    assert.equal(resAmina.totalObtained, 230);
+    assert.equal(resAmina.totalMax, 250);
+    assert.equal(resAmina.percentage, 92);
+    assert.equal(resAmina.overallGrade, 'A+');
+    assert.equal(resAmina.resultStatus, 'Pass');
+
+    // Failing one subject (20 < 33) marks overall resultStatus 'Fail' despite high total
+    const resFail = computeStudentExamResult(mockExam, { eng: 90, math: 20, isl: 45 });
+    assert.equal(resFail.resultStatus, 'Fail');
+
+    // Absent in one subject marks overall Fail and 0 in absent subject
+    const resAbsent = computeStudentExamResult(mockExam, { eng: 80, isl: 40 }, ['math']);
+    assert.equal(resAbsent.resultStatus, 'Fail');
+    assert.equal(resAbsent.subjectRows[1].isAbsent, true);
+
+    const marksList: StudentExamMarks[] = [
+      {
+        id: 'm1',
+        schoolId: 'sch_1',
+        examId: 'exam_term1',
+        classId: 'cls_9_a',
+        studentId: 's1',
+        studentName: 'Amina',
+        grNumber: 'GR-1',
+        grade: 'Class 9',
+        subjectMarks: { eng: 90, math: 95, isl: 45 },
+        totalObtained: 230,
+        totalMax: 250,
+        percentage: 92,
+        overallGrade: 'A+',
+        resultStatus: 'Pass',
+      },
+      {
+        id: 'm2',
+        schoolId: 'sch_1',
+        examId: 'exam_term1',
+        classId: 'cls_9_a',
+        studentId: 's2',
+        studentName: 'Bilal',
+        grNumber: 'GR-2',
+        grade: 'Class 9',
+        subjectMarks: { eng: 80, math: 80, isl: 40 },
+        totalObtained: 200,
+        totalMax: 250,
+        percentage: 80,
+        overallGrade: 'A+',
+        resultStatus: 'Pass',
+      },
+      {
+        id: 'm3',
+        schoolId: 'sch_1',
+        examId: 'exam_term1',
+        classId: 'cls_9_a',
+        studentId: 's3',
+        studentName: 'Zainab',
+        grNumber: 'GR-3',
+        grade: 'Class 9',
+        subjectMarks: { eng: 80, math: 80, isl: 40 },
+        totalObtained: 200,
+        totalMax: 250,
+        percentage: 80,
+        overallGrade: 'A+',
+        resultStatus: 'Pass',
+      },
+    ];
+
+    const standings = computeClassPositions(mockExam, [s1, s2, s3, s4], marksList);
+    assert.equal(standings.get('s1')?.position, 1);
+    assert.equal(standings.get('s2')?.position, 2);
+    assert.equal(standings.get('s3')?.position, 2); // tie handled properly
+    assert.equal(standings.get('s4')?.position, undefined); // unentered marks unranked
+
+    // Verify RBAC rules in firestore.rules for /exams and /marks
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+    assert.equal(rulesSrc.includes('match /exams/{examId}'), true);
+    assert.equal(rulesSrc.includes('match /marks/{markId}'), true);
+    assert.equal(rulesSrc.includes('isValidExam(incoming())'), true);
+    assert.equal(rulesSrc.includes('isValidExamMarks(incoming())'), true);
+    assert.equal(rulesSrc.includes('incoming().classId in userDoc().assignedClassIds'), true);
+
+    console.log('✅ PASS: Phase B Exams & Results Calculations, Class Positions & Firestore RBAC Tests');
+  }
+
+  // 18. Global Firestore Undefined-Field Sanitization & Write Coverage Tests
+  {
+    // Mock Firestore serverTimestamp sentinel (non-plain prototype / FieldValue-like object)
+    class MockFieldValue {
+      readonly _methodName = 'serverTimestamp';
+    }
+    const sentinel = new MockFieldValue();
+
+    // 1. Attendance payload with undefined nested record notes & top-level optional fields
+    const dirtyAttendance = {
+      id: '2026-11-25_cls_9_a',
+      schoolId: 'sch_1',
+      classId: 'cls_9_a',
+      date: '2026-11-25',
+      conductedBy: undefined,
+      notes: undefined,
+      records: {
+        stu_1: { status: 'present', note: undefined },
+        stu_2: { status: 'absent', note: 'Medical leave' },
+      },
+      updatedAt: sentinel,
+    };
+    const cleanAtt = sanitizeFirestoreData(dirtyAttendance);
+    assert.equal('conductedBy' in cleanAtt, false);
+    assert.equal('notes' in cleanAtt, false);
+    assert.equal('note' in cleanAtt.records.stu_1, false);
+    assert.equal(cleanAtt.records.stu_2.note, 'Medical leave');
+    assert.equal(cleanAtt.updatedAt, sentinel, 'FieldValue sentinel must be preserved untouched');
+
+    // 2. Fee payment payload with undefined installment note & optional concession fields
+    const dirtyPayment = {
+      id: 'pay_1',
+      schoolId: 'sch_1',
+      studentId: 'stu_1',
+      month: '2026-11',
+      receiptNumber: 'RCPT-2026-0001',
+      paymentMethod: 'Cash',
+      notes: 'Paid in full',
+      concessionId: undefined,
+      allocatedNextMonth: undefined,
+      installments: [
+        { amount: 1500, date: '2026-11-25', receiptNumber: 'RCPT-1', note: undefined },
+      ],
+    };
+    const cleanPay = sanitizeFirestoreData(dirtyPayment);
+    assert.equal('concessionId' in cleanPay, false);
+    assert.equal('allocatedNextMonth' in cleanPay, false);
+    assert.equal('note' in cleanPay.installments[0], false);
+    assert.equal(cleanPay.installments[0].amount, 1500);
+
+    // 3. Student payload with optional undefined fields
+    const dirtyStudent = {
+      id: 'stu_1',
+      grNumber: 'GR-100',
+      fullName: 'Ali',
+      fatherName: 'Ahmed',
+      bFormNumber: undefined,
+      address: undefined,
+      classId: 'cls_9_a',
+      status: 'active',
+    };
+    const cleanStu = sanitizeFirestoreData(dirtyStudent);
+    assert.equal('bFormNumber' in cleanStu, false);
+    assert.equal('address' in cleanStu, false);
+    assert.equal(cleanStu.fullName, 'Ali');
+
+    // 4. Verify global coverage in firebase config, smsFirestoreService, LessonPlanTool, and cv-builder service
+    const firebaseTs = fs.readFileSync(path.resolve(process.cwd(), 'src/firebase.ts'), 'utf-8');
+    const cvFirebaseTs = fs.readFileSync(path.resolve(process.cwd(), 'src/features/cv-builder/lib/firebase.ts'), 'utf-8');
+    const smsServiceTs = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/services/smsFirestoreService.ts'), 'utf-8');
+    const cvServiceTs = fs.readFileSync(path.resolve(process.cwd(), 'src/features/cv-builder/lib/firestoreService.ts'), 'utf-8');
+    const lessonPlanTsx = fs.readFileSync(path.resolve(process.cwd(), 'src/components/LessonPlanTool.tsx'), 'utf-8');
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+
+    assert.equal(firebaseTs.includes('ignoreUndefinedProperties: true'), true);
+    assert.equal(cvFirebaseTs.includes('ignoreUndefinedProperties: true'), true);
+    assert.equal(smsServiceTs.includes("from '../../../utils/firestoreSanitizer'"), true);
+    assert.equal(cvServiceTs.includes("from '../../../utils/firestoreSanitizer'"), true);
+    assert.equal(lessonPlanTsx.includes("from '../utils/firestoreSanitizer'"), true);
+    assert.equal(rulesSrc.includes("'markedByUid', 'markedByName'"), true);
+
+    // Ensure zero raw `setDoc(..., {` remain in smsFirestoreService.ts without sanitizeFirestoreData
+    const setDocCount = (smsServiceTs.match(/\bsetDoc\(/g) || []).length;
+    const sanitizedCount = (smsServiceTs.match(/sanitizeFirestoreData\(/g) || []).length;
+    assert.equal(sanitizedCount >= setDocCount, true, 'Every setDoc in smsFirestoreService must be sanitized');
+
+    console.log('✅ PASS: Global Firestore Undefined-Field Sanitization & Write Coverage Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

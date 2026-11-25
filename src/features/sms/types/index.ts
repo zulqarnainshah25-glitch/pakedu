@@ -83,6 +83,7 @@ export interface School {
   primaryAdminType: PrimaryAdminType;
   primaryAdminName: string;
   primaryAdminEmail: string;
+  logoUrl?: string;
   createdAt?: string;
   suspendedReason?: string;
 }
@@ -244,6 +245,60 @@ export interface FeePayment {
   recordedByUid?: string;
   recordedByName?: string;
   createdAt?: string;
+  updatedAt?: any;
+}
+
+// =============================================================================
+// Phase B: Exams & Results
+// =============================================================================
+export type ExamTermType = 'First Term' | 'Mid Term' | 'Annual' | 'Monthly Test' | 'Pre-Board';
+export type ExamStatus = 'draft' | 'published' | 'archived';
+
+export interface ExamSubject {
+  id: string;
+  name: string;
+  totalMarks: number;
+  passingMarks: number;
+}
+
+export interface Exam {
+  id: string;
+  schoolId: string;
+  title: string;                // e.g. "First Term 2026"
+  termType: ExamTermType;
+  academicYear: string;         // e.g. "2025-2026"
+  startDate?: string;
+  endDate?: string;
+  classIds: string[];           // Selected ClassSection IDs
+  subjects: ExamSubject[];      // Configured subjects with max & passing marks
+  status: ExamStatus;
+  createdByUid?: string;
+  createdByName?: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
+export interface StudentExamMarks {
+  id: string;                   // Composite: "${examId}_${studentId}"
+  schoolId: string;
+  examId: string;
+  classId: string;
+  studentId: string;
+  studentName: string;
+  grNumber: string;
+  grade: string;
+  section?: string;
+  subjectMarks: Record<string, number | null>; // key: ExamSubject.id -> obtained marks (null = not entered / absent)
+  absentSubjects?: string[];                   // ExamSubject.id list marked Absent
+  remarks?: string;                            // Teacher's remarks
+  totalObtained: number;
+  totalMax: number;
+  percentage: number;
+  overallGrade: string;
+  resultStatus: 'Pass' | 'Fail' | 'Pending';
+  enteredByUid?: string;
+  enteredByName?: string;
+  enteredAt?: string;
   updatedAt?: any;
 }
 

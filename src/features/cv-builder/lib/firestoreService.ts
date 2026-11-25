@@ -13,6 +13,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
+import { sanitizeFirestoreData } from '../../../utils/firestoreSanitizer';
 import {
   CVDocument,
   CVTemplate,
@@ -348,19 +349,22 @@ export async function ensureUserProfile(
           return resolvedProfile;
         }
 
-        await setDoc(userRef, {
-          uid: fallbackProfile.uid,
-          email: fallbackProfile.email,
-          displayName: fallbackProfile.displayName,
-          role: fallbackProfile.role,
-          plan: fallbackProfile.plan,
-          pdfExportsUsed: fallbackProfile.pdfExportsUsed,
-          wordExportsUsed: fallbackProfile.wordExportsUsed,
-          pdfLimit: fallbackProfile.pdfLimit,
-          wordLimit: fallbackProfile.wordLimit,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+        await setDoc(
+          userRef,
+          sanitizeFirestoreData({
+            uid: fallbackProfile.uid,
+            email: fallbackProfile.email,
+            displayName: fallbackProfile.displayName,
+            role: fallbackProfile.role,
+            plan: fallbackProfile.plan,
+            pdfExportsUsed: fallbackProfile.pdfExportsUsed,
+            wordExportsUsed: fallbackProfile.wordExportsUsed,
+            pdfLimit: fallbackProfile.pdfLimit,
+            wordLimit: fallbackProfile.wordLimit,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          })
+        );
 
         return fallbackProfile;
       })(),
@@ -463,11 +467,14 @@ export async function incrementUserPdfExportCount(uid: string, currentCount: num
   try {
     const snap = await getDoc(userRef);
     const displayName = snap.exists() ? snap.data().displayName : 'User';
-    await updateDoc(userRef, {
-      displayName: clampStr(displayName, 120, 'User'),
-      pdfExportsUsed: nextCount,
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(
+      userRef,
+      sanitizeFirestoreData({
+        displayName: clampStr(displayName, 120, 'User'),
+        pdfExportsUsed: nextCount,
+        updatedAt: serverTimestamp()
+      })
+    );
     return nextCount;
   } catch (error) {
     if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
@@ -491,11 +498,14 @@ export async function incrementUserWordExportCount(uid: string, currentCount: nu
   try {
     const snap = await getDoc(userRef);
     const displayName = snap.exists() ? snap.data().displayName : 'User';
-    await updateDoc(userRef, {
-      displayName: clampStr(displayName, 120, 'User'),
-      wordExportsUsed: nextCount,
-      updatedAt: serverTimestamp()
-    });
+    await updateDoc(
+      userRef,
+      sanitizeFirestoreData({
+        displayName: clampStr(displayName, 120, 'User'),
+        wordExportsUsed: nextCount,
+        updatedAt: serverTimestamp()
+      })
+    );
     return nextCount;
   } catch (error) {
     if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
@@ -564,7 +574,7 @@ export async function updateUserPlanInFirestore(
       if (planNotification !== undefined) {
         updatePayload.planNotification = planNotification;
       }
-      await updateDoc(userRef, updatePayload);
+      await updateDoc(userRef, sanitizeFirestoreData(updatePayload));
       const merged: UserProfile = {
         ...updatedLocalProfile,
         email: existingData.email || updatedLocalProfile.email,
@@ -574,20 +584,23 @@ export async function updateUserPlanInFirestore(
       saveLocalUserInDirectory(merged);
       return merged;
     } else {
-      await setDoc(userRef, {
-        uid: safeUid,
-        email: updatedLocalProfile.email,
-        displayName: updatedLocalProfile.displayName,
-        role: updatedLocalProfile.role,
-        plan,
-        pdfExportsUsed: 0,
-        wordExportsUsed: 0,
-        pdfLimit: calculatedPdfLimit,
-        wordLimit: calculatedWordLimit,
-        ...(planNotification ? { planNotification } : {}),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      await setDoc(
+        userRef,
+        sanitizeFirestoreData({
+          uid: safeUid,
+          email: updatedLocalProfile.email,
+          displayName: updatedLocalProfile.displayName,
+          role: updatedLocalProfile.role,
+          plan,
+          pdfExportsUsed: 0,
+          wordExportsUsed: 0,
+          pdfLimit: calculatedPdfLimit,
+          wordLimit: calculatedWordLimit,
+          ...(planNotification ? { planNotification } : {}),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        })
+      );
     }
   } catch {
     // Fallback local state already updated and broadcasted
@@ -664,10 +677,13 @@ export async function savePaymentPlans(plans: PaymentPlan[]): Promise<void> {
   saveLocalPaymentPlans(plans);
   try {
     const ref = doc(db, 'settings', 'payment_plans');
-    await setDoc(ref, {
-      plans,
-      updatedAt: serverTimestamp()
-    });
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        plans,
+        updatedAt: serverTimestamp()
+      })
+    );
   } catch {
     // ignore
   }
@@ -724,10 +740,13 @@ export async function savePaymentAccounts(accounts: PaymentAccountsConfig): Prom
   saveLocalPaymentAccounts(accounts);
   try {
     const ref = doc(db, 'settings', 'payment_accounts');
-    await setDoc(ref, {
-      ...accounts,
-      updatedAt: serverTimestamp()
-    });
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...accounts,
+        updatedAt: serverTimestamp()
+      })
+    );
   } catch {
     // ignore
   }
@@ -768,11 +787,14 @@ export async function submitPaymentProof(
   try {
     // Primary collection: `payment_requests` (as required by spec)
     const reqRef = doc(db, 'payment_requests', id);
-    await setDoc(reqRef, {
-      ...newProof,
-      createdAt: nowIso,
-      updatedAt: nowIso
-    });
+    await setDoc(
+      reqRef,
+      sanitizeFirestoreData({
+        ...newProof,
+        createdAt: nowIso,
+        updatedAt: nowIso
+      })
+    );
   } catch {
     // Saved locally if offline
   }
@@ -780,11 +802,14 @@ export async function submitPaymentProof(
   try {
     // Mirror to `payment_proofs` for backward compatibility
     const proofRef = doc(db, 'payment_proofs', id);
-    await setDoc(proofRef, {
-      ...newProof,
-      createdAt: nowIso,
-      updatedAt: nowIso
-    });
+    await setDoc(
+      proofRef,
+      sanitizeFirestoreData({
+        ...newProof,
+        createdAt: nowIso,
+        updatedAt: nowIso
+      })
+    );
   } catch {
     // ignore
   }
@@ -917,22 +942,28 @@ export async function updatePaymentProofStatus(
 
   try {
     const reqRef = doc(db, 'payment_requests', proofId);
-    await updateDoc(reqRef, {
-      status,
-      adminNotes: adminNotes || '',
-      updatedAt: nowIso
-    });
+    await updateDoc(
+      reqRef,
+      sanitizeFirestoreData({
+        status,
+        adminNotes: adminNotes || '',
+        updatedAt: nowIso
+      })
+    );
   } catch {
     // ignore if doc only in payment_proofs
   }
 
   try {
     const proofRef = doc(db, 'payment_proofs', proofId);
-    await updateDoc(proofRef, {
-      status,
-      adminNotes: adminNotes || '',
-      updatedAt: nowIso
-    });
+    await updateDoc(
+      proofRef,
+      sanitizeFirestoreData({
+        status,
+        adminNotes: adminNotes || '',
+        updatedAt: nowIso
+      })
+    );
   } catch {
     // ignore
   }
@@ -945,17 +976,23 @@ export async function saveCVToFirestore(cv: CVDocument, uid: string): Promise<CV
   try {
     const existingSnap = await getDoc(cvRef);
     if (!existingSnap.exists()) {
-      await setDoc(cvRef, {
-        ...sanitized,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      await setDoc(
+        cvRef,
+        sanitizeFirestoreData({
+          ...sanitized,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        })
+      );
     } else {
       const { id: _id, userId: _userId, ...updatableFields } = sanitized;
-      await updateDoc(cvRef, {
-        ...updatableFields,
-        updatedAt: serverTimestamp()
-      });
+      await updateDoc(
+        cvRef,
+        sanitizeFirestoreData({
+          ...updatableFields,
+          updatedAt: serverTimestamp()
+        })
+      );
     }
     return { ...cv, id: sanitized.id, userId: sanitized.userId };
   } catch {
@@ -1193,17 +1230,23 @@ export async function saveTemplateToFirestore(template: CVTemplate): Promise<voi
   try {
     const existing = await getDoc(ref);
     if (!existing.exists()) {
-      await setDoc(ref, {
-        ...payload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+      await setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...payload,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        })
+      );
     } else {
       const { id: _id, ...updatable } = payload;
-      await updateDoc(ref, {
-        ...updatable,
-        updatedAt: serverTimestamp()
-      });
+      await updateDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...updatable,
+          updatedAt: serverTimestamp()
+        })
+      );
     }
   } catch {
     // Local cache & broadcast already applied

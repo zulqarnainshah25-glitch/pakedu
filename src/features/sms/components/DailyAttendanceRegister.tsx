@@ -139,14 +139,17 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
       ...prev,
       [studentId]: note,
     }));
-    setAttendanceState((prev) => ({
-      ...prev,
-      [studentId]: {
-        ...prev[studentId],
+    setAttendanceState((prev) => {
+      const cleanedNote = note.trim();
+      const nextRec: AttendanceRecord = {
         status: prev[studentId]?.status || 'present',
-        note: note.trim() || undefined,
-      },
-    }));
+        ...(cleanedNote ? { note: cleanedNote } : {}),
+      };
+      return {
+        ...prev,
+        [studentId]: nextRec,
+      };
+    });
     setHasUnsavedChanges(true);
   };
 
@@ -154,9 +157,10 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
   const handleMarkAllPresent = () => {
     const updated: Record<string, AttendanceRecord> = {};
     classStudents.forEach((st) => {
+      const cleanedNote = notesState[st.id]?.trim();
       updated[st.id] = {
         status: 'present',
-        note: notesState[st.id] || undefined,
+        ...(cleanedNote ? { note: cleanedNote } : {}),
       };
     });
     setAttendanceState(updated);
@@ -167,9 +171,10 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
   const handleMarkAllAbsent = () => {
     const updated: Record<string, AttendanceRecord> = {};
     classStudents.forEach((st) => {
+      const cleanedNote = notesState[st.id]?.trim();
       updated[st.id] = {
         status: 'absent',
-        note: notesState[st.id] || undefined,
+        ...(cleanedNote ? { note: cleanedNote } : {}),
       };
     });
     setAttendanceState(updated);
@@ -223,9 +228,10 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
     const recordsWithNotes: Record<string, AttendanceRecord> = {};
     classStudents.forEach((st) => {
       const current = attendanceState[st.id] || { status: 'present' };
+      const cleanedNote = notesState[st.id]?.trim() || current.note?.trim();
       recordsWithNotes[st.id] = {
         status: current.status,
-        note: notesState[st.id]?.trim() || current.note || undefined,
+        ...(cleanedNote ? { note: cleanedNote } : {}),
       };
     });
 
@@ -235,8 +241,8 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
       classId: selectedClassId,
       grade: currentClass.grade,
       section: currentClass.section,
-      markedByUid: isAdmin ? 'admin_uid' : activeTeacher.id,
-      markedByName: isAdmin ? 'School Administrator' : activeTeacher.name,
+      markedByUid: (isAdmin ? 'admin_uid' : activeTeacher.id) || 'system',
+      markedByName: (isAdmin ? 'School Administrator' : activeTeacher.name) || 'Faculty',
       markedAt: new Date().toISOString(),
       records: recordsWithNotes,
       summary,

@@ -24,6 +24,7 @@ interface SmsDashboardProps {
   onNavigateToAttendance: (classId?: string) => void;
   onNavigateToStaff?: () => void;
   onNavigateToProfile?: () => void;
+  onNavigateToExams?: () => void;
 }
 
 export const SmsDashboard: React.FC<SmsDashboardProps> = ({
@@ -32,6 +33,7 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
   onNavigateToAttendance,
   onNavigateToStaff,
   onNavigateToProfile,
+  onNavigateToExams,
 }) => {
   const {
     userRole,
@@ -402,7 +404,7 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
           School Management Modules
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Module 1: Classes & Sections */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
             <div>
@@ -489,6 +491,37 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Module 4: Exams & Results */}
+          {onNavigateToExams && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center">
+                    <Award className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                    Phase B Live
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  Exams &amp; Report Cards
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
+                  Admin exam scheduling, subject marks entry for assigned classes, class positions, and printable A4 Report Cards.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onNavigateToExams}
+                className="mt-4 inline-flex items-center justify-between w-full px-3.5 py-2 bg-purple-50 dark:bg-purple-950/60 hover:bg-purple-100 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>Open Exams &amp; Results</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

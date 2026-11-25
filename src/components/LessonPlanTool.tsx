@@ -28,6 +28,7 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { db, OperationType, handleFirestoreError } from '../firebase';
+import { sanitizeFirestoreData } from '../utils/firestoreSanitizer';
 import {
   SUBJECT_OPTIONS,
   LessonPlanContent,
@@ -422,11 +423,14 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
             currentUser.uid
           );
 
-          batch.set(doc(db, collectionPath, docId), {
-            ...sanitized,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
+          batch.set(
+            doc(db, collectionPath, docId),
+            sanitizeFirestoreData({
+              ...sanitized,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            })
+          );
         }
 
         await batch.commit();
@@ -558,11 +562,14 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               sheetMatch,
               currentUser.uid
             );
-            await setDoc(doc(db, 'syllabus_data', docId), {
-              ...sanitized,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
+            await setDoc(
+              doc(db, 'syllabus_data', docId),
+              sanitizeFirestoreData({
+                ...sanitized,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              })
+            );
             await refreshFirestoreCount();
             setDataSource('firestore');
             setStatusBanner(
@@ -665,11 +672,14 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
               generatedPlan,
               currentUser.uid
             );
-            await setDoc(doc(db, 'syllabus_data', docId), {
-              ...sanitized,
-              createdAt: serverTimestamp(),
-              updatedAt: serverTimestamp(),
-            });
+            await setDoc(
+              doc(db, 'syllabus_data', docId),
+              sanitizeFirestoreData({
+                ...sanitized,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              })
+            );
             await refreshFirestoreCount();
             setStatusBanner(
               `Generated via AI calibrated for ${board} — ${className} (${section}) difficulty and saved to Firestore "syllabus_data".`

@@ -9,6 +9,8 @@ export type ActiveToolId =
   | 'sms-onboarding'
   | 'sms-staff'
   | 'sms-profile'
+  | 'sms-fees'
+  | 'sms-exams'
   | 'super-admin'
   | 'lesson-plan'
   | 'salary-calculator'

@@ -608,6 +608,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           : 'unpaid';
 
       const prevInstallments = existingPaymentForStudent?.installments || [];
+      const trimmedNote = paymentNotes.trim();
       const newInstallments =
         numericReceivedNow > 0
           ? [
@@ -615,10 +616,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
               {
                 amount: numericReceivedNow,
                 date: nowIso,
-                method: paymentMethod,
+                method: paymentMethod || 'Cash',
                 receiptNumber: receiptNo,
                 recordedByName: currentUserProfile?.fullName || 'School Admin',
-                note: paymentNotes || undefined,
+                ...(trimmedNote ? { note: trimmedNote } : {}),
               },
             ]
           : prevInstallments;
@@ -632,6 +633,14 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           ? `Paid in full + Rs. ${excessOverMonthNet.toLocaleString()} Advance balance credited`
           : 'Paid in full on time';
 
+      const resolvedConcessionId = studentPermanentDiscount.concessionId || existingPaymentForStudent?.concessionId;
+      const resolvedConcessionTitle = studentPermanentDiscount.concessionTitle || existingPaymentForStudent?.concessionTitle;
+      const resolvedConcessionPercent = studentPermanentDiscount.percentEffective || existingPaymentForStudent?.concessionPercent;
+      const resolvedNextMonth =
+        excessOverMonthNet > 0 && allocateSurplusToNextMonth
+          ? nextMonthKey
+          : existingPaymentForStudent?.allocatedNextMonth;
+
       const paymentRecord: FeePayment = {
         id:
           existingPaymentForStudent?.id ||
@@ -642,32 +651,29 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         grNumber: selectedStudent.grNumber,
         classId: selectedStudent.classId,
         grade: selectedStudent.grade,
-        section: selectedStudent.section,
+        section: selectedStudent.section || 'General',
         month: selectedMonth,
         monthLabel: currentMonthLabel,
         academicYear: activeSchool.activeAcademicYear || '2025-2026',
         baseAmount: baseMonthlyTuition,
         customChargesAmount: customChargesSum,
         discount: Number(discountAmount) || 0,
-        concessionId: studentPermanentDiscount.concessionId || existingPaymentForStudent?.concessionId,
-        concessionTitle: studentPermanentDiscount.concessionTitle || existingPaymentForStudent?.concessionTitle,
-        concessionPercent: studentPermanentDiscount.percentEffective || existingPaymentForStudent?.concessionPercent,
+        ...(resolvedConcessionId ? { concessionId: resolvedConcessionId } : {}),
+        ...(resolvedConcessionTitle ? { concessionTitle: resolvedConcessionTitle } : {}),
+        ...(resolvedConcessionPercent !== undefined ? { concessionPercent: resolvedConcessionPercent } : {}),
         netAmount: netPayable,
         paidAmount: appliedToCurrentMonth,
         pendingBalance: pendingAfterPayment,
         advanceUsed: existingPaymentForStudent?.advanceUsed || 0,
         advanceGenerated:
           (existingPaymentForStudent?.advanceGenerated || 0) + excessOverMonthNet,
-        allocatedNextMonth:
-          excessOverMonthNet > 0 && allocateSurplusToNextMonth
-            ? nextMonthKey
-            : existingPaymentForStudent?.allocatedNextMonth,
+        ...(resolvedNextMonth ? { allocatedNextMonth: resolvedNextMonth } : {}),
         installments: newInstallments,
         status: nextStatus,
         paymentDate: nowIso,
-        paymentMethod,
-        receiptNumber: receiptNo,
-        notes: paymentNotes.trim() || defaultNote,
+        paymentMethod: paymentMethod || 'Cash',
+        receiptNumber: receiptNo || generateReceiptNumber(),
+        notes: trimmedNote || defaultNote,
         recordedByUid: currentUserProfile?.uid || 'admin_user',
         recordedByName: currentUserProfile?.fullName || 'School Admin',
         createdAt: existingPaymentForStudent?.createdAt || nowIso,
@@ -881,6 +887,10 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       const paid = existing ? Number(existing.paidAmount) || 0 : 0;
       const pending = existing?.status === 'paid' ? 0 : Math.max(0, net - paid);
 
+      const resolvedConcessionId = disc.concessionId || existing?.concessionId;
+      const resolvedConcessionTitle = disc.concessionTitle || existing?.concessionTitle;
+      const resolvedConcessionPercent = disc.percentEffective || existing?.concessionPercent;
+
       return {
         id: existing?.id || `vchr_${stu.id}_${bulkMonth}`,
         schoolId: activeSchool.id,
@@ -889,27 +899,28 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
         grNumber: stu.grNumber,
         classId: stu.classId,
         grade: stu.grade,
-        section: stu.section,
+        section: stu.section || 'General',
         month: bulkMonth,
         monthLabel: bulkMonthLabel,
         academicYear: expected.academicYear,
         baseAmount: expected.baseMonthlyTuition,
         customChargesAmount: expected.customChargesAmount,
         discount: effectiveDiscount,
-        concessionId: disc.concessionId || existing?.concessionId,
-        concessionTitle: disc.concessionTitle || existing?.concessionTitle,
-        concessionPercent: disc.percentEffective || existing?.concessionPercent,
+        ...(resolvedConcessionId ? { concessionId: resolvedConcessionId } : {}),
+        ...(resolvedConcessionTitle ? { concessionTitle: resolvedConcessionTitle } : {}),
+        ...(resolvedConcessionPercent !== undefined ? { concessionPercent: resolvedConcessionPercent } : {}),
         netAmount: net,
         paidAmount: paid,
         pendingBalance: pending,
         advanceUsed: existing?.advanceUsed || 0,
+        installments: existing?.installments || [],
         status: existing?.status || 'unpaid',
-        paymentDate: existing?.paymentDate,
-        paymentMethod: existing?.paymentMethod,
+        paymentDate: existing?.paymentDate || '',
+        paymentMethod: existing?.paymentMethod || 'Cash',
         receiptNumber:
           existing?.receiptNumber ||
           `VCHR-${bulkMonth.replace('-', '')}-${String(idx + 1).padStart(3, '0')}`,
-        notes: existing?.notes || bulkVoucherNote,
+        notes: existing?.notes || bulkVoucherNote || '',
         recordedByName: currentUserProfile?.fullName || 'Accounts Office',
       };
     });

@@ -8,6 +8,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
+import { sanitizeFirestoreData } from '../../../utils/firestoreSanitizer';
 import {
   School,
   UserProfile,
@@ -20,6 +21,8 @@ import {
   ClassFeeStructure,
   FeePayment,
   FeeConcessionRule,
+  Exam,
+  StudentExamMarks,
 } from '../types';
 
 /**
@@ -109,34 +112,6 @@ function normalizeTimestamps<T extends Record<string, any>>(data: T): T {
   return result;
 }
 
-/**
- * Strips `undefined` values before sending payloads to Firestore `setDoc`,
- * preventing `Unsupported field value: undefined` runtime rejections while
- * preserving Firestore `FieldValue` sentinels (e.g. `serverTimestamp()`).
- */
-function sanitizeFirestoreData<T extends Record<string, any>>(data: T): Record<string, any> {
-  const cleaned: Record<string, any> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (value === undefined) continue;
-    if (Array.isArray(value)) {
-      cleaned[key] = value.map((item) =>
-        item && typeof item === 'object' && Object.getPrototypeOf(item) === Object.prototype
-          ? sanitizeFirestoreData(item)
-          : item
-      );
-    } else if (
-      value !== null &&
-      typeof value === 'object' &&
-      Object.getPrototypeOf(value) === Object.prototype
-    ) {
-      cleaned[key] = sanitizeFirestoreData(value);
-    } else {
-      cleaned[key] = value;
-    }
-  }
-  return cleaned;
-}
-
 // 1. School Document Management
 export async function saveSchoolToFirestore(school: School): Promise<boolean> {
   if (!school.id) {
@@ -219,10 +194,10 @@ export async function saveClassToFirestore(schoolId: string, classData: ClassSec
     const classRef = doc(db, 'schools', schoolId, 'classes', classData.id);
     await setDoc(
       classRef,
-      {
+      sanitizeFirestoreData({
         ...classData,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -271,10 +246,10 @@ export async function saveStudentToFirestore(schoolId: string, student: Student)
     const studentRef = doc(db, 'schools', schoolId, 'students', student.id);
     await setDoc(
       studentRef,
-      {
+      sanitizeFirestoreData({
         ...student,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -326,10 +301,13 @@ export async function saveAttendanceToFirestore(
     const attRef = doc(db, 'schools', schoolId, 'attendance', attendance.id);
     await setDoc(
       attRef,
-      {
+      sanitizeFirestoreData({
         ...attendance,
+        schoolId,
+        conductedBy: attendance.markedByName || 'Faculty',
+        conductedByUid: attendance.markedByUid || 'system',
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -452,10 +430,10 @@ export async function saveTeacherToFirestore(
     const teacherRef = doc(db, 'schools', schoolId, 'teachers', teacher.id);
     await setDoc(
       teacherRef,
-      {
+      sanitizeFirestoreData({
         ...teacher,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -497,12 +475,12 @@ export async function saveFeeStructureToFirestore(
     const ref = doc(db, 'schools', schoolId, 'feeStructures', docId);
     await setDoc(
       ref,
-      {
+      sanitizeFirestoreData({
         ...feeStructure,
         id: docId,
         schoolId,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -559,11 +537,15 @@ export async function saveFeePaymentToFirestore(
     const ref = doc(db, 'schools', schoolId, 'feePayments', payment.id);
     await setDoc(
       ref,
-      {
+      sanitizeFirestoreData({
         ...payment,
         schoolId,
+        receiptNumber: payment.receiptNumber || '',
+        paymentMethod: payment.paymentMethod || 'Cash',
+        notes: payment.notes || '',
+        installments: Array.isArray(payment.installments) ? payment.installments : [],
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -604,11 +586,11 @@ export async function saveFeeConcessionToFirestore(
     const ref = doc(db, 'schools', schoolId, 'feeConcessions', rule.id);
     await setDoc(
       ref,
-      {
+      sanitizeFirestoreData({
         ...rule,
         schoolId,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -650,5 +632,117 @@ export async function deleteFeeConcessionFromFirestore(
     return true;
   } catch (err) {
     throw classifyFirestoreError(err, 'deleteFeeConcession', `schools/${schoolId}/feeConcessions/${concessionId}`);
+  }
+}
+
+// 12. Exams Management (schools/{schoolId}/exams/{examId})
+export async function saveExamToFirestore(schoolId: string, exam: Exam): Promise<boolean> {
+  if (!schoolId || !exam.id) {
+    throw new FirestoreSyncError('School ID and Exam ID are required', 'invalid-argument', 'saveExam');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'exams', exam.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...exam,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveExam', `schools/${schoolId}/exams/${exam.id}`);
+  }
+}
+
+export async function fetchExamsFromFirestore(schoolId: string): Promise<Exam[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'exams');
+    const snapshot = await getDocs(col);
+    const exams: Exam[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as Exam;
+        exams.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return exams;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchExams', `schools/${schoolId}/exams`);
+  }
+}
+
+export async function deleteExamFromFirestore(schoolId: string, examId: string): Promise<boolean> {
+  if (!schoolId || !examId) {
+    throw new FirestoreSyncError('School ID and Exam ID are required', 'invalid-argument', 'deleteExam');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'exams', examId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteExam', `schools/${schoolId}/exams/${examId}`);
+  }
+}
+
+// 13. Student Exam Marks Management (schools/{schoolId}/marks/{markId})
+export async function saveStudentMarksToFirestore(
+  schoolId: string,
+  marks: StudentExamMarks
+): Promise<boolean> {
+  if (!schoolId || !marks.id) {
+    throw new FirestoreSyncError('School ID and Marks ID are required', 'invalid-argument', 'saveStudentMarks');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'marks', marks.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...marks,
+        schoolId,
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveStudentMarks', `schools/${schoolId}/marks/${marks.id}`);
+  }
+}
+
+export async function fetchMarksFromFirestore(schoolId: string): Promise<StudentExamMarks[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'marks');
+    const snapshot = await getDocs(col);
+    const marks: StudentExamMarks[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as StudentExamMarks;
+        marks.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return marks;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchMarks', `schools/${schoolId}/marks`);
+  }
+}
+
+export async function deleteStudentMarksFromFirestore(
+  schoolId: string,
+  markId: string
+): Promise<boolean> {
+  if (!schoolId || !markId) {
+    throw new FirestoreSyncError('School ID and Marks ID are required', 'invalid-argument', 'deleteStudentMarks');
+  }
+  try {
+    const ref = doc(db, 'schools', schoolId, 'marks', markId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteStudentMarks', `schools/${schoolId}/marks/${markId}`);
   }
 }

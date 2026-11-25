@@ -33,6 +33,7 @@ import {
   Building,
   ShieldAlert,
   Receipt,
+  Award,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { LessonPlanTool } from './components/LessonPlanTool';
@@ -66,6 +67,7 @@ import { TeacherManagement } from './features/sms/components/TeacherManagement';
 import { TeacherProfile } from './features/sms/components/TeacherProfile';
 import { SuperAdminDashboard } from './features/sms/components/SuperAdminDashboard';
 import { FeeManagement } from './features/sms/components/FeeManagement';
+import { ExamsResults } from './features/sms/components/ExamsResults';
 
 export type ActiveToolId =
   | 'dashboard'
@@ -77,6 +79,7 @@ export type ActiveToolId =
   | 'sms-staff'
   | 'sms-profile'
   | 'sms-fees'
+  | 'sms-exams'
   | 'super-admin'
   | 'lesson-plan'
   | 'salary-calculator'
@@ -166,6 +169,14 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     icon: <Receipt className="w-5 h-5" />,
     iconBg: 'bg-emerald-50 dark:bg-emerald-950/60',
     iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  'sms-exams': {
+    title: 'Exams & Student Results',
+    subtitle: 'Exam setup, subject-wise marks entry, class positions, and printable A4 report cards',
+    badge: 'Academics · Phase B',
+    icon: <Award className="w-5 h-5" />,
+    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
   },
   'super-admin': {
     title: 'Portal Super Admin Console',
@@ -915,6 +926,30 @@ function AppContent() {
                   </div>
                 </button>
 
+                {/* Exams & Results (Admin Setup + Teacher Assigned-Class Marks) */}
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-exams')}
+                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'sms-exams'
+                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                  }`}
+                >
+                  <Award className={`w-4 h-4 shrink-0 ${activeTool === 'sms-exams' ? 'text-indigo-400' : 'text-slate-500'}`} />
+                  <div className="truncate flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="block truncate">Exams &amp; Results</span>
+                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 shrink-0">
+                        {userRole === 'teacher' ? 'Marks' : 'Phase B'}
+                      </span>
+                    </div>
+                    <span className="text-[11px] block truncate text-slate-500">
+                      {userRole === 'teacher' ? 'Marks Entry & Report Cards' : 'Exam Setup, Marks & PDF Cards'}
+                    </span>
+                  </div>
+                </button>
+
                 {/* Admin Only: Faculty Management & Join Requests */}
                 {userRole === 'admin' && (
                   <button
@@ -1373,6 +1408,17 @@ function AppContent() {
                   }`}
                 >
                   {userRole === 'teacher' ? 'Take Attendance' : 'Attendance'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-exams')}
+                  className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    activeTool === 'sms-exams'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
+                      : 'hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  Exams &amp; Results
                 </button>
                 {userRole === 'admin' && (
                   <button
@@ -1979,6 +2025,7 @@ function AppContent() {
                 }}
                 onNavigateToStaff={() => selectTool('sms-staff')}
                 onNavigateToProfile={() => selectTool('sms-profile')}
+                onNavigateToExams={() => selectTool('sms-exams')}
               />
             )}
 
@@ -2043,6 +2090,11 @@ function AppContent() {
             {/* Fee Management & Financials Module */}
             {activeTool === 'sms-fees' && (
               <FeeManagement onBack={() => selectTool('sms-dashboard')} />
+            )}
+
+            {/* Phase B: Exams & Student Results Module */}
+            {activeTool === 'sms-exams' && (
+              <ExamsResults onBack={() => selectTool('sms-dashboard')} />
             )}
 
             {/* SUPER ADMIN CONSOLE VIEW */}
