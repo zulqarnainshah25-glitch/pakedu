@@ -109,6 +109,34 @@ function normalizeTimestamps<T extends Record<string, any>>(data: T): T {
   return result;
 }
 
+/**
+ * Strips `undefined` values before sending payloads to Firestore `setDoc`,
+ * preventing `Unsupported field value: undefined` runtime rejections while
+ * preserving Firestore `FieldValue` sentinels (e.g. `serverTimestamp()`).
+ */
+function sanitizeFirestoreData<T extends Record<string, any>>(data: T): Record<string, any> {
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    if (Array.isArray(value)) {
+      cleaned[key] = value.map((item) =>
+        item && typeof item === 'object' && Object.getPrototypeOf(item) === Object.prototype
+          ? sanitizeFirestoreData(item)
+          : item
+      );
+    } else if (
+      value !== null &&
+      typeof value === 'object' &&
+      Object.getPrototypeOf(value) === Object.prototype
+    ) {
+      cleaned[key] = sanitizeFirestoreData(value);
+    } else {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
+}
+
 // 1. School Document Management
 export async function saveSchoolToFirestore(school: School): Promise<boolean> {
   if (!school.id) {
@@ -118,10 +146,10 @@ export async function saveSchoolToFirestore(school: School): Promise<boolean> {
     const schoolRef = doc(db, 'schools', school.id);
     await setDoc(
       schoolRef,
-      {
+      sanitizeFirestoreData({
         ...school,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -156,10 +184,10 @@ export async function saveUserProfileToFirestore(profile: UserProfile): Promise<
     const userRef = doc(db, 'users', profile.uid);
     await setDoc(
       userRef,
-      {
+      sanitizeFirestoreData({
         ...profile,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -342,10 +370,10 @@ export async function saveJoinRequestToFirestore(
     const reqRef = doc(db, 'schools', schoolId, 'joinRequests', request.id);
     await setDoc(
       reqRef,
-      {
+      sanitizeFirestoreData({
         ...request,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;
@@ -384,10 +412,10 @@ export async function saveSchoolRegistrationRequestToFirestore(
     const reqRef = doc(db, 'schoolRegistrationRequests', request.id);
     await setDoc(
       reqRef,
-      {
+      sanitizeFirestoreData({
         ...request,
         updatedAt: serverTimestamp(),
-      },
+      }),
       { merge: true }
     );
     return true;

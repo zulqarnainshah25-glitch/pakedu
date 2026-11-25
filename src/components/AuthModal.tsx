@@ -314,28 +314,47 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 status: 'pending',
               };
 
-              const pendingProfile: UserProfile = {
+              // Step 1: Create users/{uid} document first (no schoolId prerequisite on create)
+              const baseAdminProfile: UserProfile = {
                 uid: credential.user.uid,
                 email: validation.sanitizedEmail,
                 fullName: adminFullName.trim(),
                 role: 'admin',
-                schoolId: newSchool.id,
-                schoolName: newSchool.name,
-                semisCode: newSchool.semisCode,
-                primaryAdminType: 'principal',
                 status: 'pending',
                 designation: 'Principal / Headmaster',
                 phone: adminPhone.trim(),
+                primaryAdminType: 'principal',
                 assignedClassIds: [],
+                isSuperAdmin: false,
+                isAdmissionIncharge: false,
                 createdAt: new Date().toISOString(),
               };
+              try {
+                await saveUserProfileToFirestore(baseAdminProfile);
+              } catch (profileErr) {
+                // Ensure the basic teacher/none user document still self-heals if strict rules apply
+                await saveUserProfileToFirestore({
+                  ...baseAdminProfile,
+                  role: 'teacher',
+                  status: 'none',
+                }).catch(() => {});
+                throw profileErr;
+              }
 
-              // Write users/{uid} first so subsequent rules referencing userDoc() have the created profile
-              await saveUserProfileToFirestore(pendingProfile);
+              // Step 2: Create pending_approval school doc and registration request
               await Promise.all([
                 saveSchoolToFirestore(newSchool),
                 saveSchoolRegistrationRequestToFirestore(newRequest),
               ]);
+
+              // Step 3: Link users/{uid} to the newly created school
+              const linkedAdminProfile: UserProfile = {
+                ...baseAdminProfile,
+                schoolId: newSchool.id,
+                schoolName: newSchool.name,
+                semisCode: newSchool.semisCode,
+              };
+              await saveUserProfileToFirestore(linkedAdminProfile);
 
               submitSchoolRegistration(
                 {
@@ -408,6 +427,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 cnic: cnic.trim(),
                 phone: teacherPhone.trim(),
                 assignedClassIds: [],
+                isSuperAdmin: false,
+                isAdmissionIncharge: false,
                 createdAt: new Date().toISOString(),
               };
 
@@ -442,6 +463,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               role: 'teacher',
               status: 'none',
               assignedClassIds: [],
+              isSuperAdmin: false,
+              isAdmissionIncharge: false,
               createdAt: new Date().toISOString(),
             };
             await saveUserProfileToFirestore(generalProfile);
@@ -494,6 +517,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setLoading(true);
     try {
       await signInWithPopup(auth, googleProvider);
+      await refreshUserProfile();
       onClose();
       if (mode === 'signup' && onSignupSuccess) {
         onSignupSuccess(accountIntent, accountIntent === 'sms' ? smsRoleIntent : undefined);

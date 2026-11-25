@@ -931,9 +931,9 @@ function runAllUnitTests() {
     const authModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AuthModal.tsx'), 'utf-8');
     const smsCtxSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
 
-    // Verify /users/{uid} rules allow self-registration as teacher (none/pending) or admin (pending with schoolId)
-    assert.equal(rulesSrc.includes("incoming().get('role', '') == 'admin'"), true);
-    assert.equal(rulesSrc.includes("incoming().get('status', '') == 'pending'"), true);
+    // Verify /users/{uid} rules allow self-registration as teacher or admin (none/pending) without requiring schoolId first
+    assert.equal(rulesSrc.includes("(incoming().get('role', '') in ['teacher', 'admin'])"), true);
+    assert.equal(rulesSrc.includes("(incoming().get('status', '') in ['none', 'pending'])"), true);
     assert.equal(
       rulesSrc.includes("(!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false)"),
       true,
@@ -944,20 +944,29 @@ function runAllUnitTests() {
       true,
       'firestore.rules must block self-assignment of isAdmissionIncharge on create/onboarding'
     );
+    // Verify user can link schoolId after creation when unlinked, while active status remains protected
+    assert.equal(rulesSrc.includes("existing().get('schoolId', '') == ''"), true);
     // Verify School Admin can approve teachers in /users/{uid} for their own schoolId
     assert.equal(rulesSrc.includes("isSchoolAdmin(incoming().get('schoolId', ''))"), true);
     // Verify /schools/{schoolId} allows pending_approval creation by creator and reading active schools
     assert.equal(rulesSrc.includes("incoming().get('status', '') == 'pending_approval'"), true);
     assert.equal(rulesSrc.includes("existing().get('status', '') == 'active'"), true);
 
-    // Verify AuthContext prevents signup race condition and preserves pending status
+    // Verify AuthContext prevents signup race condition, self-heals missing user docs with teacher/none, and preserves pending status
     assert.equal(authCtxSrc.includes('setAuthSignupTransactionInFlight'), true);
     assert.equal(authCtxSrc.includes('isExplicitlyPendingOrRejected'), true);
+    assert.equal(authCtxSrc.includes("role: 'teacher'"), true);
+    assert.equal(authCtxSrc.includes("status: 'none'"), true);
 
-    // Verify AuthModal uses signup transaction lock, saves users/{uid} before request, and refreshes AuthContext
+    // Verify smsFirestoreService strips undefined values so setDoc never fails on optional fields
+    const serviceSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/services/smsFirestoreService.ts'), 'utf-8');
+    assert.equal(serviceSrc.includes('sanitizeFirestoreData'), true);
+
+    // Verify AuthModal uses signup transaction lock, follows 3-step admin signup (user -> school -> link), and refreshes AuthContext
     assert.equal(authModalSrc.includes('setAuthSignupTransactionInFlight(true)'), true);
     assert.equal(authModalSrc.includes('await refreshUserProfile()'), true);
     assert.equal(authModalSrc.includes('skipFirestoreSync: true'), true);
+    assert.equal(authModalSrc.includes('linkedAdminProfile'), true);
 
     // Verify Super Admin school approval updates both activatedSchool and admin users/{uid} (with semisCode)
     assert.equal(smsCtxSrc.includes('semisCode: target.semisCode'), true);

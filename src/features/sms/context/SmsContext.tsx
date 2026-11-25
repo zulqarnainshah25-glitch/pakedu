@@ -1165,14 +1165,11 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setRegisteredSchools((prev) => [newSchool, ...prev.filter((s) => s.id !== newSchool.id)]);
     setActiveSchool(newSchool);
 
-    const pendingProfile: UserProfile = {
+    const baseAdminProfile: UserProfile = {
       uid: adminUid,
       email: adminProfile.email,
       fullName: adminProfile.fullName,
       role: 'admin',
-      schoolId: newSchool.id,
-      schoolName: newSchool.name,
-      semisCode: newSchool.semisCode,
       primaryAdminType,
       status: 'pending',
       designation:
@@ -1180,7 +1177,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         (primaryAdminType === 'principal' ? 'Principal / Headmaster' : 'School Administrator'),
       phone: adminProfile.phone,
       assignedClassIds: [],
+      isSuperAdmin: false,
+      isAdmissionIncharge: false,
       createdAt: new Date().toISOString(),
+    };
+
+    const pendingProfile: UserProfile = {
+      ...baseAdminProfile,
+      schoolId: newSchool.id,
+      schoolName: newSchool.name,
+      semisCode: newSchool.semisCode,
     };
 
     setCurrentUserProfile(pendingProfile);
@@ -1188,11 +1194,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!demoMode && !options?.skipFirestoreSync) {
       performSync('submitSchoolRegistration', async () => {
-        await saveUserProfileToFirestore(pendingProfile);
+        // Step 1: Ensure users/{uid} exists first
+        await saveUserProfileToFirestore(baseAdminProfile);
+        // Step 2: Create pending_approval school and registration request
         await Promise.all([
           saveSchoolToFirestore(newSchool),
           saveSchoolRegistrationRequestToFirestore(newRequest),
         ]);
+        // Step 3: Link users/{uid} with schoolId, schoolName & semisCode
+        await saveUserProfileToFirestore(pendingProfile);
       });
     }
 

@@ -223,10 +223,9 @@ service cloud.firestore {
         (resource != null && existing().get('schoolId', '') != '' && isSchoolAdmin(existing().get('schoolId', '')));
       allow list: if isSuperAdmin();
 
-      // Newly authenticated user can create own profile during signup with requested role:
-      // - 'teacher' with status 'none' (general signup) or 'pending' (join existing school)
-      // - 'admin' with status 'pending' and a schoolId (register a new school)
-      // Never allow self-assigning 'super-admin', isSuperAdmin, isAdmissionIncharge, or active admin status.
+      // Newly authenticated user can create own profile during signup immediately:
+      // - 'teacher' or 'admin' with status 'none' or 'pending' (no schoolId required yet!)
+      // - Never allow self-assigning 'super-admin', isSuperAdmin, isAdmissionIncharge, or active status.
       // Active School Admin may also create/activate a teacher doc for their own school during approval.
       allow create: if isSuperAdmin() || (
         isSignedIn() &&
@@ -235,17 +234,8 @@ service cloud.firestore {
         incoming().get('uid', uid) == uid &&
         (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false) &&
         incoming().get('isAdmissionIncharge', false) == false &&
-        (
-          (
-            incoming().get('role', '') == 'teacher' &&
-            (incoming().get('status', '') in ['none', 'pending'])
-          ) || (
-            incoming().get('role', '') == 'admin' &&
-            incoming().get('status', '') == 'pending' &&
-            incoming().get('schoolId', '') is string &&
-            incoming().get('schoolId', '').size() > 0
-          )
-        )
+        (incoming().get('role', '') in ['teacher', 'admin']) &&
+        (incoming().get('status', '') in ['none', 'pending'])
       ) || (
         isSignedIn() &&
         isValidId(uid) &&
@@ -261,7 +251,7 @@ service cloud.firestore {
       // 1. Super Admin can update any user (including approving school admins)
       // 2. User can update own doc:
       //    - normal edits keep role, schoolId, status unchanged
-      //    - onboarding transition ONLY from 'none' (no school) or 'rejected' -> 'pending' with 'teacher' or 'admin' + schoolId
+      //    - onboarding / school-linking transition while unlinked (schoolId == '') or status in ['none', 'rejected'] -> 'none' | 'pending'
       //    - never self-elevate to 'active' or 'super-admin'
       // 3. Active School Admin can approve/update teachers belonging to (or applying to) their school
       allow update: if isSuperAdmin() || (
@@ -278,12 +268,9 @@ service cloud.firestore {
                 incoming().get('schoolId', '') == existing().get('schoolId', '') &&
                 incoming().get('status', '') == existing().get('status', '')
               ) || (
-                (existing().get('status', 'none') in ['none', 'rejected']) &&
-                (existing().get('schoolId', '') == '' || existing().get('status', '') == 'rejected') &&
-                incoming().get('status', '') == 'pending' &&
-                (incoming().get('role', '') in ['teacher', 'admin']) &&
-                incoming().get('schoolId', '') is string &&
-                incoming().get('schoolId', '').size() > 0
+                (existing().get('schoolId', '') == '' || (existing().get('status', 'none') in ['none', 'rejected'])) &&
+                (incoming().get('status', '') in ['none', 'pending']) &&
+                (incoming().get('role', '') in ['teacher', 'admin'])
               )
             )
           ) || (
@@ -311,10 +298,12 @@ service cloud.firestore {
     match /schools/{schoolId} {
       // Directory read allowed for active schools (required for teacher signup school selector),
       // pending school creators, members of that school, and super-admin.
-      allow get, list: if existing().get('status', '') == 'active' ||
-        isSchoolMember(schoolId) ||
+      allow get, list: if isSchoolMember(schoolId) ||
         isSuperAdmin() ||
-        (isSignedIn() && (request.auth.uid in existing().get('adminUids', [])));
+        (resource != null && (
+          existing().get('status', '') == 'active' ||
+          (isSignedIn() && (request.auth.uid in existing().get('adminUids', [])))
+        ));
 
       // Super Admin can create any school; authenticated user registering a new school
       // can create a pending_approval school listing themselves in adminUids.

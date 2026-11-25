@@ -62,8 +62,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Read Firebase token claims (superAdmin custom claim)
       const tokenResult = await user.getIdTokenResult();
       const userEmail = (user.email || '').trim().toLowerCase();
+      const hasTokenSuperAdminClaim = Boolean(tokenResult.claims.superAdmin);
       const isOwner = userEmail === 'owner@pakedu.com';
-      const isSuperAdminClaim = Boolean(tokenResult.claims.superAdmin) || isOwner;
+      const isSuperAdminClaim = hasTokenSuperAdminClaim || isOwner;
 
       // 1. Fetch live profile from Firestore
       let profile = await fetchUserProfileFromFirestore(user.uid);
@@ -74,22 +75,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (!profile) {
-        const isAdmin = userEmail === 'zulqarnainshah25@gmail.com' || userEmail === 'waleedshah1@gmail.com';
-        profile = {
-          uid: user.uid,
-          email: user.email || '',
-          fullName: user.displayName || (isSuperAdminClaim ? 'Portal Super Admin' : isAdmin ? 'School Administrator' : 'Educator'),
-          role: isSuperAdminClaim ? 'super-admin' : isAdmin ? 'admin' : 'teacher',
-          status: isSuperAdminClaim || isAdmin ? 'active' : 'none',
-          assignedClassIds: [],
-          isSuperAdmin: isSuperAdminClaim,
-          createdAt: new Date().toISOString(),
-        };
-        // Save to Firestore so it persists
-        saveUserProfileToFirestore(profile).catch((err) =>
-          console.warn('[AuthContext] Default profile save notice:', err)
-        );
-      } else if (isSuperAdminClaim || profile.isSuperAdmin || profile.role === 'super-admin') {
+        // Self-heal missing Firestore user document immediately with a rule-compliant baseline profile
+        // so logged-in users / newly signed-up accounts never remain without a `users/{uid}` document.
+        const basicProfile: UserProfile = hasTokenSuperAdminClaim
+          ? {
+              uid: user.uid,
+              email: user.email || '',
+              fullName: user.displayName || 'Portal Super Admin',
+              role: 'super-admin',
+              status: 'active',
+              assignedClassIds: [],
+              isSuperAdmin: true,
+              createdAt: new Date().toISOString(),
+            }
+          : {
+              uid: user.uid,
+              email: user.email || '',
+              fullName: user.displayName || 'Educator',
+              role: 'teacher',
+              status: 'none',
+              assignedClassIds: [],
+              isSuperAdmin: false,
+              isAdmissionIncharge: false,
+              createdAt: new Date().toISOString(),
+            };
+        try {
+          await saveUserProfileToFirestore(basicProfile);
+        } catch (createErr) {
+          console.error('[AuthContext] Auto-create basic profile failed:', createErr);
+        }
+        profile = basicProfile;
+      } else if (hasTokenSuperAdminClaim || profile.isSuperAdmin || profile.role === 'super-admin') {
         profile.role = 'super-admin';
         profile.isSuperAdmin = true;
         profile.status = 'active';
@@ -113,21 +129,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const isExplicitlyPendingOrRejected =
         profile.status === 'pending' || profile.status === 'rejected';
+      const isAlreadyAdminRoleInProfile =
+        profile.role === 'admin' || profile.role === 'principal';
       const isApprovedInMatchedSchool =
         Boolean(matchedSchool) &&
         matchedSchool!.status === 'active' &&
         (
           (matchedSchool!.adminUids || []).includes(user.uid) ||
-          (uEmail && (matchedSchool!.primaryAdminEmail || '').trim().toLowerCase() === uEmail)
+          (uEmail && (matchedSchool!.primaryAdminEmail || '').trim().toLowerCase() === uEmail) ||
+          (uEmail && (matchedSchool!.email || '').trim().toLowerCase() === uEmail)
         );
 
-      // If user has admin/principal capabilities, normalize profile to active admin ONLY when not pending review
-      // (or heal to active if their school has now been approved by Super Admin)
+      // Normalize active admin profile ONLY when their school/admin status authorizes it
+      // (never attempt a privileged write on an unapproved 'none' / 'pending' profile)
       if (
         hasAdminCapabilities(user, profile, schools, tokenResult.claims) &&
         !isSuperAdminClaim &&
         profile.role !== 'super-admin' &&
-        (!isExplicitlyPendingOrRejected || isApprovedInMatchedSchool)
+        (
+          isApprovedInMatchedSchool ||
+          (isAlreadyAdminRoleInProfile && !isExplicitlyPendingOrRejected)
+        )
       ) {
         const needsUpdate =
           profile.role !== 'admin' ||
@@ -141,7 +163,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           profile.schoolName = profile.schoolName || matchedSchool.name;
         }
         if (needsUpdate) {
-          // Persist normalized admin status so subsequent calls are instantaneous
           saveUserProfileToFirestore(profile).catch((err) =>
             console.warn('[AuthContext] Admin profile sync notice:', err)
           );
@@ -163,17 +184,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return profile;
     } catch (err) {
       console.warn('[AuthContext] Error in profile routing:', err);
-      const userEmail = (user.email || '').trim().toLowerCase();
-      const isAdmin = userEmail === 'zulqarnainshah25@gmail.com' || userEmail === 'waleedshah1@gmail.com';
       const fallbackProfile: UserProfile = {
         uid: user.uid,
         email: user.email || '',
-        fullName: user.displayName || (isAdmin ? 'School Administrator' : 'Educator'),
-        role: isAdmin ? 'admin' : 'teacher',
-        status: isAdmin ? 'active' : 'none',
+        fullName: user.displayName || 'Educator',
+        role: 'teacher',
+        status: 'none',
         assignedClassIds: [],
         isSuperAdmin: false,
+        isAdmissionIncharge: false,
       };
+      // Attempt best-effort self-heal so missing user doc is created cleanly
+      saveUserProfileToFirestore(fallbackProfile).catch(() => {});
       const fallbackRoute = determineSmartRoute(user, fallbackProfile, []);
       setCurrentUserProfile(fallbackProfile);
       setSmartRoute(fallbackRoute);
