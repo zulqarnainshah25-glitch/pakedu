@@ -253,16 +253,28 @@ export async function runFirestoreRulesTests() {
     );
     console.log('  ✅ PASS: Legitimate join request for own UID is accepted');
 
-    console.log('\n--- Test 6: Super-admin can read and write all ---');
+    console.log('\n--- Test 6: Super-admin strict platform oversight (no tenant PII read/write) ---');
     const superAdminContext = testEnv.authenticatedContext('super_admin_uid', {
       superAdmin: true,
     });
     const superAdminDb = superAdminContext.firestore();
 
-    await assertSucceeds(getDoc(doc(superAdminDb, 'schools', 'school_a', 'students', 'std_a_1')));
-    await assertSucceeds(getDoc(doc(superAdminDb, 'schools', 'school_b', 'students', 'std_b_1')));
+    await assertSucceeds(getDoc(doc(superAdminDb, 'schools', 'school_a')));
     await assertSucceeds(getDoc(doc(superAdminDb, 'users', 'unaffiliated_uid')));
-    console.log('  ✅ PASS: Super-admin has universal read access across all tenants');
+    await assertFails(getDoc(doc(superAdminDb, 'schools', 'school_a', 'students', 'std_a_1')));
+    await assertFails(
+      setDoc(doc(superAdminDb, 'schools', 'school_a', 'students', 'std_a_999'), {
+        id: 'std_a_999',
+        grNumber: 'GR-999',
+        fullName: 'Test',
+        fatherName: 'Father',
+        gender: 'Male',
+        classId: 'cls_9_a',
+        guardianPhone: '0300-1234567',
+        status: 'active',
+      })
+    );
+    console.log('  ✅ PASS: Super-admin restricted to platform schools/users and denied student PII access');
 
     console.log('\n--- Test 7: Teacher can write attendance ONLY for assigned class ---');
     // Teacher A is assigned 'cls_9_a'

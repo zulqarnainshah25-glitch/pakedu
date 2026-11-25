@@ -10,6 +10,7 @@ import {
   TimetableEntry,
   HomeworkItem,
   StudentCertificate,
+  GlobalNotice,
 } from '../types';
 
 export const INITIAL_MOCK_SCHOOL: School = {
@@ -706,3 +707,20 @@ export const INITIAL_MOCK_HOMEWORK: HomeworkItem[] = [
 ];
 
 export const INITIAL_MOCK_CERTIFICATES: StudentCertificate[] = [];
+
+export const INITIAL_MOCK_GLOBAL_NOTICES: GlobalNotice[] = [
+  {
+    id: 'notice_demo_1',
+    title: 'Annual Winter Timetable & Mid-Term Exam Audit',
+    message:
+      'All SELD registered schools must upload class timetables and publish First Term report cards before the 15th of next month.',
+    priority: 'high',
+    date: '2026-11-25',
+    targetType: 'all',
+    targetSchoolIds: [],
+    createdByUid: 'super_admin_uid',
+    createdByName: 'Portal Super Admin',
+    readBySchools: {},
+    createdAt: '2026-11-25T09:00:00.000Z',
+  },
+];

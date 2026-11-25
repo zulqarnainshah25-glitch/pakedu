@@ -1370,6 +1370,55 @@ function runAllUnitTests() {
     console.log('✅ PASS: Mobile Split-Screen Auth, Splash, Appointment Letter & Phase D Tests');
   }
 
+  // 21. Super Admin Strict RBAC Isolation, Global Notice Board & Read-Only Oversight Tests
+  {
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+    const smsContextSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+    const superAdminDashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/SuperAdminDashboard.tsx'), 'utf-8');
+    const smsDashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/SmsDashboard.tsx'), 'utf-8');
+
+    // 1. firestore.rules isolates tenant subcollections away from Super Admin & enables Global Notice Board + analytics summary
+    const isSchoolMemberStart = rulesSrc.indexOf('function isSchoolMember(schoolId)');
+    const isSchoolParentStart = rulesSrc.indexOf('function isSchoolParent(schoolId)');
+    const isSchoolAdminStart = rulesSrc.indexOf('function isSchoolAdmin(schoolId)');
+    const canAuthorStart = rulesSrc.indexOf('function canAuthorSyllabus()');
+    const isParentHelperBlock = rulesSrc.slice(isSchoolMemberStart, isSchoolParentStart);
+    assert.equal(isSchoolMemberStart > -1 && isSchoolParentStart > isSchoolMemberStart && isSchoolAdminStart > isSchoolMemberStart && canAuthorStart > isSchoolAdminStart, true);
+    assert.equal(isParentHelperBlock.includes('isSuperAdmin()'), false);
+    const isSchoolAdminBlock = rulesSrc.slice(isSchoolAdminStart, canAuthorStart);
+    assert.equal(isSchoolAdminBlock.includes('isSuperAdmin()'), false);
+    assert.equal(rulesSrc.includes('match /globalNotices/{noticeId}'), true);
+    assert.equal(rulesSrc.includes("'analytics'"), true);
+
+    // 2. SmsContext enforces read-only impersonation, blocks school-level writes & manages notices
+    assert.equal(smsContextSrc.includes('isReadOnlyImpersonation'), true);
+    assert.equal(smsContextSrc.includes('blockSchoolMutation'), true);
+    assert.equal(smsContextSrc.includes('PLATFORM_SYNC_OPERATIONS'), true);
+    assert.equal(smsContextSrc.includes('publishGlobalNotice'), true);
+    assert.equal(smsContextSrc.includes('markNoticeAsRead'), true);
+    assert.equal(smsContextSrc.includes('saveSchoolAnalyticsToFirestore'), true);
+    assert.equal(smsContextSrc.includes('Strict Super Admin RBAC Isolation'), true);
+
+    // 3. App.tsx hides school-level modules from Super Admin & renders Read-Only banner
+    assert.equal(appSrc.includes('isSuperAdminActive'), true);
+    assert.equal(appSrc.includes('You are viewing as School Admin - Read Only'), true);
+    assert.equal(appSrc.includes('Platform Overview'), true);
+    assert.equal(appSrc.includes('Super Admin Fleet'), true);
+    assert.equal(appSrc.includes('Notice Board'), true);
+
+    // 4. SuperAdminDashboard & SmsDashboard Notice Board + Read-Only View controls
+    assert.equal(superAdminDashSrc.includes('View as School Admin'), true);
+    assert.equal(superAdminDashSrc.includes('Notice Board'), true);
+    assert.equal(superAdminDashSrc.includes('publishGlobalNotice'), true);
+    assert.equal(superAdminDashSrc.includes('PLATFORM ANALYTICS OVERVIEW'), true);
+    assert.equal(smsDashSrc.includes('Notifications &amp; Notices'), true);
+    assert.equal(smsDashSrc.includes('markNoticeAsRead'), true);
+    assert.equal(smsDashSrc.includes('Read-Only School Admin View'), true);
+
+    console.log('✅ PASS: Super Admin RBAC Isolation, Global Notice Board & Read-Only Oversight Tests');
+  }
+
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
 }
 

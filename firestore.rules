@@ -52,14 +52,12 @@ service cloud.firestore {
       );
     }
 
-    // School Staff Member: Active teacher, admin, or principal belonging to schoolId (excludes parents)
+    // School Staff Member: Active teacher, admin, or principal belonging to schoolId (strictly excludes Super Admin and parents)
     function isSchoolMember(schoolId) {
-      return isSuperAdmin() || (
-        hasUserDoc() &&
+      return hasUserDoc() &&
         userDoc().get('status', '') == 'active' &&
         userDoc().get('schoolId', '') == schoolId &&
-        (userDoc().get('role', '') in ['teacher', 'admin', 'principal'])
-      );
+        (userDoc().get('role', '') in ['teacher', 'admin', 'principal']);
     }
 
     // Verified Parent Member: Active parent linked strictly to a single child in schoolId
@@ -98,12 +96,10 @@ service cloud.firestore {
         );
     }
 
-    // School Admin: User is an active member with role 'admin' or 'principal' (or super-admin)
+    // School Admin: Strictly school-level Admin or Principal (excludes Super Admin from direct tenant mutations)
     function isSchoolAdmin(schoolId) {
-      return isSuperAdmin() || (
-        isSchoolMember(schoolId) &&
-        (userDoc().get('role', '') == 'admin' || userDoc().get('role', '') == 'principal')
-      );
+      return isSchoolMember(schoolId) &&
+        (userDoc().get('role', '') == 'admin' || userDoc().get('role', '') == 'principal');
     }
 
     // Verified Faculty Author: Teacher or Admin with status 'active'
@@ -405,7 +401,7 @@ service cloud.firestore {
         )
       );
 
-      // Update by Super Admin only (or school admin for limited fields)
+      // Update by Super Admin only (or school admin for limited profile fields, or active staff syncing aggregated analytics)
       allow update: if isValidId(schoolId) && (
         isSuperAdmin() || (
           isSchoolAdmin(schoolId) &&
@@ -416,6 +412,13 @@ service cloud.firestore {
             'address',
             'activeAcademicYear',
             'logoUrl',
+            'analytics',
+            'updatedAt'
+          ])
+        ) || (
+          isSchoolMember(schoolId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'analytics',
             'updatedAt'
           ])
         )
@@ -643,6 +646,33 @@ service cloud.firestore {
           incoming().get('claimedByUid', '') == request.auth.uid &&
           incoming().get('status', '') == 'linked'
         )
+      );
+    }
+
+    // =========================================================================
+    // 2C. Global Notice Board / Announcements (/globalNotices/{noticeId})
+    // Super Admin composes/deletes notices for All or Specific schools;
+    // Active School Admins read their targeted notices & mark readBySchools.
+    // =========================================================================
+    match /globalNotices/{noticeId} {
+      allow get, list: if isSuperAdmin() || (
+        hasUserDoc() &&
+        userDoc().get('status', '') == 'active' && (
+          existing().get('targetType', 'all') == 'all' ||
+          (userDoc().get('schoolId', '') != '' && userDoc().get('schoolId', '') in existing().get('targetSchoolIds', []))
+        )
+      );
+      allow create: if isSuperAdmin() &&
+        isValidId(noticeId) &&
+        incoming().keys().hasAll(['id', 'title', 'message', 'priority', 'date', 'targetType']) &&
+        (incoming().priority in ['high', 'medium', 'low']) &&
+        (incoming().targetType in ['all', 'specific']);
+      allow delete: if isSuperAdmin();
+      allow update: if isSuperAdmin() || (
+        hasUserDoc() &&
+        userDoc().get('status', '') == 'active' &&
+        (userDoc().get('role', '') in ['admin', 'principal']) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['readBySchools', 'updatedAt'])
       );
     }
 

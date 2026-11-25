@@ -20,6 +20,8 @@ import {
   TimetableEntry,
   HomeworkItem,
   StudentCertificate,
+  GlobalNotice,
+  SchoolAnalyticsSummary,
 } from '../types';
 import {
   INITIAL_MOCK_SCHOOL,
@@ -38,6 +40,7 @@ import {
   INITIAL_MOCK_TIMETABLE,
   INITIAL_MOCK_HOMEWORK,
   INITIAL_MOCK_CERTIFICATES,
+  INITIAL_MOCK_GLOBAL_NOTICES,
 } from '../data/mockSmsData';
 import {
   FirestoreSyncError,
@@ -89,6 +92,12 @@ import {
   saveCertificateToFirestore,
   fetchCertificatesFromFirestore,
   deleteCertificateFromFirestore,
+  saveSchoolAnalyticsToFirestore,
+  saveGlobalNoticeToFirestore,
+  fetchAllGlobalNoticesFromFirestore,
+  fetchNoticesForSchoolFromFirestore,
+  markGlobalNoticeAsReadInFirestore,
+  deleteGlobalNoticeFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
 import { hasAdminCapabilities } from '../../../utils/smartRouting';
@@ -292,6 +301,21 @@ interface SmsContextType {
   canPostHomework: boolean;
   canManageCertificates: boolean;
 
+  // Super Admin Strict Read-Only Impersonation & Global Notice Board
+  isReadOnlyImpersonation: boolean;
+  globalNotices: GlobalNotice[];
+  unreadNoticesCount: number;
+  publishGlobalNotice: (notice: {
+    title: string;
+    message: string;
+    priority: 'high' | 'medium' | 'low';
+    date: string;
+    targetType: 'all' | 'specific';
+    targetSchoolIds: string[];
+  }) => Promise<boolean>;
+  deleteGlobalNotice: (noticeId: string) => Promise<boolean>;
+  markNoticeAsRead: (noticeId: string) => Promise<boolean>;
+
   // Stats
   stats: {
     totalStudents: number;
@@ -319,6 +343,7 @@ const SMS_EXAM_MARKS_STORAGE_KEY = 'pakedu_sms_exam_marks_v1';
 const SMS_TIMETABLE_STORAGE_KEY = 'pakedu_sms_timetable_v1';
 const SMS_HOMEWORK_STORAGE_KEY = 'pakedu_sms_homework_v1';
 const SMS_CERTIFICATES_STORAGE_KEY = 'pakedu_sms_certificates_v1';
+const SMS_GLOBAL_NOTICES_STORAGE_KEY = 'pakedu_sms_global_notices_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -435,6 +460,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   }, [currentUserProfile, userRole]);
 
+  const isReadOnlyImpersonation = useMemo(() => {
+    return Boolean(isImpersonating && (isSuperAdmin || impersonationOriginalRole === 'super-admin'));
+  }, [isImpersonating, isSuperAdmin, impersonationOriginalRole]);
+
   // Synchronize activeSchool whenever registeredSchools or currentUserProfile updates
   useEffect(() => {
     if (registeredSchools && registeredSchools.length > 0) {
@@ -498,8 +527,44 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearSyncError = () => setSyncError(null);
 
+  const PLATFORM_SYNC_OPERATIONS = new Set([
+    'toggleSchoolStatus',
+    'approveSchoolRegistration',
+    'rejectSchoolRegistration',
+    'registerNewSchool',
+    'submitSchoolRegistration',
+    'publishGlobalNotice',
+    'deleteGlobalNotice',
+    'markNoticeAsRead',
+  ]);
+
+  const blockSchoolMutation = (operation: string): boolean => {
+    if (isImpersonating || (!demoMode && isSuperAdmin)) {
+      setSyncError({
+        id: `rbac_readonly_${Date.now()}`,
+        message: 'Read-Only Oversight: Super Admin cannot create, edit, or delete school-level records.',
+        reason: 'You are viewing as School Admin - Read Only',
+        operation,
+        retry: async () => {},
+      });
+      return true;
+    }
+    return false;
+  };
+
   const performSync = async (operation: string, syncFn: () => Promise<any>): Promise<boolean> => {
     if (demoMode) return true;
+    if ((isImpersonating || isSuperAdmin) && !PLATFORM_SYNC_OPERATIONS.has(operation)) {
+      console.warn(`[RBAC] Blocked school mutation "${operation}" for Super Admin / Read-Only mode.`);
+      setSyncError({
+        id: `rbac_superadmin_${Date.now()}`,
+        message: 'Read-Only Oversight: Super Admin is restricted from modifying school records.',
+        reason: 'Super Admin accounts can only manage platform approvals and announcements',
+        operation,
+        retry: async () => {},
+      });
+      return false;
+    }
     try {
       await syncFn();
       setSyncError(null);
@@ -580,7 +645,6 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveSchool(target);
       setIsImpersonating(true);
       setImpersonationOriginalRole(userRole);
-      setUserRoleState('admin');
     }
   };
 
@@ -874,6 +938,20 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [globalNotices, setGlobalNotices] = useState<GlobalNotice[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_GLOBAL_NOTICES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+      return isDemo ? INITIAL_MOCK_GLOBAL_NOTICES : [];
+    } catch {
+      return [];
+    }
+  });
+
   const setDemoMode = (enabled: boolean) => {
     if (!import.meta.env.DEV) {
       setDemoModeState(false);
@@ -905,6 +983,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTimetableEntries(INITIAL_MOCK_TIMETABLE);
       setHomeworkItems(INITIAL_MOCK_HOMEWORK);
       setCertificates(INITIAL_MOCK_CERTIFICATES);
+      setGlobalNotices(INITIAL_MOCK_GLOBAL_NOTICES);
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -964,6 +1043,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const savedCertificates = localStorage.getItem(SMS_CERTIFICATES_STORAGE_KEY);
         setCertificates(savedCertificates ? JSON.parse(savedCertificates) : []);
 
+        const savedNotices = localStorage.getItem(SMS_GLOBAL_NOTICES_STORAGE_KEY);
+        const parsedNotices = savedNotices ? JSON.parse(savedNotices) : [];
+        setGlobalNotices(parsedNotices.filter((n: GlobalNotice) => !n.id.startsWith('notice_mock_')));
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -981,6 +1064,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setTimetableEntries([]);
         setHomeworkItems([]);
         setCertificates([]);
+        setGlobalNotices([]);
         setAttendanceRegisters({});
       }
     }
@@ -1099,6 +1183,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [certificates]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_GLOBAL_NOTICES_STORAGE_KEY, JSON.stringify(globalNotices));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [globalNotices]);
+
   const setUserRole = (role: UserRole) => {
     setUserRoleState(role);
     try {
@@ -1149,10 +1241,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch((err) => console.warn('[Firestore] Notice: School requests fetch error:', err));
 
+    if (isSuperAdmin) {
+      fetchAllGlobalNoticesFromFirestore()
+        .then((remoteNotices) => {
+          if (!cancelled) setGlobalNotices(remoteNotices || []);
+        })
+        .catch((err) => console.warn('[Firestore] Notice: Global notices fetch error:', err));
+    } else if (activeSchool.id && activeSchool.id !== 'sch_seld_khi_01') {
+      fetchNoticesForSchoolFromFirestore(activeSchool.id)
+        .then((remoteNotices) => {
+          if (!cancelled) setGlobalNotices(remoteNotices || []);
+        })
+        .catch((err) => console.warn('[Firestore] Notice: School notices fetch error:', err));
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [demoMode, authUserUid, currentUserProfile?.role, currentUserProfile?.status]);
+  }, [demoMode, authUserUid, currentUserProfile?.role, currentUserProfile?.status, isSuperAdmin, activeSchool.id]);
 
   // Cloud Firestore Sync for active school subcollections when not in demo mode
   useEffect(() => {
@@ -1250,6 +1356,27 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       setCertificates([]);
 
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Strict Super Admin RBAC Isolation: Never query or expose tenant student/class/attendance/fee/exam subcollections
+    if (isSuperAdmin) {
+      setClasses([]);
+      setTeachers([]);
+      setStudents([]);
+      setAttendanceRegisters({});
+      setJoinRequests([]);
+      setFeeStructures([]);
+      setFeePayments([]);
+      setFeeConcessions([]);
+      setExams([]);
+      setExamMarks([]);
+      setTimetableEntries([]);
+      setHomeworkItems([]);
+      setCertificates([]);
+      setLoadingClasses(false);
       return () => {
         cancelled = true;
       };
@@ -1379,7 +1506,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       cancelled = true;
     };
-  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status, currentUserProfile?.role, currentUserProfile?.childStudentId]);
+  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status, currentUserProfile?.role, currentUserProfile?.childStudentId, isSuperAdmin]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
   const registerNewSchool = (
@@ -1771,6 +1898,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     assignedClassIds: string[],
     assignAsClassTeacherFor?: string
   ) => {
+    if (blockSchoolMutation('approveJoinRequest')) return;
     const target = joinRequests.find((r) => r.id === requestId);
     if (!target) return;
 
@@ -1874,6 +2002,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Admin rejects a join request
   const rejectJoinRequest = (requestId: string) => {
+    if (blockSchoolMutation('rejectJoinRequest')) return;
     setJoinRequests((prev) =>
       prev.map((r) =>
         r.id === requestId
@@ -1913,6 +2042,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Update Teacher Profile (Admin can edit any teacher; teachers see their own)
   const updateTeacherProfile = (teacherId: string, updates: Partial<TeacherInfo>) => {
+    if (blockSchoolMutation('updateTeacherProfile')) return;
     setTeachers((prev) =>
       prev.map((t) => (t.id === teacherId ? { ...t, ...updates } : t))
     );
@@ -1952,6 +2082,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Toggle Admission Incharge special role for a teacher
   const toggleAdmissionIncharge = (teacherId: string) => {
+    if (blockSchoolMutation('toggleAdmissionIncharge')) return;
     const teacher = teachers.find((t) => t.id === teacherId);
     if (!teacher) return;
     const nextVal = !teacher.isAdmissionIncharge;
@@ -1959,6 +2090,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addClass = (newClassData: Omit<ClassSection, 'id' | 'createdAt'>) => {
+    if (blockSchoolMutation('addClass')) return;
     const id = `cls_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const newClass: ClassSection = {
       ...newClassData,
@@ -1973,6 +2105,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateClass = (id: string, updated: Partial<ClassSection>) => {
+    if (blockSchoolMutation('updateClass')) return;
     setClasses((prev) =>
       prev.map((c) => {
         if (c.id === id) {
@@ -1988,6 +2121,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteClass = (id: string) => {
+    if (blockSchoolMutation('deleteClass')) return;
     setClasses((prev) => prev.filter((c) => c.id !== id));
     if (!demoMode && activeSchool.id) {
       performSync('deleteClass', () => deleteClassFromFirestore(activeSchool.id, id));
@@ -2018,6 +2152,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStudent = (newStudentData: Omit<Student, 'id'>) => {
+    if (blockSchoolMutation('addStudent')) return;
     const id = `std_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
     const inviteCode =
       newStudentData.parentInviteCode || generateParentInviteCode(newStudentData.grNumber);
@@ -2047,6 +2182,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStudent = (id: string, updated: Partial<Student>) => {
+    if (blockSchoolMutation('updateStudent')) return;
     const existing = students.find((s) => s.id === id);
     if (!existing) return;
 
@@ -2094,6 +2230,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteStudent = (id: string) => {
+    if (blockSchoolMutation('deleteStudent')) return;
     const existing = students.find((s) => s.id === id);
     if (!existing) return;
 
@@ -2115,6 +2252,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Save or update attendance register (keyed by "YYYY-MM-DD_{classId}")
   const saveAttendance = (attendance: DailyClassAttendance) => {
+    if (blockSchoolMutation('saveAttendance')) return;
     setAttendanceRegisters((prev) => ({
       ...prev,
       [attendance.id]: attendance,
@@ -2193,9 +2331,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return userRole || 'teacher';
   }, [demoMode, userRole, currentUserProfile, registeredSchools]);
 
-  // Filtered classes by role: Admins see all classes; Teachers only see assigned classes; Parents see child class only
+  // Filtered classes by role: Admins see all classes; Teachers only see assigned classes; Parents see child class only; Super Admin & Read-Only view blocked
   const filteredClassesForUser = useMemo(() => {
-    if (effectiveRole === 'admin' || effectiveRole === 'principal' || effectiveRole === 'super-admin') {
+    if (effectiveRole === 'super-admin' || isImpersonating) {
+      return [];
+    }
+    if (effectiveRole === 'admin' || effectiveRole === 'principal') {
       return classes || [];
     }
     if (effectiveRole === 'parent') {
@@ -2213,11 +2354,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           (Array.isArray(currentUserProfile?.assignedClassIds) && currentUserProfile.assignedClassIds.includes(c.id))
         )
     );
-  }, [classes, students, effectiveRole, activeTeacher, currentUserProfile]);
+  }, [classes, students, effectiveRole, isImpersonating, activeTeacher, currentUserProfile]);
 
-  // Filtered students by role: Admins see all students; Teachers see assigned classes; Parents see ONLY their linked child
+  // Filtered students by role: Admins see all students; Teachers see assigned classes; Parents see ONLY their linked child; Super Admin & Read-Only view blocked
   const filteredStudentsForUser = useMemo(() => {
-    if (effectiveRole === 'admin' || effectiveRole === 'principal' || effectiveRole === 'super-admin') {
+    if (effectiveRole === 'super-admin' || isImpersonating) {
+      return [];
+    }
+    if (effectiveRole === 'admin' || effectiveRole === 'principal') {
       return students || [];
     }
     if (effectiveRole === 'parent') {
@@ -2227,7 +2371,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!students || !Array.isArray(students)) return [];
     const teacherClassIds = new Set((filteredClassesForUser || []).map((c) => c?.id).filter(Boolean));
     return students.filter((s) => s && teacherClassIds.has(s.classId));
-  }, [students, effectiveRole, filteredClassesForUser, currentUserProfile?.childStudentId]);
+  }, [students, effectiveRole, isImpersonating, filteredClassesForUser, currentUserProfile?.childStudentId]);
 
   // Real-time Today's Attendance Analytics
   const todayAttendanceStats = useMemo<TodayAttendanceStats>(() => {
@@ -2285,9 +2429,83 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [students, classes, teachers]);
 
-  // Permission Guard: Only School Admin, Super Admin, or designated Admission Incharge can admit/edit students
+  // Sync non-PII aggregated school analytics onto /schools/{schoolId}.analytics for Super Admin Platform Overview
+  useEffect(() => {
+    if (
+      demoMode ||
+      isSuperAdmin ||
+      isImpersonating ||
+      loadingClasses ||
+      !activeSchool.id ||
+      activeSchool.id === 'sch_seld_khi_01' ||
+      currentUserProfile?.role === 'parent' ||
+      currentUserProfile?.status !== 'active'
+    ) {
+      return;
+    }
+
+    if (
+      stats.totalStudents === 0 &&
+      stats.totalClasses === 0 &&
+      stats.totalTeachers === 0 &&
+      feePayments.length === 0
+    ) {
+      return;
+    }
+
+    const totalRevenue = feePayments.reduce((sum, p) => sum + (Number(p.paidAmount) || 0), 0);
+    const cur = activeSchool.analytics;
+    const hasChanged =
+      !cur ||
+      cur.totalStudents !== stats.totalStudents ||
+      cur.totalClasses !== stats.totalClasses ||
+      cur.totalTeachers !== stats.totalTeachers ||
+      cur.totalRevenue !== totalRevenue ||
+      cur.todayAttendancePct !== todayAttendanceStats.overallPercentage;
+
+    if (!hasChanged) return;
+
+    const timer = setTimeout(() => {
+      const nextAnalytics: SchoolAnalyticsSummary = {
+        totalStudents: stats.totalStudents,
+        totalClasses: stats.totalClasses,
+        totalTeachers: stats.totalTeachers,
+        totalRevenue,
+        todayAttendancePct: todayAttendanceStats.overallPercentage,
+        updatedAt: new Date().toISOString(),
+      };
+      setActiveSchool((prev) =>
+        prev.id === activeSchool.id ? { ...prev, analytics: nextAnalytics } : prev
+      );
+      setRegisteredSchools((prev) =>
+        prev.map((s) => (s.id === activeSchool.id ? { ...s, analytics: nextAnalytics } : s))
+      );
+      saveSchoolAnalyticsToFirestore(activeSchool.id, nextAnalytics).catch((err) =>
+        console.warn('[Firestore] Notice: School analytics sync error:', err)
+      );
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [
+    demoMode,
+    isSuperAdmin,
+    isImpersonating,
+    loadingClasses,
+    activeSchool.id,
+    activeSchool.analytics,
+    currentUserProfile?.role,
+    currentUserProfile?.status,
+    stats.totalStudents,
+    stats.totalClasses,
+    stats.totalTeachers,
+    feePayments,
+    todayAttendanceStats.overallPercentage,
+  ]);
+
+  // Permission Guard: Only School Admin or designated Admission Incharge can admit/edit students (never Super Admin / Read-Only)
   const canAdmitStudents = useMemo(() => {
-    if (effectiveRole === 'admin' || effectiveRole === 'principal' || effectiveRole === 'super-admin') return true;
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
+    if (effectiveRole === 'admin' || effectiveRole === 'principal') return true;
     if (effectiveRole === 'teacher') {
       const currentTeacher = teachers.find(
         (t) => t.email === currentUserProfile?.email || t.id === currentUserProfile?.uid
@@ -2295,12 +2513,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return Boolean(currentTeacher?.isAdmissionIncharge || currentUserProfile?.isAdmissionIncharge);
     }
     return false;
-  }, [effectiveRole, teachers, currentUserProfile]);
+  }, [isSuperAdmin, isImpersonating, effectiveRole, teachers, currentUserProfile]);
 
   // Fee Management Methods & Permissions
   const saveClassFeeStructure = async (
     structure: Omit<ClassFeeStructure, 'schoolId'>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveFeeStructure')) return false;
     const fullStructure: ClassFeeStructure = {
       ...structure,
       schoolId: activeSchool.id || 'default_school',
@@ -2326,6 +2545,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteClassFeeStructure = async (classId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteFeeStructure')) return false;
     setFeeStructures((prev) => prev.filter((f) => f.classId !== classId && f.id !== classId));
     if (!demoMode && activeSchool.id) {
       return await performSync('deleteFeeStructure', () =>
@@ -2338,6 +2558,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const recordFeePayment = async (
     payment: Omit<FeePayment, 'schoolId'>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveFeePayment')) return false;
     const fullPayment: FeePayment = {
       ...payment,
       schoolId: activeSchool.id || 'default_school',
@@ -2367,6 +2588,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const recordBulkFeePayments = async (
     payments: Array<Omit<FeePayment, 'schoolId'>>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveBulkFeePayments')) return false;
     if (!payments.length) return true;
     const schoolId = activeSchool.id || 'default_school';
     const fullPayments: FeePayment[] = payments.map((p) => ({
@@ -2401,6 +2623,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveFeeConcessionRule = async (
     rule: Omit<FeeConcessionRule, 'schoolId'>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveFeeConcession')) return false;
     const fullRule: FeeConcessionRule = {
       ...rule,
       schoolId: activeSchool.id || 'default_school',
@@ -2427,6 +2650,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteFeeConcessionRule = async (concessionId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteFeeConcession')) return false;
     setFeeConcessions((prev) => prev.filter((r) => r.id !== concessionId));
     if (!demoMode && activeSchool.id) {
       return await performSync('deleteFeeConcession', () =>
@@ -2440,6 +2664,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     studentId: string,
     rule: FeeConcessionRule | null
   ): Promise<boolean> => {
+    if (blockSchoolMutation('applyStudentConcession')) return false;
     const existing = students.find((s) => s.id === studentId);
     if (!existing) return false;
 
@@ -2478,8 +2703,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const canManageFeeStructure = useMemo(() => {
-    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
-  }, [effectiveRole, isSuperAdmin]);
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
+    return effectiveRole === 'admin' || effectiveRole === 'principal';
+  }, [effectiveRole, isSuperAdmin, isImpersonating]);
 
   const canCollectFee = useMemo(() => {
     return canManageFeeStructure || canAdmitStudents;
@@ -2489,11 +2715,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Phase B: Exams & Results (Admin setup + Teacher assigned-class marks)
   // =========================================================================
   const canManageExams = useMemo(() => {
-    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
-  }, [effectiveRole, isSuperAdmin]);
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
+    return effectiveRole === 'admin' || effectiveRole === 'principal';
+  }, [effectiveRole, isSuperAdmin, isImpersonating]);
 
   const canEnterMarksForClass = (classId: string): boolean => {
-    if (!classId) return false;
+    if (!classId || isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
     if (canManageExams) return true;
     if (effectiveRole === 'teacher') {
       const assigned =
@@ -2506,6 +2733,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveExam = async (examData: Omit<Exam, 'schoolId'>): Promise<boolean> => {
+    if (blockSchoolMutation('saveExam')) return false;
     if (!canManageExams) {
       setSyncError({
         id: `rbac_exam_${Date.now()}`,
@@ -2546,6 +2774,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteExam = async (examId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteExam')) return false;
     if (!canManageExams) return false;
     const linkedMarks = examMarks.filter((m) => m.examId === examId);
     setExams((prev) => prev.filter((e) => e.id !== examId));
@@ -2565,6 +2794,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveStudentMarks = async (
     marksData: Omit<StudentExamMarks, 'schoolId'>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveStudentMarks')) return false;
     if (!canEnterMarksForClass(marksData.classId)) {
       setSyncError({
         id: `rbac_marks_${Date.now()}`,
@@ -2606,6 +2836,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveBulkStudentMarks = async (
     marksList: Array<Omit<StudentExamMarks, 'schoolId'>>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveBulkStudentMarks')) return false;
     if (marksList.length === 0) return true;
     const unauthorized = marksList.find((m) => !canEnterMarksForClass(m.classId));
     if (unauthorized) {
@@ -2652,6 +2883,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateSchoolLogo = async (logoUrl: string): Promise<boolean> => {
+    if (blockSchoolMutation('updateSchoolLogo')) return false;
     if (!canManageExams || !activeSchool.id) return false;
     const updatedSchool: School = { ...activeSchool, logoUrl };
     setActiveSchool(updatedSchool);
@@ -2673,6 +2905,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     studentId: string,
     parentEmail?: string
   ): Promise<{ inviteCode: string; inviteUrl: string } | null> => {
+    if (blockSchoolMutation('generateParentInvite')) return null;
     if (!canManageExams && !canAdmitStudents) return null;
     const existing = students.find((s) => s.id === studentId);
     if (!existing) return null;
@@ -2796,21 +3029,26 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Phase D: Timetable, Homework & Certificates Management
   // =========================================================================
   const canManageTimetable = useMemo(() => {
-    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
-  }, [effectiveRole, isSuperAdmin]);
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
+    return effectiveRole === 'admin' || effectiveRole === 'principal';
+  }, [effectiveRole, isSuperAdmin, isImpersonating]);
 
   const canPostHomework = useMemo(() => {
-    if (effectiveRole === 'parent') return false;
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin' || effectiveRole === 'parent') {
+      return false;
+    }
     return canManageTimetable || effectiveRole === 'teacher';
-  }, [effectiveRole, canManageTimetable]);
+  }, [effectiveRole, isSuperAdmin, isImpersonating, canManageTimetable]);
 
   const canManageCertificates = useMemo(() => {
-    return effectiveRole === 'admin' || effectiveRole === 'principal' || isSuperAdmin;
-  }, [effectiveRole, isSuperAdmin]);
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
+    return effectiveRole === 'admin' || effectiveRole === 'principal';
+  }, [effectiveRole, isSuperAdmin, isImpersonating]);
 
   const saveTimetableEntry = async (
     entry: Omit<TimetableEntry, 'schoolId'>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveTimetableEntry')) return false;
     if (!canManageTimetable) return false;
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullEntry: TimetableEntry = {
@@ -2837,6 +3075,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteTimetableEntry = async (entryId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteTimetableEntry')) return false;
     if (!canManageTimetable) return false;
     setTimetableEntries((prev) => prev.filter((t) => t.id !== entryId));
     if (!demoMode && activeSchool.id) {
@@ -2848,6 +3087,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveHomework = async (item: Omit<HomeworkItem, 'schoolId'>): Promise<boolean> => {
+    if (blockSchoolMutation('saveHomework')) return false;
     if (!canPostHomework) return false;
     if (
       !canManageTimetable &&
@@ -2881,6 +3121,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteHomework = async (homeworkId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteHomework')) return false;
     if (!canPostHomework) return false;
     const existing = homeworkItems.find((h) => h.id === homeworkId);
     if (
@@ -2903,6 +3144,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const saveCertificate = async (
     cert: Omit<StudentCertificate, 'schoolId'>
   ): Promise<boolean> => {
+    if (blockSchoolMutation('saveCertificate')) return false;
     if (!canManageCertificates) return false;
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullCert: StudentCertificate = {
@@ -2929,11 +3171,95 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteCertificate = async (certificateId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteCertificate')) return false;
     if (!canManageCertificates) return false;
     setCertificates((prev) => prev.filter((c) => c.id !== certificateId));
     if (!demoMode && activeSchool.id) {
       return await performSync('deleteCertificate', () =>
         deleteCertificateFromFirestore(activeSchool.id, certificateId)
+      );
+    }
+    return true;
+  };
+
+  // =========================================================================
+  // Global Platform Notice Board (Super Admin -> School Admins)
+  // =========================================================================
+  const unreadNoticesCount = useMemo(() => {
+    if (!activeSchool.id) return 0;
+    return globalNotices.filter((n) => {
+      const targeted =
+        n.targetType === 'all' || (n.targetSchoolIds || []).includes(activeSchool.id);
+      if (!targeted) return false;
+      return !Boolean((n.readBySchools || {})[activeSchool.id]);
+    }).length;
+  }, [globalNotices, activeSchool.id]);
+
+  const publishGlobalNotice = async (noticeInput: {
+    title: string;
+    message: string;
+    priority: 'high' | 'medium' | 'low';
+    date: string;
+    targetType: 'all' | 'specific';
+    targetSchoolIds: string[];
+  }): Promise<boolean> => {
+    if (!isSuperAdmin && !demoMode) return false;
+    const nowIso = new Date().toISOString();
+    const newNotice: GlobalNotice = {
+      id: `notice_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+      title: noticeInput.title.trim(),
+      message: noticeInput.message.trim(),
+      priority: noticeInput.priority,
+      date: noticeInput.date || nowIso.split('T')[0],
+      targetType: noticeInput.targetType,
+      targetSchoolIds: noticeInput.targetType === 'specific' ? noticeInput.targetSchoolIds : [],
+      createdByUid: currentUserProfile?.uid || 'super_admin',
+      createdByName: currentUserProfile?.fullName || 'Platform Super Admin',
+      createdAt: nowIso,
+      readBySchools: {},
+    };
+    setGlobalNotices((prev) => [newNotice, ...prev]);
+    if (!demoMode) {
+      return await performSync('publishGlobalNotice', () =>
+        saveGlobalNoticeToFirestore(newNotice)
+      );
+    }
+    return true;
+  };
+
+  const deleteGlobalNotice = async (noticeId: string): Promise<boolean> => {
+    if (!isSuperAdmin && !demoMode) return false;
+    setGlobalNotices((prev) => prev.filter((n) => n.id !== noticeId));
+    if (!demoMode) {
+      return await performSync('deleteGlobalNotice', () =>
+        deleteGlobalNoticeFromFirestore(noticeId)
+      );
+    }
+    return true;
+  };
+
+  const markNoticeAsRead = async (noticeId: string): Promise<boolean> => {
+    if (!activeSchool.id || isImpersonating || (!demoMode && isSuperAdmin)) {
+      return false;
+    }
+    const targetNotice = globalNotices.find((n) => n.id === noticeId);
+    const existingReadBySchools = targetNotice?.readBySchools || {};
+    setGlobalNotices((prev) =>
+      prev.map((n) =>
+        n.id === noticeId
+          ? {
+              ...n,
+              readBySchools: {
+                ...(n.readBySchools || {}),
+                [activeSchool.id]: true,
+              },
+            }
+          : n
+      )
+    );
+    if (!demoMode) {
+      return await performSync('markNoticeAsRead', () =>
+        markGlobalNoticeAsReadInFirestore(noticeId, activeSchool.id, existingReadBySchools)
       );
     }
     return true;
@@ -3025,6 +3351,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canManageTimetable,
         canPostHomework,
         canManageCertificates,
+        isReadOnlyImpersonation,
+        globalNotices,
+        unreadNoticesCount,
+        publishGlobalNotice,
+        deleteGlobalNotice,
+        markNoticeAsRead,
         attendanceRegisters,
         saveAttendance,
         getAttendance,

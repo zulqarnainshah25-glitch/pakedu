@@ -36,6 +36,8 @@ import {
   Receipt,
   Award,
   FileBadge2,
+  TrendingUp,
+  Megaphone,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { LessonPlanTool } from './components/LessonPlanTool';
@@ -67,7 +69,7 @@ import { DailyAttendanceRegister } from './features/sms/components/DailyAttendan
 import { SmsOnboarding } from './features/sms/components/SmsOnboarding';
 import { TeacherManagement } from './features/sms/components/TeacherManagement';
 import { TeacherProfile } from './features/sms/components/TeacherProfile';
-import { SuperAdminDashboard } from './features/sms/components/SuperAdminDashboard';
+import { SuperAdminDashboard, SuperAdminTab } from './features/sms/components/SuperAdminDashboard';
 import { FeeManagement } from './features/sms/components/FeeManagement';
 import { ExamsResults } from './features/sms/components/ExamsResults';
 import { ParentDashboard } from './features/sms/components/ParentDashboard';
@@ -333,16 +335,27 @@ function AppContent() {
   const [smsAttendanceClassId, setSmsAttendanceClassId] = useState<string | undefined>(undefined);
   const [showPublicTools, setShowPublicTools] = useState(false);
   const [smsOnboardingTab, setSmsOnboardingTab] = useState<'register' | 'join'>('register');
+  const [superAdminTab, setSuperAdminTab] = useState<SuperAdminTab>('analytics');
 
   // Focused Workspace Modes:
   // 1. Parent User: Strictly read-only access isolated inside Child Progress Portal
-  // 2. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
-  // 3. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
-  // 4. Demo Mode: All tools visible for evaluation & sandbox testing
+  // 2. Super Admin: Platform oversight ONLY (Overview Analytics, Schools Fleet, Notice Board) + Read-Only Impersonation
+  // 3. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
+  // 4. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
+  // 5. Demo Mode: All tools visible for evaluation & sandbox testing
   const isParentUser = !demoMode && currentUserProfile?.role === 'parent';
 
+  const isSuperAdminSession =
+    !demoMode &&
+    (isSuperAdmin ||
+      userRole === 'super-admin' ||
+      currentUser?.email?.toLowerCase() === 'owner@pakedu.com');
+
+  const isSuperAdminActive =
+    isSuperAdminSession || (demoMode && userRole === 'super-admin');
+
   const isAdminUser = useMemo(() => {
-    if (currentUserProfile?.role === 'parent') {
+    if (currentUserProfile?.role === 'parent' || isSuperAdminSession) {
       return false;
     }
     if (
@@ -353,22 +366,22 @@ function AppContent() {
       return false;
     }
     return hasAdminCapabilities(currentUser, currentUserProfile, registeredSchools);
-  }, [currentUser, currentUserProfile, registeredSchools]);
+  }, [currentUser, currentUserProfile, registeredSchools, isSuperAdminSession]);
 
   // Focused Workspace Modes:
-  // Affiliated Staff User: Real Auth mode, verified with active status & schoolId, or admin/super-admin privileges
+  // Affiliated Staff User: Real Auth mode, verified with active status & schoolId, or school-level admin privileges (excludes Super Admin)
   const isAffiliatedUser =
     !demoMode &&
     !isParentUser &&
-    (isSuperAdmin ||
-      isImpersonating ||
-      isAdminUser ||
+    !isSuperAdminSession &&
+    !isImpersonating &&
+    (isAdminUser ||
       (currentUserProfile?.status === 'active' && Boolean(currentUserProfile?.schoolId)));
 
   const isUnaffiliatedUser =
     !demoMode &&
     !isParentUser &&
-    !isSuperAdmin &&
+    !isSuperAdminSession &&
     !isImpersonating &&
     !isAdminUser &&
     (!currentUser ||
@@ -382,6 +395,20 @@ function AppContent() {
     }
   }, [isParentUser, activeTool]);
 
+  // Strict Super Admin RBAC isolation: platform oversight ONLY, or 'sms-dashboard' during read-only view
+  useEffect(() => {
+    if (!isSuperAdminActive) return;
+    if (isImpersonating) {
+      if (activeTool !== 'sms-dashboard') {
+        setActiveTool('sms-dashboard');
+      }
+      return;
+    }
+    if (activeTool !== 'super-admin') {
+      setActiveTool('super-admin');
+    }
+  }, [isSuperAdminActive, isImpersonating, activeTool]);
+
   // When an affiliated staff user enters the portal, ensure they land on the focused SMS dashboard unless they toggle public tools
   useEffect(() => {
     if (
@@ -391,13 +418,9 @@ function AppContent() {
       !isImpersonating &&
       activeTool !== 'super-admin'
     ) {
-      if (isSuperAdmin || currentUser?.email?.toLowerCase() === 'owner@pakedu.com') {
-        setActiveTool('super-admin');
-      } else {
-        setActiveTool('sms-dashboard');
-      }
+      setActiveTool('sms-dashboard');
     }
-  }, [isAffiliatedUser, showPublicTools, activeTool, isImpersonating, isSuperAdmin, currentUser]);
+  }, [isAffiliatedUser, showPublicTools, activeTool, isImpersonating]);
 
   // When an unaffiliated user attempts to access an SMS internal sub-tool, guide them to the onboarding screen
   useEffect(() => {
@@ -606,6 +629,22 @@ function AppContent() {
       return;
     }
 
+    // Strict Super Admin RBAC Isolation: block all tenant Student/Class/Attendance/Fee/Exam/Staff modules
+    if (isSuperAdminActive) {
+      if (isImpersonating) {
+        if (tool === 'super-admin') {
+          exitImpersonation();
+          setActiveTool('super-admin');
+        } else {
+          setActiveTool('sms-dashboard');
+        }
+      } else {
+        setActiveTool('super-admin');
+      }
+      setMobileMenuOpen(false);
+      return;
+    }
+
     // SMS & Super Admin Access Protection:
     if (!demoMode && (tool.startsWith('sms-') || tool === 'super-admin')) {
       if (!currentUser) {
@@ -785,7 +824,19 @@ function AppContent() {
           {/* Sidebar Brand Header */}
           <div className="px-5 py-5 border-b border-slate-800 flex items-center justify-between">
             <div
-              onClick={() => selectTool(isAffiliatedUser && !showPublicTools ? 'sms-dashboard' : 'dashboard')}
+              onClick={() =>
+                selectTool(
+                  isParentUser
+                    ? 'sms-parent'
+                    : isSuperAdminActive
+                    ? isImpersonating
+                      ? 'sms-dashboard'
+                      : 'super-admin'
+                    : isAffiliatedUser && !showPublicTools
+                    ? 'sms-dashboard'
+                    : 'dashboard'
+                )
+              }
               className="flex items-center gap-3 cursor-pointer group"
             >
               <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
@@ -817,8 +868,8 @@ function AppContent() {
 
           {/* Tool Navigation Links */}
           <div className="p-3.5 space-y-1">
-            {/* Dashboard / Home Link - HIDDEN for Affiliated Staff Users & Parents */}
-            {!isParentUser && (!isAffiliatedUser || showPublicTools) && (
+            {/* Dashboard / Home Link - HIDDEN for Affiliated Staff Users, Parents & Super Admin */}
+            {!isParentUser && !isSuperAdminActive && (!isAffiliatedUser || showPublicTools) && (
               <button
                 type="button"
                 onClick={() => selectTool('dashboard')}
@@ -867,8 +918,8 @@ function AppContent() {
               </>
             )}
 
-            {/* Affiliated School Context Card (Shown for Verified School Users) */}
-            {isAffiliatedUser && (
+            {/* Affiliated School Context Card (Shown for Verified School Users; excluded for Super Admin) */}
+            {isAffiliatedUser && !isSuperAdminActive && (
               <div className="mb-2 p-3 rounded-xl bg-slate-800/90 border border-indigo-500/30 text-xs">
                 <div className="flex items-center justify-between text-[10px] text-indigo-400 font-bold uppercase tracking-wider mb-1.5">
                   <span className="flex items-center gap-1.5">
@@ -901,38 +952,126 @@ function AppContent() {
               </div>
             )}
 
-            {/* Super Admin Fleet Directory (Visible if Super Admin or Demo Mode) */}
-            {(isSuperAdmin || userRole === 'super-admin' || currentUser?.email?.toLowerCase() === 'owner@pakedu.com' || demoMode) && (
-              <button
-                type="button"
-                onClick={() => selectTool('super-admin')}
-                className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                  activeTool === 'super-admin'
-                    ? 'bg-rose-950/70 text-white font-semibold shadow-xs border-l-[3px] border-rose-500 pl-3'
-                    : 'text-rose-300/80 hover:text-white hover:bg-rose-950/40 pl-3.5'
-                }`}
-              >
-                <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' ? 'text-rose-400' : 'text-rose-400/80'}`} />
-                <div className="truncate flex-1">
-                  <div className="flex items-center justify-between gap-1">
-                    <span className="block truncate font-bold text-rose-200">Super Admin Fleet</span>
-                    <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
-                      Root
-                    </span>
-                  </div>
-                  <span className="text-[11px] block truncate text-slate-400">
-                    All Schools Directory &amp; Governance
+            {/* Strict Super Admin Sidebar: ONLY Platform Overview, Super Admin Fleet, and Notice Board (or Read-Only School View) */}
+            {isSuperAdminActive && !isImpersonating && (
+              <>
+                <div className="pt-1 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between">
+                  <span>Platform Governance</span>
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    Super Admin
                   </span>
                 </div>
-              </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuperAdminTab('analytics');
+                    selectTool('super-admin');
+                  }}
+                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'super-admin' && superAdminTab === 'analytics'
+                      ? 'bg-indigo-950/70 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60 pl-3.5'
+                  }`}
+                >
+                  <TrendingUp className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'analytics' ? 'text-indigo-400' : 'text-slate-400'}`} />
+                  <div className="truncate flex-1">
+                    <span className="block truncate font-semibold">Platform Overview</span>
+                    <span className="text-[11px] block truncate text-slate-400">
+                      Analytics &amp; System KPIs
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuperAdminTab('directory');
+                    selectTool('super-admin');
+                  }}
+                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
+                      ? 'bg-rose-950/70 text-white font-semibold shadow-xs border-l-[3px] border-rose-500 pl-3'
+                      : 'text-rose-200/80 hover:text-white hover:bg-rose-950/40 pl-3.5'
+                  }`}
+                >
+                  <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests') ? 'text-rose-400' : 'text-rose-400/80'}`} />
+                  <div className="truncate flex-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="block truncate font-bold text-rose-200">Super Admin Fleet</span>
+                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
+                        Root
+                      </span>
+                    </div>
+                    <span className="text-[11px] block truncate text-slate-400">
+                      Schools Directory &amp; Approvals
+                    </span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSuperAdminTab('notices');
+                    selectTool('super-admin');
+                  }}
+                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'super-admin' && superAdminTab === 'notices'
+                      ? 'bg-amber-950/70 text-white font-semibold shadow-xs border-l-[3px] border-amber-400 pl-3'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-800/60 pl-3.5'
+                  }`}
+                >
+                  <Megaphone className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'notices' ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <div className="truncate flex-1">
+                    <span className="block truncate font-semibold">Notice Board</span>
+                    <span className="text-[11px] block truncate text-slate-400">
+                      Global Announcements
+                    </span>
+                  </div>
+                </button>
+              </>
+            )}
+
+            {isSuperAdminActive && isImpersonating && (
+              <>
+                <div className="mb-2 p-3 rounded-xl bg-amber-950/60 border border-amber-500/40 text-xs">
+                  <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider mb-1">
+                    Read-Only School View
+                  </div>
+                  <div className="font-semibold text-white truncate">{activeSchool?.name}</div>
+                  <div className="text-[11px] text-amber-200/80 mt-0.5">SEMIS {activeSchool?.semisCode}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-dashboard')}
+                  className="w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-amber-400 pl-3 cursor-pointer"
+                >
+                  <Eye className="w-4 h-4 shrink-0 text-amber-400" />
+                  <div className="truncate">
+                    <span className="block truncate">School Admin View</span>
+                    <span className="text-[11px] block truncate text-slate-400">Strict Read-Only Oversight</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    exitImpersonation();
+                    setSuperAdminTab('directory');
+                    setActiveTool('super-admin');
+                  }}
+                  className="w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm text-rose-300 hover:text-white hover:bg-rose-950/40 pl-3.5 transition cursor-pointer"
+                >
+                  <ArrowRight className="w-4 h-4 shrink-0 rotate-180" />
+                  <span className="truncate font-semibold">Exit Read-Only View</span>
+                </button>
+              </>
             )}
 
             {/* ======================================================= */}
             {/* SECTION: SCHOOL MANAGEMENT SYSTEM (SMS)                */}
-            {/* Strictly visible ONLY to verified Admins/Teachers     */}
-            {/* or when Demo Mode is explicitly ON, or Super Admin    */}
+            {/* Strictly hidden for Super Admin & Parents              */}
             {/* ======================================================= */}
-            {(isAffiliatedUser || demoMode || isSuperAdmin) && (
+            {(isAffiliatedUser || (demoMode && userRole !== 'super-admin')) && !isSuperAdminActive && (
               <>
                 <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
                   <span>{isAffiliatedUser ? 'School Operations' : 'School Management (SMS)'}</span>
@@ -1210,13 +1349,11 @@ function AppContent() {
                       <div className="flex items-center justify-between gap-1">
                         <span className="block truncate">Fee Management</span>
                         <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
-                          isSuperAdmin
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                            : userRole === 'admin'
+                          userRole === 'admin'
                             ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                             : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                         }`}>
-                          {isSuperAdmin ? 'Super Admin' : userRole === 'admin' ? 'Accounts' : 'Incharge'}
+                          {userRole === 'admin' ? 'Accounts' : 'Incharge'}
                         </span>
                       </div>
                       <span className="text-[11px] block truncate text-slate-500">
@@ -1247,8 +1384,8 @@ function AppContent() {
                   </div>
                 </button>
 
-                {/* School Onboarding / Switch School (Admin / Super Admin / Demo Only) */}
-                {(userRole === 'admin' || isSuperAdmin || demoMode) && (
+                {/* School Onboarding / Switch School (Admin / Demo Only) */}
+                {(userRole === 'admin' || demoMode) && (
                   <button
                     type="button"
                     onClick={() => selectTool('sms-onboarding')}
@@ -1303,9 +1440,9 @@ function AppContent() {
 
             {/* ======================================================= */}
             {/* SECTION: TEACHER'S AI STUDIO (EXISTING TOOLS)           */}
-            {/* HIDDEN for Parents and Affiliated Staff unless showPublicTools is true */}
+            {/* HIDDEN for Parents, Super Admin & Affiliated Staff      */}
             {/* ======================================================= */}
-            {!isParentUser && (!isAffiliatedUser || showPublicTools) && (
+            {!isParentUser && !isSuperAdminActive && (!isAffiliatedUser || showPublicTools) && (
               <>
                 <div className="pt-4 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                   <span>Teacher's AI Studio</span>
@@ -1486,18 +1623,18 @@ function AppContent() {
             <div className="flex items-center gap-2 truncate">
               <ShieldAlert className="w-4 h-4 text-slate-950 shrink-0" />
               <span className="truncate">
-                <strong>Super Admin Impersonation:</strong> Viewing records for <strong>{activeSchool.name}</strong> (SEMIS {activeSchool.semisCode}).
+                <strong>You are viewing as School Admin - Read Only</strong> · <strong>{activeSchool.name}</strong> (SEMIS {activeSchool.semisCode})
               </span>
             </div>
             <button
               type="button"
               onClick={() => {
                 exitImpersonation();
-                selectTool('super-admin');
+                setActiveTool('super-admin');
               }}
               className="px-3 py-1 bg-slate-950 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ml-2"
             >
-              Exit Impersonation →
+              Exit Read-Only View →
             </button>
           </div>
         )}
@@ -1546,6 +1683,10 @@ function AppContent() {
                   selectTool(
                     isParentUser
                       ? 'sms-parent'
+                      : isSuperAdminActive
+                      ? isImpersonating
+                        ? 'sms-dashboard'
+                        : 'super-admin'
                       : isAffiliatedUser && !showPublicTools
                       ? 'sms-dashboard'
                       : 'dashboard'
@@ -1561,15 +1702,15 @@ function AppContent() {
               </span>
             </div>
 
-            {/* If Parent or Affiliated: Show Connected School Badge in Header */}
-            {(isAffiliatedUser || isParentUser) && (
+            {/* If Parent, Affiliated, or Read-Only Oversight: Show Connected School Badge in Header */}
+            {(isAffiliatedUser || isParentUser || isImpersonating) && (
               <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs shrink-0">
                 <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px]" title={activeSchool?.name || currentUserProfile?.schoolName}>
                   {activeSchool?.name || currentUserProfile?.schoolName || 'School Portal'}
                 </span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-200/70 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300">
-                  {isParentUser ? 'READ-ONLY' : `SEMIS ${activeSchool?.semisCode || '401020304'}`}
+                  {isParentUser || isImpersonating ? 'READ-ONLY' : `SEMIS ${activeSchool?.semisCode || '401020304'}`}
                 </span>
               </div>
             )}
@@ -1585,6 +1726,74 @@ function AppContent() {
               >
                 Parent Portal (Read-Only)
               </button>
+            ) : isSuperAdminActive ? (
+              isImpersonating ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-dashboard')}
+                    className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold cursor-pointer"
+                  >
+                    School Admin View (Read-Only)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      exitImpersonation();
+                      setSuperAdminTab('directory');
+                      setActiveTool('super-admin');
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-semibold hover:bg-slate-800 cursor-pointer"
+                  >
+                    Exit Read-Only View
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuperAdminTab('analytics');
+                      selectTool('super-admin');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'super-admin' && superAdminTab === 'analytics'
+                        ? 'bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold'
+                        : 'hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Platform Overview
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuperAdminTab('directory');
+                      selectTool('super-admin');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
+                        ? 'bg-slate-100 dark:bg-slate-800 text-rose-600 dark:text-rose-400 font-bold'
+                        : 'hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Super Admin Fleet
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSuperAdminTab('notices');
+                      selectTool('super-admin');
+                    }}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'super-admin' && superAdminTab === 'notices'
+                        ? 'bg-slate-100 dark:bg-slate-800 text-amber-600 dark:text-amber-400 font-bold'
+                        : 'hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    Notice Board
+                  </button>
+                </>
+              )
             ) : isAffiliatedUser && !showPublicTools ? (
               <>
                 <button
@@ -2382,7 +2591,9 @@ function AppContent() {
             {/* SUPER ADMIN CONSOLE VIEW */}
             {activeTool === 'super-admin' && (
               <SuperAdminDashboard
-                onNavigateToSchool={() => selectTool('sms-dashboard')}
+                activeTab={superAdminTab}
+                onTabChange={setSuperAdminTab}
+                onNavigateToSchool={() => setActiveTool('sms-dashboard')}
                 onOpenRegisterSchool={() => selectTool('sms-onboarding')}
               />
             )}

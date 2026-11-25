@@ -93,6 +93,15 @@ export interface TeacherJoinRequest {
   assignedClassIds?: string[];
 }
 
+export interface SchoolAnalyticsSummary {
+  totalStudents: number;
+  totalClasses: number;
+  totalTeachers: number;
+  totalRevenue: number;
+  todayAttendancePct: number;
+  updatedAt?: string;
+}
+
 export interface School {
   id: string;
   name: string;
@@ -110,8 +119,28 @@ export interface School {
   primaryAdminName: string;
   primaryAdminEmail: string;
   logoUrl?: string;
+  analytics?: SchoolAnalyticsSummary;
   createdAt?: string;
   suspendedReason?: string;
+}
+
+export type NoticePriority = 'high' | 'medium' | 'low';
+export type NoticeAudience = 'all' | 'specific';
+
+export interface GlobalNotice {
+  id: string;
+  title: string;
+  message: string;
+  priority: NoticePriority;
+  date: string;                 // YYYY-MM-DD
+  targetType: NoticeAudience;
+  targetSchoolIds: string[];
+  targetSchoolNames?: string[];
+  createdByUid: string;
+  createdByName: string;
+  readBySchools: Record<string, boolean>;
+  createdAt?: string;
+  updatedAt?: any;
 }
 
 export interface TeacherInfo {

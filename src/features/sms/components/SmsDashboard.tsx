@@ -17,6 +17,10 @@ import {
   TrendingUp,
   CalendarDays,
   FileBadge2,
+  Bell,
+  Megaphone,
+  Eye,
+  Lock,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 
@@ -58,13 +62,230 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
     attendanceRegisters,
     todayAttendanceStats,
     pendingJoinRequests,
+    isReadOnlyImpersonation,
+    globalNotices,
+    unreadNoticesCount,
+    markNoticeAsRead,
   } = useSms();
 
-  const isAdmin = userRole === 'admin' || userRole === 'principal';
+  const [dashboardTab, setDashboardTab] = React.useState<'overview' | 'notifications'>('overview');
+  const isAdmin =
+    userRole === 'admin' || userRole === 'principal' || isReadOnlyImpersonation;
   const todayDate = new Date().toISOString().split('T')[0];
+
+  const schoolNotices = React.useMemo(() => {
+    return globalNotices.filter(
+      (n) =>
+        n.targetType === 'all' ||
+        (activeSchool.id && (n.targetSchoolIds || []).includes(activeSchool.id))
+    );
+  }, [globalNotices, activeSchool.id]);
+
+  const unreadSchoolNotices = React.useMemo(() => {
+    return schoolNotices.filter((n) => !(n.readBySchools || {})[activeSchool.id]);
+  }, [schoolNotices, activeSchool.id]);
+
+  const displayStudentsCount = isReadOnlyImpersonation
+    ? activeSchool.analytics?.totalStudents ?? stats.totalStudents
+    : stats.totalStudents;
+  const displayClassesCount = isReadOnlyImpersonation
+    ? activeSchool.analytics?.totalClasses ?? stats.totalClasses
+    : stats.totalClasses;
+  const displayTeachersCount = isReadOnlyImpersonation
+    ? activeSchool.analytics?.totalTeachers ?? stats.totalTeachers
+    : stats.totalTeachers;
+  const displayAttendancePct = isReadOnlyImpersonation
+    ? activeSchool.analytics?.todayAttendancePct ?? todayAttendanceStats.overallPercentage
+    : todayAttendanceStats.overallPercentage;
 
   return (
     <div className="space-y-6">
+      {/* Strict Read-Only Oversight Notice when Super Admin Inspects */}
+      {isReadOnlyImpersonation && (
+        <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 text-amber-950 dark:text-amber-100 p-4 rounded-2xl flex items-center gap-3 shadow-xs">
+          <Lock className="w-5 h-5 text-amber-600 shrink-0" />
+          <div className="text-xs">
+            <strong>You are viewing as School Admin - Read Only.</strong> Individual student records, marks, and edit controls are locked during Super Admin inspection.
+          </div>
+        </div>
+      )}
+
+      {/* Prominent Global Announcements Banner for Unread Notices */}
+      {unreadSchoolNotices.length > 0 && dashboardTab === 'overview' && (
+        <div className="space-y-2.5">
+          {unreadSchoolNotices.slice(0, 2).map((notice) => (
+            <div
+              key={notice.id}
+              className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs ${
+                notice.priority === 'high'
+                  ? 'bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-800 text-rose-950 dark:text-rose-100'
+                  : 'bg-indigo-50 dark:bg-indigo-950/40 border-indigo-200 dark:border-indigo-800 text-indigo-950 dark:text-indigo-100'
+              }`}
+            >
+              <div className="flex items-start gap-3 min-w-0">
+                <div
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    notice.priority === 'high'
+                      ? 'bg-rose-100 dark:bg-rose-900/60 text-rose-700 dark:text-rose-300'
+                      : 'bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300'
+                  }`}
+                >
+                  <Megaphone className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/80 dark:bg-slate-900/60">
+                      {notice.priority} Priority Notice · {notice.date}
+                    </span>
+                    <span className="font-bold text-xs sm:text-sm">{notice.title}</span>
+                  </div>
+                  <p className="text-xs opacity-90 leading-relaxed">{notice.message}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {!isReadOnlyImpersonation && (
+                  <button
+                    type="button"
+                    onClick={() => markNoticeAsRead(notice.id)}
+                    className="min-h-[40px] px-3.5 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold shadow-2xs transition cursor-pointer whitespace-nowrap"
+                  >
+                    Mark as Read
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setDashboardTab('notifications')}
+                  className="min-h-[40px] px-3 py-1.5 rounded-xl bg-slate-900/10 hover:bg-slate-900/20 text-xs font-semibold cursor-pointer whitespace-nowrap"
+                >
+                  All Notices ({schoolNotices.length})
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Dashboard Tab Bar: Overview vs Notifications */}
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+        <button
+          type="button"
+          onClick={() => setDashboardTab('overview')}
+          className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+            dashboardTab === 'overview'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <SchoolIcon className="w-4 h-4" />
+          <span>Dashboard Overview</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setDashboardTab('notifications')}
+          className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+            dashboardTab === 'notifications'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+          }`}
+        >
+          <Bell className="w-4 h-4" />
+          <span>Notifications &amp; Notices</span>
+          {unreadNoticesCount > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+              {unreadNoticesCount}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* NOTIFICATIONS TAB */}
+      {dashboardTab === 'notifications' ? (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Megaphone className="w-4 h-4 text-indigo-600" />
+                <span>Super Admin Announcements &amp; Notices</span>
+              </h2>
+              <p className="text-xs text-slate-500">
+                Official circulars addressed to {activeSchool.name}
+              </p>
+            </div>
+            <span className="text-xs font-semibold text-slate-500">
+              {unreadNoticesCount} Unread
+            </span>
+          </div>
+
+          {schoolNotices.length === 0 ? (
+            <div className="py-10 text-center text-xs text-slate-400">
+              No announcements addressed to your school yet.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {schoolNotices.map((notice) => {
+                const isRead = Boolean((notice.readBySchools || {})[activeSchool.id]);
+                return (
+                  <div
+                    key={notice.id}
+                    className={`p-4 rounded-xl border transition ${
+                      isRead
+                        ? 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+                        : 'bg-indigo-50/50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800'
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              notice.priority === 'high'
+                                ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/70 dark:text-rose-300'
+                                : notice.priority === 'medium'
+                                ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/70 dark:text-amber-300'
+                                : 'bg-sky-100 text-sky-800 dark:bg-sky-950/70 dark:text-sky-300'
+                            }`}
+                          >
+                            {notice.priority}
+                          </span>
+                          <span className="text-[11px] font-mono text-slate-400">{notice.date}</span>
+                          {isRead ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300">
+                              Read
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                              Unread
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                          {notice.title}
+                        </h3>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {notice.message}
+                        </p>
+                      </div>
+
+                      {!isRead && !isReadOnlyImpersonation && (
+                        <button
+                          type="button"
+                          onClick={() => markNoticeAsRead(notice.id)}
+                          className="min-h-[40px] px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold shrink-0 cursor-pointer"
+                        >
+                          Mark as Read
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       {/* Suspended Alert Banner */}
       {activeSchool.status === 'suspended' && (
         <div className="bg-rose-50 dark:bg-rose-950/60 border border-rose-300 dark:border-rose-800 text-rose-900 dark:text-rose-200 p-4 rounded-2xl flex items-start gap-3 shadow-xs animate-in fade-in">
@@ -112,7 +333,17 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
               </span>
             </div>
 
-            {demoMode ? (
+            {isReadOnlyImpersonation ? (
+              <div className="space-y-1.5">
+                <div className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                  <Eye className="w-4 h-4 text-amber-300" />
+                  <span>Super Admin Read-Only Oversight</span>
+                </div>
+                <div className="text-[10px] text-slate-300 leading-relaxed">
+                  You are viewing institutional KPIs &amp; notices for <strong>{activeSchool.name}</strong>. Editing &amp; student PII are locked.
+                </div>
+              </div>
+            ) : demoMode ? (
               <>
                 <div className="flex items-center gap-1.5">
                   <button
@@ -161,13 +392,15 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
                 <div className="text-[10px] text-slate-300">
                   Role: <strong>{isAdmin ? 'School Administrator' : 'Class Teacher'}</strong> · {activeSchool.name}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDemoMode(true)}
-                  className="mt-1 text-[10px] text-indigo-300 hover:text-indigo-200 underline block cursor-pointer"
-                >
-                  Enable Demo Mode for Testing →
-                </button>
+                {!isReadOnlyImpersonation && (
+                  <button
+                    type="button"
+                    onClick={() => setDemoMode(true)}
+                    className="mt-1 text-[10px] text-indigo-300 hover:text-indigo-200 underline block cursor-pointer"
+                  >
+                    Enable Demo Mode for Testing →
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -175,7 +408,7 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
       </div>
 
       {/* Admin Alert: Pending Join Requests */}
-      {isAdmin && pendingJoinRequests.length > 0 && (
+      {!isReadOnlyImpersonation && isAdmin && pendingJoinRequests.length > 0 && (
         <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs shadow-xs animate-in fade-in">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/60 text-amber-800 dark:text-amber-200 flex items-center justify-center shrink-0">
@@ -208,9 +441,9 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
             <Users className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
-            {stats.totalStudents}
+            {displayStudentsCount}
           </div>
-          <div className="text-[11px] text-slate-500 mt-0.5">Across {stats.totalClasses} grade sections</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">Across {displayClassesCount} grade sections</div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm">
@@ -219,29 +452,37 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
             <GraduationCap className="w-4 h-4 text-indigo-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
-            {stats.totalClasses}
+            {displayClassesCount}
           </div>
           <div className="text-[11px] text-indigo-600 dark:text-indigo-400 mt-0.5">English, Urdu &amp; Sindhi</div>
         </div>
 
         <div
-          onClick={onNavigateToStaff}
-          className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm hover:border-indigo-300 dark:hover:border-indigo-700 transition cursor-pointer group"
+          onClick={!isReadOnlyImpersonation ? onNavigateToStaff : undefined}
+          className={`bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-sm transition ${
+            isReadOnlyImpersonation
+              ? ''
+              : 'hover:border-indigo-300 dark:hover:border-indigo-700 cursor-pointer group'
+          }`}
         >
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <span>Faculty Members</span>
             <UserCheck className="w-4 h-4 text-sky-500 group-hover:scale-110 transition-transform" />
           </div>
           <div className="text-2xl font-bold text-slate-900 dark:text-white mt-1 tabular-nums flex items-center justify-between">
-            <span>{stats.totalTeachers}</span>
-            {isAdmin && pendingJoinRequests.length > 0 && (
+            <span>{displayTeachersCount}</span>
+            {!isReadOnlyImpersonation && isAdmin && pendingJoinRequests.length > 0 && (
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500 text-white font-bold animate-pulse">
                 +{pendingJoinRequests.length} pending
               </span>
             )}
           </div>
           <div className="text-[11px] text-sky-600 dark:text-sky-400 mt-0.5">
-            {isAdmin ? 'Manage Staff & Requests →' : 'Assigned Incharges'}
+            {isReadOnlyImpersonation
+              ? 'Read-Only Oversight Summary'
+              : isAdmin
+              ? 'Manage Staff & Requests →'
+              : 'Assigned Incharges'}
           </div>
         </div>
 
@@ -251,15 +492,71 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
             <CalendarCheck2 className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">
-            {todayAttendanceStats.overallPercentage}%
+            {displayAttendancePct}%
           </div>
           <div className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
             <CheckCircle2 className="w-3 h-3" />
-            <span>{todayAttendanceStats.totalMarkedClasses} of {classes.length} classes recorded</span>
+            <span>
+              {isReadOnlyImpersonation
+                ? 'Institutional attendance snapshot'
+                : `${todayAttendanceStats.totalMarkedClasses} of ${classes.length} classes recorded`}
+            </span>
           </div>
         </div>
       </div>
 
+      {isReadOnlyImpersonation ? (
+        <div className="bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-800/60 rounded-2xl p-5 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-white">
+                  Read-Only School Admin View ({activeSchool.name})
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Strict Platform RBAC Isolation is active: individual student registers, class rosters, daily attendance ledgers, marks, and fee collection records are hidden and locked from modification.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDashboardTab('notifications')}
+              className="min-h-[40px] px-3.5 py-2 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-100 transition cursor-pointer shrink-0"
+            >
+              View School Notices ({schoolNotices.length})
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
+              <div className="text-slate-500 dark:text-slate-400 font-semibold">Institutional Revenue (Aggregate)</div>
+              <div className="text-lg font-bold text-slate-900 dark:text-white mt-1 tabular-nums">
+                PKR {(activeSchool.analytics?.totalRevenue ?? 0).toLocaleString()}
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
+              <div className="text-slate-500 dark:text-slate-400 font-semibold">Head / Contact</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1 truncate">
+                {activeSchool.primaryAdminName || 'Assigned School Admin'}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate">
+                {activeSchool.phone || activeSchool.primaryAdminEmail || activeSchool.email || 'Contact on file'}
+              </div>
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
+              <div className="text-slate-500 dark:text-slate-400 font-semibold">Portal Status</div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white mt-1 uppercase">
+                {activeSchool.status || 'active'} · {activeSchool.district}
+              </div>
+              <div className="text-[11px] text-slate-500">SEMIS {activeSchool.semisCode}</div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Real-Time Attendance Command Center & Breakdown */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -622,6 +919,10 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
           )}
         </div>
       </div>
+        </>
+      )}
+        </>
+      )}
     </div>
   );
 };

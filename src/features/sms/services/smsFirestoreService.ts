@@ -29,6 +29,8 @@ import {
   TimetableEntry,
   HomeworkItem,
   StudentCertificate,
+  GlobalNotice,
+  SchoolAnalyticsSummary,
 } from '../types';
 
 /**
@@ -1131,5 +1133,143 @@ export async function deleteCertificateFromFirestore(
     return true;
   } catch (err) {
     throw classifyFirestoreError(err, 'deleteCertificate', `schools/${schoolId}/certificates/${certificateId}`);
+  }
+}
+
+// =========================================================================
+// 16. Super Admin Platform Analytics Summary & Global Notice Board
+// =========================================================================
+export async function saveSchoolAnalyticsToFirestore(
+  schoolId: string,
+  analytics: SchoolAnalyticsSummary
+): Promise<boolean> {
+  if (!schoolId) return false;
+  try {
+    const ref = doc(db, 'schools', schoolId);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        analytics: {
+          ...analytics,
+          updatedAt: new Date().toISOString(),
+        },
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function saveGlobalNoticeToFirestore(notice: GlobalNotice): Promise<boolean> {
+  if (!notice.id) {
+    throw new FirestoreSyncError('Notice ID is required', 'invalid-argument', 'saveGlobalNotice');
+  }
+  try {
+    const ref = doc(db, 'globalNotices', notice.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...notice,
+        targetSchoolIds: notice.targetType === 'all' ? [] : notice.targetSchoolIds || [],
+        readBySchools: notice.readBySchools || {},
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveGlobalNotice', `globalNotices/${notice.id}`);
+  }
+}
+
+export async function fetchAllGlobalNoticesFromFirestore(): Promise<GlobalNotice[]> {
+  try {
+    const col = collection(db, 'globalNotices');
+    const snapshot = await getDocs(col);
+    const notices: GlobalNotice[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as GlobalNotice;
+        notices.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return notices.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchAllGlobalNotices', 'globalNotices');
+  }
+}
+
+export async function fetchNoticesForSchoolFromFirestore(
+  schoolId: string
+): Promise<GlobalNotice[]> {
+  try {
+    const col = collection(db, 'globalNotices');
+    const allQuery = query(col, where('targetType', '==', 'all'));
+    const specificQuery = schoolId
+      ? query(col, where('targetSchoolIds', 'array-contains', schoolId))
+      : null;
+
+    const [allSnap, specificSnap] = await Promise.all([
+      getDocs(allQuery),
+      specificQuery ? getDocs(specificQuery) : Promise.resolve(null),
+    ]);
+
+    const merged = new Map<string, GlobalNotice>();
+    allSnap.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as GlobalNotice;
+        merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    specificSnap?.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as GlobalNotice;
+        merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return Array.from(merged.values()).sort((a, b) =>
+      (b.date || '').localeCompare(a.date || '')
+    );
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchNoticesForSchool', 'globalNotices');
+  }
+}
+
+export async function markGlobalNoticeAsReadInFirestore(
+  noticeId: string,
+  schoolId: string,
+  existingReadBySchools: Record<string, boolean>
+): Promise<boolean> {
+  if (!noticeId || !schoolId) return false;
+  try {
+    const ref = doc(db, 'globalNotices', noticeId);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        readBySchools: {
+          ...existingReadBySchools,
+          [schoolId]: true,
+        },
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'markNoticeAsRead', `globalNotices/${noticeId}`);
+  }
+}
+
+export async function deleteGlobalNoticeFromFirestore(noticeId: string): Promise<boolean> {
+  if (!noticeId) return false;
+  try {
+    const ref = doc(db, 'globalNotices', noticeId);
+    await deleteDoc(ref);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteGlobalNotice', `globalNotices/${noticeId}`);
   }
 }
