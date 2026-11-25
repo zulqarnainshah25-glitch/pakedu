@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'principal' | 'teacher' | 'super-admin';
+export type UserRole = 'admin' | 'principal' | 'teacher' | 'parent' | 'super-admin';
 export type MembershipStatus = 'none' | 'pending' | 'active' | 'rejected';
 export type SchoolStatus = 'active' | 'suspended' | 'pending_approval';
 export type PrimaryAdminType = 'principal' | 'teacher_admin' | 'delegated';
@@ -22,6 +22,32 @@ export interface UserProfile {
   isSuperAdmin?: boolean;
   isAdmissionIncharge?: boolean;
   primaryAdminType?: PrimaryAdminType;
+  // Parent Portal Linkage Fields
+  childStudentId?: string;
+  childGrNumber?: string;
+  childName?: string;
+  parentLinkId?: string;
+  linkedInviteCode?: string;
+}
+
+export interface ParentStudentLink {
+  id: string;                 // Deterministic: "${schoolId}__${sanitizedGrNumber}"
+  schoolId: string;
+  schoolName: string;
+  semisCode?: string;
+  studentId: string;
+  studentName: string;
+  classId: string;
+  grade: string;
+  section?: string;
+  grNumber: string;
+  parentEmail?: string;       // Lowercased email registered by Admin
+  guardianPhone?: string;     // Guardian phone from student profile
+  inviteCode: string;         // Admin-generated invite code (e.g., "PAR-GR1042-7X4K")
+  claimedByUid?: string;
+  claimedAt?: string;
+  status: 'available' | 'linked';
+  updatedAt?: any;
 }
 
 export interface SchoolRegistrationRequest {
@@ -151,6 +177,12 @@ export interface Student {
   concessionType?: ConcessionDiscountType;
   concessionValue?: number;
   advanceBalance?: number;
+  // Student Photo & Parent Portal Access Linkage
+  photoUrl?: string;
+  parentEmail?: string;
+  parentUid?: string;
+  parentInviteCode?: string;
+  parentLinkedAt?: string;
 }
 
 export interface AttendanceRecord {

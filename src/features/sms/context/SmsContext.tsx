@@ -66,6 +66,14 @@ import {
   saveStudentMarksToFirestore,
   fetchMarksFromFirestore,
   deleteStudentMarksFromFirestore,
+  buildParentLinkId,
+  generateParentInviteCode,
+  saveParentStudentLinkToFirestore,
+  verifyAndClaimParentLink,
+  fetchSingleStudentFromFirestore,
+  fetchChildFeePaymentsFromFirestore,
+  fetchChildMarksFromFirestore,
+  fetchPublishedExamsFromFirestore,
 } from '../services/smsFirestoreService';
 import { useAuth } from '../../../context/AuthContext';
 import { hasAdminCapabilities } from '../../../utils/smartRouting';
@@ -242,6 +250,18 @@ interface SmsContextType {
   canManageExams: boolean;
   canEnterMarksForClass: (classId: string) => boolean;
   updateSchoolLogo: (logoUrl: string) => Promise<boolean>;
+
+  // Phase C: Parent Portal (Strict Read-Only Child Access & Invite Management)
+  generateParentInviteForStudent: (
+    studentId: string,
+    parentEmail?: string
+  ) => Promise<{ inviteCode: string; inviteUrl: string } | null>;
+  linkParentToStudent: (params: {
+    schoolId: string;
+    grNumber: string;
+    inviteCode?: string;
+    phone?: string;
+  }) => Promise<UserProfile | null>;
 
   // Stats
   stats: {
@@ -1020,6 +1040,82 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     let cancelled = false;
     const schoolId = activeSchool.id;
+    const isParentSession = currentUserProfile?.role === 'parent';
+
+    // Strict Child-Scoped Read-Only Sync for Parent Accounts
+    if (isParentSession) {
+      const childStudentId = currentUserProfile?.childStudentId || '';
+      if (!childStudentId) {
+        setStudents([]);
+        setClasses([]);
+        setAttendanceRegisters({});
+        setFeeStructures([]);
+        setFeePayments([]);
+        setFeeConcessions([]);
+        setExams([]);
+        setExamMarks([]);
+        setLoadingClasses(false);
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      setLoadingClasses(true);
+      fetchClassesFromFirestore(schoolId)
+        .then((remoteClasses) => {
+          if (!cancelled) setClasses(remoteClasses || []);
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setLoadingClasses(false);
+        });
+
+      fetchSingleStudentFromFirestore(schoolId, childStudentId)
+        .then((childDoc) => {
+          if (!cancelled) setStudents(childDoc ? [childDoc] : []);
+        })
+        .catch(() => {});
+
+      fetchAttendanceFromFirestore(schoolId)
+        .then((remoteAttendance) => {
+          if (!cancelled) setAttendanceRegisters(remoteAttendance || {});
+        })
+        .catch(() => {});
+
+      fetchFeeStructuresFromFirestore(schoolId)
+        .then((remoteStructures) => {
+          if (!cancelled) setFeeStructures(remoteStructures || []);
+        })
+        .catch(() => {});
+
+      fetchChildFeePaymentsFromFirestore(schoolId, childStudentId)
+        .then((remotePayments) => {
+          if (!cancelled) setFeePayments(remotePayments || []);
+        })
+        .catch(() => {});
+
+      fetchFeeConcessionsFromFirestore(schoolId)
+        .then((remoteConcessions) => {
+          if (!cancelled) setFeeConcessions(remoteConcessions || []);
+        })
+        .catch(() => {});
+
+      fetchPublishedExamsFromFirestore(schoolId)
+        .then((remoteExams) => {
+          if (!cancelled) setExams(remoteExams || []);
+        })
+        .catch(() => {});
+
+      fetchChildMarksFromFirestore(schoolId, childStudentId)
+        .then((remoteMarks) => {
+          if (!cancelled) setExamMarks(remoteMarks || []);
+        })
+        .catch(() => {});
+
+      return () => {
+        cancelled = true;
+      };
+    }
 
     // Reset school-scoped collections before loading when switching schools so stale data doesn't linger
     setLoadingClasses(true);
@@ -1120,7 +1216,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       cancelled = true;
     };
-  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status]);
+  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status, currentUserProfile?.role, currentUserProfile?.childStudentId]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
   const registerNewSchool = (
@@ -1735,11 +1831,38 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const syncParentLinkForStudent = (student: Student) => {
+    if (demoMode || !activeSchool.id || !student.grNumber) return;
+    const inviteCode = student.parentInviteCode || generateParentInviteCode(student.grNumber);
+    const linkId = buildParentLinkId(activeSchool.id, student.grNumber);
+    saveParentStudentLinkToFirestore({
+      id: linkId,
+      schoolId: activeSchool.id,
+      schoolName: activeSchool.name,
+      semisCode: activeSchool.semisCode,
+      studentId: student.id,
+      studentName: student.fullName,
+      classId: student.classId,
+      grade: student.grade,
+      section: student.section,
+      grNumber: student.grNumber.trim().toUpperCase(),
+      parentEmail: student.parentEmail?.trim().toLowerCase() || '',
+      guardianPhone: student.guardianPhone || '',
+      inviteCode,
+      claimedByUid: student.parentUid,
+      status: student.parentUid ? 'linked' : 'available',
+    }).catch((err) => console.warn('[ParentLink] Sync notice:', err));
+  };
+
   const addStudent = (newStudentData: Omit<Student, 'id'>) => {
     const id = `std_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`;
+    const inviteCode =
+      newStudentData.parentInviteCode || generateParentInviteCode(newStudentData.grNumber);
     const newStudent: Student = {
       ...newStudentData,
       id,
+      parentInviteCode: inviteCode,
+      parentEmail: newStudentData.parentEmail?.trim().toLowerCase() || undefined,
     };
     setStudents((prev) => [newStudent, ...prev]);
 
@@ -1753,7 +1876,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (!demoMode && activeSchool.id) {
-      performSync('addStudent', () => saveStudentToFirestore(activeSchool.id, newStudent));
+      performSync('addStudent', async () => {
+        await saveStudentToFirestore(activeSchool.id, newStudent);
+        syncParentLinkForStudent(newStudent);
+      });
     }
   };
 
@@ -1764,7 +1890,18 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const oldClassId = existing.classId;
     const newClassId = updated.classId;
 
-    const updatedStudent = { ...existing, ...updated };
+    const updatedStudent: Student = {
+      ...existing,
+      ...updated,
+      parentInviteCode:
+        updated.parentInviteCode ||
+        existing.parentInviteCode ||
+        generateParentInviteCode(updated.grNumber || existing.grNumber),
+      parentEmail:
+        updated.parentEmail !== undefined
+          ? updated.parentEmail.trim().toLowerCase() || undefined
+          : existing.parentEmail,
+    };
 
     setStudents((prev) =>
       prev.map((s) => (s.id === id ? updatedStudent : s))
@@ -1786,7 +1923,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!demoMode && activeSchool.id) {
-      performSync('updateStudent', () => saveStudentToFirestore(activeSchool.id, updatedStudent));
+      performSync('updateStudent', async () => {
+        await saveStudentToFirestore(activeSchool.id, updatedStudent);
+        syncParentLinkForStudent(updatedStudent);
+      });
     }
   };
 
@@ -1862,6 +2002,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Determine effective role: In Demo mode, userRoleState controls it; in Live mode, profile controls it
   const effectiveRole = useMemo<UserRole>(() => {
     if (demoMode) return userRole;
+    if (currentUserProfile?.role === 'parent') {
+      return 'parent';
+    }
     const email = (currentUserProfile?.email || '').trim().toLowerCase();
     if (
       currentUserProfile?.isSuperAdmin ||
@@ -1887,10 +2030,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return userRole || 'teacher';
   }, [demoMode, userRole, currentUserProfile, registeredSchools]);
 
-  // Filtered classes by role: Admins see all classes; Teachers only see assigned classes
+  // Filtered classes by role: Admins see all classes; Teachers only see assigned classes; Parents see child class only
   const filteredClassesForUser = useMemo(() => {
     if (effectiveRole === 'admin' || effectiveRole === 'principal' || effectiveRole === 'super-admin') {
       return classes || [];
+    }
+    if (effectiveRole === 'parent') {
+      const childStu = students.find((s) => s.id === currentUserProfile?.childStudentId);
+      if (!childStu) return [];
+      return (classes || []).filter((c) => c.id === childStu.classId);
     }
     if (!classes || !Array.isArray(classes)) return [];
     // Teacher view: filter by teacher assigned classes safely
@@ -1902,17 +2050,21 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           (Array.isArray(currentUserProfile?.assignedClassIds) && currentUserProfile.assignedClassIds.includes(c.id))
         )
     );
-  }, [classes, effectiveRole, activeTeacher, currentUserProfile]);
+  }, [classes, students, effectiveRole, activeTeacher, currentUserProfile]);
 
-  // Filtered students by role: Admins see all students; Teachers only see students from their assigned classes
+  // Filtered students by role: Admins see all students; Teachers see assigned classes; Parents see ONLY their linked child
   const filteredStudentsForUser = useMemo(() => {
     if (effectiveRole === 'admin' || effectiveRole === 'principal' || effectiveRole === 'super-admin') {
       return students || [];
     }
+    if (effectiveRole === 'parent') {
+      if (!currentUserProfile?.childStudentId) return [];
+      return (students || []).filter((s) => s.id === currentUserProfile.childStudentId);
+    }
     if (!students || !Array.isArray(students)) return [];
     const teacherClassIds = new Set((filteredClassesForUser || []).map((c) => c?.id).filter(Boolean));
     return students.filter((s) => s && teacherClassIds.has(s.classId));
-  }, [students, effectiveRole, filteredClassesForUser]);
+  }, [students, effectiveRole, filteredClassesForUser, currentUserProfile?.childStudentId]);
 
   // Real-time Today's Attendance Analytics
   const todayAttendanceStats = useMemo<TodayAttendanceStats>(() => {
@@ -2351,6 +2503,132 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  // =========================================================================
+  // Phase C: Parent Portal Invite & Verification Linking
+  // =========================================================================
+  const generateParentInviteForStudent = async (
+    studentId: string,
+    parentEmail?: string
+  ): Promise<{ inviteCode: string; inviteUrl: string } | null> => {
+    if (!canManageExams && !canAdmitStudents) return null;
+    const existing = students.find((s) => s.id === studentId);
+    if (!existing) return null;
+
+    const inviteCode = existing.parentInviteCode || generateParentInviteCode(existing.grNumber);
+    const cleanedEmail =
+      parentEmail !== undefined
+        ? parentEmail.trim().toLowerCase() || undefined
+        : existing.parentEmail;
+
+    const updatedStudent: Student = {
+      ...existing,
+      parentInviteCode: inviteCode,
+      parentEmail: cleanedEmail,
+    };
+
+    setStudents((prev) => prev.map((s) => (s.id === studentId ? updatedStudent : s)));
+
+    if (!demoMode && activeSchool.id) {
+      const ok = await performSync('generateParentInvite', async () => {
+        await saveStudentToFirestore(activeSchool.id, updatedStudent);
+        await saveParentStudentLinkToFirestore({
+          id: buildParentLinkId(activeSchool.id, updatedStudent.grNumber),
+          schoolId: activeSchool.id,
+          schoolName: activeSchool.name,
+          semisCode: activeSchool.semisCode,
+          studentId: updatedStudent.id,
+          studentName: updatedStudent.fullName,
+          classId: updatedStudent.classId,
+          grade: updatedStudent.grade,
+          section: updatedStudent.section,
+          grNumber: updatedStudent.grNumber.trim().toUpperCase(),
+          parentEmail: cleanedEmail || '',
+          guardianPhone: updatedStudent.guardianPhone || '',
+          inviteCode,
+          claimedByUid: updatedStudent.parentUid,
+          status: updatedStudent.parentUid ? 'linked' : 'available',
+        });
+      });
+      if (!ok) return null;
+    }
+
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : 'https://pakedu.vercel.app';
+    const inviteUrl = `${origin}/?parent_invite=${encodeURIComponent(inviteCode)}&school=${encodeURIComponent(activeSchool.id)}&gr=${encodeURIComponent(updatedStudent.grNumber)}`;
+    return { inviteCode, inviteUrl };
+  };
+
+  const linkParentToStudent = async (params: {
+    schoolId: string;
+    grNumber: string;
+    inviteCode?: string;
+    phone?: string;
+  }): Promise<UserProfile | null> => {
+    const uid = currentUserProfile?.uid || authUserUid;
+    if (!uid) return null;
+
+    if (demoMode) {
+      const targetStu = students.find(
+        (s) => s.grNumber.trim().toUpperCase() === params.grNumber.trim().toUpperCase()
+      );
+      if (!targetStu) return null;
+      const demoProfile: UserProfile = {
+        ...currentUserProfile!,
+        role: 'parent',
+        status: 'active',
+        schoolId: activeSchool.id,
+        schoolName: activeSchool.name,
+        semisCode: activeSchool.semisCode,
+        childStudentId: targetStu.id,
+        childGrNumber: targetStu.grNumber,
+        childName: targetStu.fullName,
+      };
+      setCurrentUserProfile(demoProfile);
+      setUserRole('parent');
+      return demoProfile;
+    }
+
+    const claimedLink = await verifyAndClaimParentLink({
+      schoolId: params.schoolId,
+      grNumber: params.grNumber,
+      uid,
+      parentEmail: currentUserProfile?.email || undefined,
+      parentPhone: params.phone || currentUserProfile?.phone,
+      inviteCode: params.inviteCode,
+    });
+
+    const updatedParentProfile: UserProfile = {
+      uid,
+      email: currentUserProfile?.email || '',
+      fullName: currentUserProfile?.fullName || 'Parent / Guardian',
+      role: 'parent',
+      schoolId: claimedLink.schoolId,
+      schoolName: claimedLink.schoolName,
+      semisCode: claimedLink.semisCode,
+      status: 'active',
+      phone: params.phone || currentUserProfile?.phone || '',
+      assignedClassIds: [],
+      isSuperAdmin: false,
+      isAdmissionIncharge: false,
+      childStudentId: claimedLink.studentId,
+      childGrNumber: claimedLink.grNumber,
+      childName: claimedLink.studentName,
+      parentLinkId: claimedLink.id,
+      linkedInviteCode: params.inviteCode?.trim().toUpperCase() || claimedLink.inviteCode,
+      createdAt: currentUserProfile?.createdAt || new Date().toISOString(),
+    };
+
+    await saveUserProfileToFirestore(updatedParentProfile);
+    setCurrentUserProfile(updatedParentProfile);
+    setUserRole('parent');
+    try {
+      await authRefreshFn?.();
+    } catch {
+      // Non-fatal
+    }
+    return updatedParentProfile;
+  };
+
   return (
     <SmsContext.Provider
       value={{
@@ -2423,6 +2701,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canManageExams,
         canEnterMarksForClass,
         updateSchoolLogo,
+        generateParentInviteForStudent,
+        linkParentToStudent,
         attendanceRegisters,
         saveAttendance,
         getAttendance,

@@ -11,6 +11,7 @@ export type ActiveToolId =
   | 'sms-profile'
   | 'sms-fees'
   | 'sms-exams'
+  | 'sms-parent'
   | 'super-admin'
   | 'lesson-plan'
   | 'salary-calculator'
@@ -53,6 +54,11 @@ export function hasAdminCapabilities(
     Boolean(profile && (profile.email || '').trim().toLowerCase() === 'owner@pakedu.com')
   ) {
     return true;
+  }
+
+  // Explicit Parent role strictly has no administrative capabilities
+  if (profile?.role === 'parent') {
+    return false;
   }
 
   // 2. Explicit Admin or Principal role in profile
@@ -144,6 +150,15 @@ export function determineSmartRoute(
     if (matchedSchool && matchedSchool.status === 'suspended') {
       isSchoolActive = false;
     }
+  }
+
+  // Condition P: Parent Portal (strictly read-only child progress view)
+  if (profile?.role === 'parent') {
+    return {
+      targetTool: 'sms-parent',
+      role: 'parent',
+      reason: 'Condition P: Parent Portal access.',
+    };
   }
 
   // Condition B (Pending Approval - School registration or teacher applicant under review)

@@ -52,13 +52,50 @@ service cloud.firestore {
       );
     }
 
-    // School Member: User has an active status and belongs to the specified schoolId (or super-admin)
+    // School Staff Member: Active teacher, admin, or principal belonging to schoolId (excludes parents)
     function isSchoolMember(schoolId) {
       return isSuperAdmin() || (
         hasUserDoc() &&
         userDoc().get('status', '') == 'active' &&
-        userDoc().get('schoolId', '') == schoolId
+        userDoc().get('schoolId', '') == schoolId &&
+        (userDoc().get('role', '') in ['teacher', 'admin', 'principal'])
       );
+    }
+
+    // Verified Parent Member: Active parent linked strictly to a single child in schoolId
+    function isSchoolParent(schoolId) {
+      return hasUserDoc() &&
+        userDoc().get('status', '') == 'active' &&
+        userDoc().get('schoolId', '') == schoolId &&
+        userDoc().get('role', '') == 'parent';
+    }
+
+    function parentLinkDoc(linkId) {
+      return get(/databases/$(database)/documents/parentLinks/$(linkId)).data;
+    }
+
+    // Server-side verification of Parent Portal claim against Admin/Incharge /parentLinks record
+    function isVerifiedParentClaim(data) {
+      return isSignedIn() &&
+        data.get('parentLinkId', '') is string &&
+        isValidId(data.get('parentLinkId', '')) &&
+        exists(/databases/$(database)/documents/parentLinks/$(data.get('parentLinkId', ''))) &&
+        parentLinkDoc(data.get('parentLinkId', '')).schoolId == data.get('schoolId', '') &&
+        parentLinkDoc(data.get('parentLinkId', '')).studentId == data.get('childStudentId', '') &&
+        parentLinkDoc(data.get('parentLinkId', '')).grNumber == data.get('childGrNumber', '') &&
+        (
+          (
+            parentLinkDoc(data.get('parentLinkId', '')).get('parentEmail', '') != '' &&
+            request.auth.token.email != null &&
+            parentLinkDoc(data.get('parentLinkId', '')).get('parentEmail', '').lower() == request.auth.token.email.lower()
+          ) || (
+            parentLinkDoc(data.get('parentLinkId', '')).get('inviteCode', '') != '' &&
+            data.get('linkedInviteCode', '') == parentLinkDoc(data.get('parentLinkId', '')).get('inviteCode', '')
+          ) || (
+            parentLinkDoc(data.get('parentLinkId', '')).get('guardianPhone', '') != '' &&
+            data.get('phone', '') == parentLinkDoc(data.get('parentLinkId', '')).get('guardianPhone', '')
+          )
+        );
     }
 
     // School Admin: User is an active member with role 'admin' or 'principal' (or super-admin)
@@ -98,6 +135,7 @@ service cloud.firestore {
           'classId', 'currentClassId', 'grade', 'currentGrade', 'section', 'currentSection',
           'bFormNumber', 'bFormOrCnic', 'guardianPhone', 'address', 'status',
           'concessionId', 'concessionTitle', 'concessionType', 'concessionValue', 'advanceBalance',
+          'photoUrl', 'parentEmail', 'parentUid', 'parentInviteCode', 'parentLinkedAt',
           'createdAt', 'updatedAt'
         ]) &&
         data.id is string && isValidId(data.id) &&
@@ -259,7 +297,8 @@ service cloud.firestore {
 
       // Newly authenticated user can create own profile during signup immediately:
       // - 'teacher' or 'admin' with status 'none' or 'pending' (no schoolId required yet!)
-      // - Never allow self-assigning 'super-admin', isSuperAdmin, isAdmissionIncharge, or active status.
+      // - 'parent' with status 'active' ONLY when server-verified against /parentLinks (or 'pending' before link)
+      // - Never allow self-assigning 'super-admin', isSuperAdmin, isAdmissionIncharge, or active admin/teacher status.
       // Active School Admin may also create/activate a teacher doc for their own school during approval.
       allow create: if isSuperAdmin() || (
         isSignedIn() &&
@@ -268,8 +307,19 @@ service cloud.firestore {
         incoming().get('uid', uid) == uid &&
         (!('isSuperAdmin' in incoming()) || incoming().isSuperAdmin == false) &&
         incoming().get('isAdmissionIncharge', false) == false &&
-        (incoming().get('role', '') in ['teacher', 'admin']) &&
-        (incoming().get('status', '') in ['none', 'pending'])
+        (
+          (
+            (incoming().get('role', '') in ['teacher', 'admin']) &&
+            (incoming().get('status', '') in ['none', 'pending'])
+          ) || (
+            incoming().get('role', '') == 'parent' &&
+            incoming().get('status', '') == 'active' &&
+            isVerifiedParentClaim(incoming())
+          ) || (
+            incoming().get('role', '') == 'parent' &&
+            incoming().get('status', '') == 'pending'
+          )
+        )
       ) || (
         isSignedIn() &&
         isValidId(uid) &&
@@ -286,7 +336,8 @@ service cloud.firestore {
       // 2. User can update own doc:
       //    - normal edits keep role, schoolId, status unchanged
       //    - onboarding / school-linking transition while unlinked (schoolId == '') or status in ['none', 'rejected'] -> 'none' | 'pending'
-      //    - never self-elevate to 'active' or 'super-admin'
+      //    - verified parent claim linking from unlinked/pending state -> role 'parent', status 'active'
+      //    - never self-elevate to 'active' admin/teacher or 'super-admin'
       // 3. Active School Admin can approve/update teachers belonging to (or applying to) their school
       allow update: if isSuperAdmin() || (
         isSignedIn() &&
@@ -304,7 +355,12 @@ service cloud.firestore {
               ) || (
                 (existing().get('schoolId', '') == '' || (existing().get('status', 'none') in ['none', 'rejected'])) &&
                 (incoming().get('status', '') in ['none', 'pending']) &&
-                (incoming().get('role', '') in ['teacher', 'admin'])
+                (incoming().get('role', '') in ['teacher', 'admin', 'parent'])
+              ) || (
+                (existing().get('schoolId', '') == '' || (existing().get('status', 'none') in ['none', 'pending', 'rejected'])) &&
+                incoming().get('role', '') == 'parent' &&
+                incoming().get('status', '') == 'active' &&
+                isVerifiedParentClaim(incoming())
               )
             )
           ) || (
@@ -370,14 +426,20 @@ service cloud.firestore {
 
       // --- Subcollection: Classes (/schools/{schoolId}/classes/{classId}) ---
       match /classes/{classId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || isSchoolParent(schoolId);
         allow create, update: if isSchoolAdmin(schoolId) && isValidId(classId) && isValidClassSection(incoming());
         allow delete: if isSchoolAdmin(schoolId);
       }
 
       // --- Subcollection: Students (/schools/{schoolId}/students/{studentId}) ---
+      // Parents strictly READ-ONLY for their own linked childStudentId only!
       match /students/{studentId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || (
+          isSchoolParent(schoolId) && (
+            studentId == userDoc().get('childStudentId', '') ||
+            existing().get('parentUid', '') == request.auth.uid
+          )
+        );
         allow create, update: if isValidId(studentId) && isValidStudent(incoming()) && (
           isSchoolAdmin(schoolId) || (
             isSchoolMember(schoolId) &&
@@ -388,8 +450,9 @@ service cloud.firestore {
       }
 
       // --- Subcollection: Daily Attendance (/schools/{schoolId}/attendance/{attendanceId}) ---
+      // Parents strictly READ-ONLY for attendance summaries.
       match /attendance/{attendanceId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || isSchoolParent(schoolId);
         allow create, update: if isValidId(attendanceId) && isValidAttendance(incoming()) && (
           isSchoolAdmin(schoolId) || (
             isSchoolMember(schoolId) &&
@@ -430,14 +493,18 @@ service cloud.firestore {
 
       // --- Subcollection: Fee Structures (/schools/{schoolId}/feeStructures/{classId}) ---
       match /feeStructures/{classId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || isSchoolParent(schoolId);
         allow create, update: if isSchoolAdmin(schoolId) && isValidId(classId) && isValidFeeStructure(incoming());
         allow delete: if isSchoolAdmin(schoolId);
       }
 
       // --- Subcollection: Fee Payments (/schools/{schoolId}/feePayments/{paymentId}) ---
+      // Parents strictly READ-ONLY for their own child's payments only.
       match /feePayments/{paymentId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || (
+          isSchoolParent(schoolId) &&
+          existing().get('studentId', '') == userDoc().get('childStudentId', '')
+        );
         allow create, update: if isValidId(paymentId) && isValidFeePayment(incoming()) && (
           isSchoolAdmin(schoolId) || (
             isSchoolMember(schoolId) &&
@@ -449,15 +516,17 @@ service cloud.firestore {
 
       // --- Subcollection: Fee Concessions (/schools/{schoolId}/feeConcessions/{concessionId}) ---
       match /feeConcessions/{concessionId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || isSchoolParent(schoolId);
         allow create, update: if isSchoolAdmin(schoolId) && isValidId(concessionId) && isValidFeeConcession(incoming());
         allow delete: if isSchoolAdmin(schoolId);
       }
 
       // --- Subcollection: Exams (/schools/{schoolId}/exams/{examId}) ---
-      // Admin-only creation/edit; active school members (teachers/parents) can read.
+      // Admin-only creation/edit; active staff can read all; parents can ONLY read published exams.
       match /exams/{examId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || (
+          isSchoolParent(schoolId) && existing().get('status', '') == 'published'
+        );
         allow create, update: if isSchoolAdmin(schoolId) &&
           isValidId(examId) &&
           isValidExam(incoming()) &&
@@ -466,10 +535,13 @@ service cloud.firestore {
       }
 
       // --- Subcollection: Exam Marks (/schools/{schoolId}/marks/{markId}) ---
-      // Read allowed to active school members (admins/teachers/future parents).
+      // Active staff can read all; parents strictly READ-ONLY for their own child's marks only!
       // Writes strictly restricted to School Admins OR Teachers assigned to incoming().classId.
       match /marks/{markId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || (
+          isSchoolParent(schoolId) &&
+          existing().get('studentId', '') == userDoc().get('childStudentId', '')
+        );
         allow create, update: if isValidId(markId) &&
           isValidExamMarks(incoming()) &&
           incoming().schoolId == schoolId && (
@@ -482,6 +554,48 @@ service cloud.firestore {
           );
         allow delete: if isSchoolAdmin(schoolId);
       }
+    }
+
+    // =========================================================================
+    // 2B. Parent-Student Invite & Linkage Index (/parentLinks/{linkId})
+    // =========================================================================
+    match /parentLinks/{linkId} {
+      // Exact doc lookup by schoolId__GR (signed-in users) so signing-up parents can verify email/phone/code
+      allow get: if isSignedIn() && isValidId(linkId);
+      allow list: if isSuperAdmin() || (
+        isSignedIn() && (
+          (existing().get('schoolId', '') != '' && isSchoolAdmin(existing().get('schoolId', ''))) ||
+          (existing().get('schoolId', '') != '' && isSchoolMember(existing().get('schoolId', '')) && userDoc().get('isAdmissionIncharge', false) == true) ||
+          (existing().get('parentEmail', '') != '' && request.auth.token.email != null && existing().get('parentEmail', '').lower() == request.auth.token.email.lower()) ||
+          existing().get('claimedByUid', '') == request.auth.uid
+        )
+      );
+      allow create, delete: if isValidId(linkId) && (
+        isSuperAdmin() || (
+          incoming().get('schoolId', '') != '' && (
+            isSchoolAdmin(incoming().get('schoolId', '')) || (
+              isSchoolMember(incoming().get('schoolId', '')) &&
+              userDoc().get('isAdmissionIncharge', false) == true
+            )
+          )
+        )
+      );
+      allow update: if isValidId(linkId) && (
+        isSuperAdmin() || (
+          existing().get('schoolId', '') != '' && (
+            isSchoolAdmin(existing().get('schoolId', '')) || (
+              isSchoolMember(existing().get('schoolId', '')) &&
+              userDoc().get('isAdmissionIncharge', false) == true
+            )
+          )
+        ) || (
+          // Signed-in parent claiming their verified link
+          isSignedIn() &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['claimedByUid', 'claimedAt', 'status', 'updatedAt']) &&
+          incoming().get('claimedByUid', '') == request.auth.uid &&
+          incoming().get('status', '') == 'linked'
+        )
+      );
     }
 
     // =========================================================================

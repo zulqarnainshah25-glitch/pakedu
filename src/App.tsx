@@ -68,6 +68,7 @@ import { TeacherProfile } from './features/sms/components/TeacherProfile';
 import { SuperAdminDashboard } from './features/sms/components/SuperAdminDashboard';
 import { FeeManagement } from './features/sms/components/FeeManagement';
 import { ExamsResults } from './features/sms/components/ExamsResults';
+import { ParentDashboard } from './features/sms/components/ParentDashboard';
 
 export type ActiveToolId =
   | 'dashboard'
@@ -80,6 +81,7 @@ export type ActiveToolId =
   | 'sms-profile'
   | 'sms-fees'
   | 'sms-exams'
+  | 'sms-parent'
   | 'super-admin'
   | 'lesson-plan'
   | 'salary-calculator'
@@ -175,6 +177,14 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     subtitle: 'Exam setup, subject-wise marks entry, class positions, and printable A4 report cards',
     badge: 'Academics · Phase B',
     icon: <Award className="w-5 h-5" />,
+    iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
+    iconColor: 'text-indigo-600 dark:text-indigo-400',
+  },
+  'sms-parent': {
+    title: 'Parent Portal & Child Progress',
+    subtitle: 'Read-only student attendance, fee ledger, and published A4 exam report cards',
+    badge: 'Parent Portal',
+    icon: <Users className="w-5 h-5" />,
     iconBg: 'bg-indigo-50 dark:bg-indigo-950/60',
     iconColor: 'text-indigo-600 dark:text-indigo-400',
   },
@@ -293,10 +303,16 @@ function AppContent() {
   const [smsOnboardingTab, setSmsOnboardingTab] = useState<'register' | 'join'>('register');
 
   // Focused Workspace Modes:
-  // 1. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
-  // 2. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
-  // 3. Demo Mode: All tools visible for evaluation & sandbox testing
+  // 1. Parent User: Strictly read-only access isolated inside Child Progress Portal
+  // 2. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
+  // 3. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
+  // 4. Demo Mode: All tools visible for evaluation & sandbox testing
+  const isParentUser = !demoMode && currentUserProfile?.role === 'parent';
+
   const isAdminUser = useMemo(() => {
+    if (currentUserProfile?.role === 'parent') {
+      return false;
+    }
     if (
       currentUserProfile?.status === 'pending' ||
       currentUserProfile?.status === 'rejected' ||
@@ -308,9 +324,10 @@ function AppContent() {
   }, [currentUser, currentUserProfile, registeredSchools]);
 
   // Focused Workspace Modes:
-  // 1. Affiliated User: Real Auth mode, verified with active status & schoolId, or admin/super-admin privileges
+  // Affiliated Staff User: Real Auth mode, verified with active status & schoolId, or admin/super-admin privileges
   const isAffiliatedUser =
     !demoMode &&
+    !isParentUser &&
     (isSuperAdmin ||
       isImpersonating ||
       isAdminUser ||
@@ -318,6 +335,7 @@ function AppContent() {
 
   const isUnaffiliatedUser =
     !demoMode &&
+    !isParentUser &&
     !isSuperAdmin &&
     !isImpersonating &&
     !isAdminUser &&
@@ -325,7 +343,14 @@ function AppContent() {
       currentUserProfile?.status !== 'active' ||
       !currentUserProfile?.schoolId);
 
-  // When an affiliated user enters the portal, ensure they land on the focused SMS dashboard unless they toggle public tools
+  // Strict Parent Portal isolation: parent accounts stay locked on 'sms-parent'
+  useEffect(() => {
+    if (isParentUser && activeTool !== 'sms-parent') {
+      setActiveTool('sms-parent');
+    }
+  }, [isParentUser, activeTool]);
+
+  // When an affiliated staff user enters the portal, ensure they land on the focused SMS dashboard unless they toggle public tools
   useEffect(() => {
     if (
       isAffiliatedUser &&
@@ -511,7 +536,19 @@ function AppContent() {
     setAuthModalOpen(true);
   };
 
-  const handleSignupSuccess = (intent: 'general' | 'sms', smsRole?: 'admin' | 'teacher') => {
+  const handleSignupSuccess = (
+    intent: 'general' | 'sms' | 'parent',
+    smsRole?: 'admin' | 'teacher'
+  ) => {
+    if (intent === 'parent') {
+      setPendingSmsRedirect(false);
+      setUserRole('parent');
+      setActiveTool('sms-parent');
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
     if (intent === 'sms') {
       const targetTab = smsRole === 'teacher' ? 'join' : 'register';
       setSmsOnboardingTab(targetTab);
@@ -530,6 +567,13 @@ function AppContent() {
   };
 
   const selectTool = (tool: ActiveToolId) => {
+    // Strict Parent Isolation: parents may only view the read-only Child Progress Portal
+    if (isParentUser && tool !== 'sms-parent') {
+      setActiveTool('sms-parent');
+      setMobileMenuOpen(false);
+      return;
+    }
+
     // SMS & Super Admin Access Protection:
     if (!demoMode && (tool.startsWith('sms-') || tool === 'super-admin')) {
       if (!currentUser) {
@@ -708,8 +752,8 @@ function AppContent() {
 
           {/* Tool Navigation Links */}
           <div className="p-3.5 space-y-1">
-            {/* Dashboard / Home Link - HIDDEN for Affiliated Users in Focused Mode */}
-            {(!isAffiliatedUser || showPublicTools) && (
+            {/* Dashboard / Home Link - HIDDEN for Affiliated Staff Users & Parents */}
+            {!isParentUser && (!isAffiliatedUser || showPublicTools) && (
               <button
                 type="button"
                 onClick={() => selectTool('dashboard')}
@@ -727,6 +771,35 @@ function AppContent() {
                   </span>
                 </div>
               </button>
+            )}
+
+            {/* Strict Read-Only Parent Portal Section */}
+            {isParentUser && (
+              <>
+                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-indigo-400 flex items-center justify-between">
+                  <span>Parent Portal</span>
+                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    Read-Only
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-parent')}
+                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'sms-parent'
+                      ? 'bg-slate-800 text-white font-semibold shadow-xs border-l-[3px] border-indigo-500 pl-3'
+                      : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/60 pl-3.5'
+                  }`}
+                >
+                  <Users className="w-4 h-4 shrink-0 text-indigo-400" />
+                  <div className="truncate flex-1">
+                    <span className="block truncate">Child Progress Portal</span>
+                    <span className="text-[11px] block truncate text-slate-500">
+                      Attendance, Fees &amp; Results
+                    </span>
+                  </div>
+                </button>
+              </>
             )}
 
             {/* Affiliated School Context Card (Shown for Verified School Users) */}
@@ -1091,9 +1164,9 @@ function AppContent() {
 
             {/* ======================================================= */}
             {/* SECTION: TEACHER'S AI STUDIO (EXISTING TOOLS)           */}
-            {/* HIDDEN for Affiliated Users unless showPublicTools is true */}
+            {/* HIDDEN for Parents and Affiliated Staff unless showPublicTools is true */}
             {/* ======================================================= */}
-            {(!isAffiliatedUser || showPublicTools) && (
+            {!isParentUser && (!isAffiliatedUser || showPublicTools) && (
               <>
                 <div className="pt-4 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-slate-500 flex items-center justify-between">
                   <span>Teacher's AI Studio</span>
@@ -1330,7 +1403,15 @@ function AppContent() {
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm min-w-0 truncate">
               <button
                 type="button"
-                onClick={() => selectTool(isAffiliatedUser && !showPublicTools ? 'sms-dashboard' : 'dashboard')}
+                onClick={() =>
+                  selectTool(
+                    isParentUser
+                      ? 'sms-parent'
+                      : isAffiliatedUser && !showPublicTools
+                      ? 'sms-dashboard'
+                      : 'dashboard'
+                  )
+                }
                 className="font-medium text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer shrink-0"
               >
                 PakEdu
@@ -1341,15 +1422,15 @@ function AppContent() {
               </span>
             </div>
 
-            {/* If Affiliated: Show Connected School Badge in Header */}
-            {isAffiliatedUser && (
+            {/* If Parent or Affiliated: Show Connected School Badge in Header */}
+            {(isAffiliatedUser || isParentUser) && (
               <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/80 dark:bg-indigo-950/40 border border-indigo-200/80 dark:border-indigo-800/60 text-xs shrink-0">
                 <Building className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[160px]" title={activeSchool?.name || currentUserProfile?.schoolName}>
-                  {activeSchool?.name || currentUserProfile?.schoolName || 'Govt. High School'}
+                  {activeSchool?.name || currentUserProfile?.schoolName || 'School Portal'}
                 </span>
                 <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded bg-indigo-200/70 dark:bg-indigo-900/60 text-indigo-800 dark:text-indigo-300">
-                  SEMIS {activeSchool?.semisCode || '401020304'}
+                  {isParentUser ? 'READ-ONLY' : `SEMIS ${activeSchool?.semisCode || '401020304'}`}
                 </span>
               </div>
             )}
@@ -1357,7 +1438,15 @@ function AppContent() {
 
           {/* Center Horizontal Quick Links (Large Screens) */}
           <nav className="hidden xl:flex items-center gap-1 text-xs font-medium text-slate-600 dark:text-slate-400">
-            {isAffiliatedUser && !showPublicTools ? (
+            {isParentUser ? (
+              <button
+                type="button"
+                onClick={() => selectTool('sms-parent')}
+                className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 font-bold cursor-pointer"
+              >
+                Parent Portal (Read-Only)
+              </button>
+            ) : isAffiliatedUser && !showPublicTools ? (
               <>
                 <button
                   type="button"
@@ -2096,6 +2185,9 @@ function AppContent() {
             {activeTool === 'sms-exams' && (
               <ExamsResults onBack={() => selectTool('sms-dashboard')} />
             )}
+
+            {/* Phase C: Parent Portal (Strict Read-Only Child Progress) */}
+            {activeTool === 'sms-parent' && <ParentDashboard />}
 
             {/* SUPER ADMIN CONSOLE VIEW */}
             {activeTool === 'super-admin' && (

@@ -23,6 +23,13 @@ import {
   Download,
   Receipt,
   Tag,
+  Mail,
+  KeyRound,
+  Copy,
+  Check,
+  Upload,
+  Link2,
+  Camera,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 import { Student } from '../types';
@@ -56,6 +63,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     feePayments,
     feeConcessions,
     applyStudentConcession,
+    generateParentInviteForStudent,
   } = useSms();
 
   const isAdmin = userRole === 'admin' || userRole === 'principal' || userRole === 'super-admin';
@@ -87,14 +95,27 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const [status, setStatus] = useState<'active' | 'struck_off' | 'transferred' | 'graduated'>('active');
   const [guardianPhone, setGuardianPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [parentEmail, setParentEmail] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [selectedConcessionId, setSelectedConcessionId] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [successToast, setSuccessToast] = useState<string | null>(null);
+  const [inviteEmailInput, setInviteEmailInput] = useState('');
+  const [generatedInvite, setGeneratedInvite] = useState<{ code: string; url: string } | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
+  const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
+  const [inviteMessage, setInviteMessage] = useState<string | null>(null);
 
   const currentMonthKey = useMemo(() => {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }, []);
+
+  const activeViewingStudent = useMemo(() => {
+    if (!viewingStudent) return null;
+    return students.find((s) => s.id === viewingStudent.id) || viewingStudent;
+  }, [viewingStudent, students]);
 
   const viewingStudentLedger = useMemo(() => {
     if (!viewingStudent) return null;
@@ -108,6 +129,21 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       currentMonthKey
     );
   }, [viewingStudent, students, feeStructures, feePayments, feeConcessions, currentMonthKey]);
+
+  useEffect(() => {
+    if (!viewingStudent) {
+      setInviteEmailInput('');
+      setGeneratedInvite(null);
+      setCopiedInvite(false);
+      setInviteMessage(null);
+      return;
+    }
+    const latest = students.find((s) => s.id === viewingStudent.id) || viewingStudent;
+    setInviteEmailInput(latest.parentEmail || '');
+    setGeneratedInvite(null);
+    setCopiedInvite(false);
+    setInviteMessage(null);
+  }, [viewingStudent?.id]);
 
   // Ensure classes for the active school are fetched from Firestore
   useEffect(() => {
@@ -138,6 +174,82 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     return `GR-${maxGr + 1}`;
   };
 
+  const handlePhotoUpload = (file: File | undefined) => {
+    if (!file) return;
+    setPhotoError(null);
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setPhotoError('Please upload a JPEG, PNG, or WebP image file.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setPhotoError('Student photo must be under 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => setPhotoError('Unable to read the selected photo file.');
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => setPhotoError('Invalid image file selected.');
+      img.onload = () => {
+        const maxDim = 256;
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.width * scale));
+        canvas.height = Math.max(1, Math.round(img.height * scale));
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          setPhotoUrl(String(reader.result || ''));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setPhotoUrl(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.src = String(reader.result || '');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerateParentInvite = async () => {
+    if (!activeViewingStudent) return;
+    setIsGeneratingInvite(true);
+    setInviteMessage(null);
+    setCopiedInvite(false);
+    try {
+      const cleanEmail = inviteEmailInput.trim().toLowerCase();
+      const result = await generateParentInviteForStudent(
+        activeViewingStudent.id,
+        cleanEmail || undefined
+      );
+      if (!result) {
+        setInviteMessage('Unable to generate invite right now.');
+        return;
+      }
+      setGeneratedInvite({ code: result.inviteCode, url: result.inviteUrl });
+      setViewingStudent((prev) =>
+        prev
+          ? {
+              ...prev,
+              parentEmail: cleanEmail || prev.parentEmail,
+              parentInviteCode: result.inviteCode,
+            }
+          : null
+      );
+      setInviteMessage('Parent invite code & link generated and synced.');
+    } catch (err: any) {
+      setInviteMessage(err?.message || 'Unable to generate invite right now.');
+    } finally {
+      setIsGeneratingInvite(false);
+    }
+  };
+
+  const handleCopyParentInviteUrl = (urlText: string) => {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(urlText).catch(() => {});
+    }
+    setCopiedInvite(true);
+    setTimeout(() => setCopiedInvite(false), 2500);
+  };
+
   const openAddModal = () => {
     if (activeSchool?.id) {
       refreshActiveSchoolClasses(activeSchool.id);
@@ -154,6 +266,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setStatus('active');
     setGuardianPhone('');
     setAddress('');
+    setParentEmail('');
+    setPhotoUrl('');
+    setPhotoError(null);
     setSelectedConcessionId('');
     setFormError(null);
     setIsFormModalOpen(true);
@@ -175,6 +290,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setStatus(student.status);
     setGuardianPhone(student.guardianPhone || '');
     setAddress(student.address || '');
+    setParentEmail(student.parentEmail || '');
+    setPhotoUrl(student.photoUrl || '');
+    setPhotoError(null);
     setSelectedConcessionId(student.concessionId || '');
     setFormError(null);
     setIsFormModalOpen(true);
@@ -234,6 +352,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       ? feeConcessions.find((r) => r.id === selectedConcessionId)
       : undefined;
 
+    const cleanParentEmail = parentEmail.trim().toLowerCase();
+    const cleanPhotoUrl = photoUrl.trim();
     const payload: Omit<Student, 'id'> = {
       fullName: fullName.trim(),
       fatherName: fatherName.trim(),
@@ -248,6 +368,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       status,
       guardianPhone: guardianPhone.trim(),
       address: address.trim() || undefined,
+      parentEmail: editingStudent ? cleanParentEmail : cleanParentEmail || undefined,
+      photoUrl: editingStudent ? cleanPhotoUrl : cleanPhotoUrl || undefined,
       concessionId: matchedRule ? matchedRule.id : '',
       concessionTitle: matchedRule ? matchedRule.title : '',
       concessionType: matchedRule ? matchedRule.discountType : 'percentage',
@@ -624,15 +746,23 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                       {/* Student Name */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
-                              student.gender === 'Female'
-                                ? 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300'
-                                : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
-                            }`}
-                          >
-                            {student.fullName.charAt(0)}
-                          </div>
+                          {student.photoUrl ? (
+                            <img
+                              src={student.photoUrl}
+                              alt={student.fullName}
+                              className="w-7 h-7 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                            />
+                          ) : (
+                            <div
+                              className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-[11px] shrink-0 ${
+                                student.gender === 'Female'
+                                  ? 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300'
+                                  : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                              }`}
+                            >
+                              {student.fullName.charAt(0)}
+                            </div>
+                          )}
                           <div>
                             <button
                               type="button"
@@ -822,15 +952,23 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in my-8 max-h-[92vh] overflow-y-auto">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg ${
-                    viewingStudent.gender === 'Female'
-                      ? 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300'
-                      : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
-                  }`}
-                >
-                  {viewingStudent.fullName.charAt(0)}
-                </div>
+                {viewingStudent.photoUrl ? (
+                  <img
+                    src={viewingStudent.photoUrl}
+                    alt={viewingStudent.fullName}
+                    className="w-12 h-12 rounded-2xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                  />
+                ) : (
+                  <div
+                    className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg shrink-0 ${
+                      viewingStudent.gender === 'Female'
+                        ? 'bg-pink-100 dark:bg-pink-950/60 text-pink-700 dark:text-pink-300'
+                        : 'bg-indigo-100 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                    }`}
+                  >
+                    {viewingStudent.fullName.charAt(0)}
+                  </div>
+                )}
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                     {viewingStudent.fullName}
@@ -1069,6 +1207,139 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                     </table>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Parent Portal Access & Child Linkage */}
+            {activeViewingStudent && (
+              <div className="p-4 rounded-xl bg-indigo-50/70 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-800/60 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Link2 className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-white">
+                        Parent Portal Access
+                      </h4>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        Allow parent/guardian read-only access to attendance, fee ledger, and report cards
+                      </p>
+                    </div>
+                  </div>
+                  {activeViewingStudent.parentUid ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                      <CheckCircle2 className="w-3 h-3" />
+                      Linked
+                    </span>
+                  ) : activeViewingStudent.parentInviteCode ? (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                      <KeyRound className="w-3 h-3" />
+                      Invite Ready
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                      Not Linked
+                    </span>
+                  )}
+                </div>
+
+                {activeViewingStudent.parentUid && (
+                  <div className="text-[11px] text-emerald-800 dark:text-emerald-300 bg-white/80 dark:bg-slate-900/60 border border-emerald-200 dark:border-emerald-800/50 rounded-lg px-3 py-2 flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      Linked Parent Email:{' '}
+                      <strong className="font-mono">
+                        {activeViewingStudent.parentEmail || 'Verified Parent Account'}
+                      </strong>
+                    </span>
+                    {activeViewingStudent.parentLinkedAt && (
+                      <span className="text-[10px] text-slate-500">
+                        Since {new Date(activeViewingStudent.parentLinkedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {canAdmitStudents && (
+                  <div className="space-y-2.5">
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="relative flex-1">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="email"
+                          value={inviteEmailInput}
+                          onChange={(e) => setInviteEmailInput(e.target.value)}
+                          placeholder="Parent email (e.g., parent@gmail.com)"
+                          className="w-full pl-8 pr-3 py-2 text-xs bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-700 rounded-xl text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleGenerateParentInvite}
+                        disabled={isGeneratingInvite}
+                        className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-xs transition cursor-pointer disabled:opacity-60 shrink-0"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>
+                          {isGeneratingInvite
+                            ? 'Generating...'
+                            : 'Generate Invite Code & Link'}
+                        </span>
+                      </button>
+                    </div>
+
+                    {(generatedInvite?.code || activeViewingStudent.parentInviteCode) && (
+                      <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-200 dark:border-indigo-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-slate-500">Invite Code:</span>
+                            <span className="font-mono font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded">
+                              {generatedInvite?.code || activeViewingStudent.parentInviteCode}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400 truncate">
+                            {generatedInvite?.url ||
+                              `${typeof window !== 'undefined' ? window.location.origin : ''}/?parent_invite=${encodeURIComponent(
+                                activeViewingStudent.parentInviteCode || ''
+                              )}&school=${encodeURIComponent(activeSchool.id)}&gr=${encodeURIComponent(
+                                activeViewingStudent.grNumber
+                              )}`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyParentInviteUrl(
+                              generatedInvite?.url ||
+                                `${typeof window !== 'undefined' ? window.location.origin : ''}/?parent_invite=${encodeURIComponent(
+                                  activeViewingStudent.parentInviteCode || ''
+                                )}&school=${encodeURIComponent(activeSchool.id)}&gr=${encodeURIComponent(
+                                  activeViewingStudent.grNumber
+                                )}`
+                            )
+                          }
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[11px] font-semibold rounded-lg transition cursor-pointer shrink-0"
+                        >
+                          {copiedInvite ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>Copied Link</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy Invite Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {inviteMessage && (
+                      <p className="text-[11px] font-medium text-indigo-700 dark:text-indigo-300">
+                        {inviteMessage}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -1339,6 +1610,74 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   placeholder="e.g., House 42, Block D, Latifabad Unit 7, Hyderabad"
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
                 />
+              </div>
+
+              {/* Parent Email & Student Photo (Optional) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Parent Email (for Parent Portal Login)
+                  </label>
+                  <div className="relative">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="email"
+                      value={parentEmail}
+                      onChange={(e) => setParentEmail(e.target.value)}
+                      placeholder="e.g., parent@gmail.com"
+                      className="w-full pl-8 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                  <span className="text-[10px] text-slate-400 mt-1 block">
+                    Matches automatically when the parent creates a Parent Portal account.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Student Photo (Optional — JPEG/PNG)
+                  </label>
+                  <div className="flex items-center gap-2.5">
+                    {photoUrl ? (
+                      <img
+                        src={photoUrl}
+                        alt="Student preview"
+                        className="w-10 h-10 rounded-xl object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 flex items-center justify-center text-indigo-500 shrink-0">
+                        <Camera className="w-4 h-4" />
+                      </div>
+                    )}
+                    <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[11px] font-semibold text-slate-700 dark:text-slate-200 cursor-pointer transition">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{photoUrl ? 'Change Photo' : 'Upload Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={(e) => handlePhotoUpload(e.target.files?.[0])}
+                        className="hidden"
+                      />
+                    </label>
+                    {photoUrl && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPhotoUrl('');
+                          setPhotoError(null);
+                        }}
+                        className="text-[11px] font-semibold text-rose-600 hover:underline cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                  {photoError && (
+                    <span className="text-[10px] text-rose-500 mt-1 block font-medium">
+                      {photoError}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Permanent Fee Concession / Scholarship (Admin Only) */}

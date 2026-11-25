@@ -5,6 +5,8 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
+  query,
+  where,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -23,6 +25,7 @@ import {
   FeeConcessionRule,
   Exam,
   StudentExamMarks,
+  ParentStudentLink,
 } from '../types';
 
 /**
@@ -744,5 +747,209 @@ export async function deleteStudentMarksFromFirestore(
     return true;
   } catch (err) {
     throw classifyFirestoreError(err, 'deleteStudentMarks', `schools/${schoolId}/marks/${markId}`);
+  }
+}
+
+// =========================================================================
+// 14. Parent Portal: Strictly Scoped Child Fetchers & Invite Verification
+// =========================================================================
+export function buildParentLinkId(schoolId: string, grNumber: string): string {
+  const cleanSchool = (schoolId || '').trim().replace(/[^a-zA-Z0-9_-]/g, '_');
+  const cleanGr = (grNumber || '').trim().toUpperCase().replace(/[^A-Z0-9_-]/g, '_');
+  return `${cleanSchool}__${cleanGr}`;
+}
+
+export function generateParentInviteCode(grNumber: string): string {
+  const cleanGr = (grNumber || 'STD').trim().toUpperCase().replace(/[^A-Z0-9]/g, '').slice(-6);
+  const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `PAR-${cleanGr || 'STD'}-${rand}`;
+}
+
+export async function saveParentStudentLinkToFirestore(
+  link: ParentStudentLink
+): Promise<boolean> {
+  if (!link.id || !link.schoolId || !link.studentId) {
+    throw new FirestoreSyncError('Parent link ID, School ID, and Student ID are required', 'invalid-argument', 'saveParentLink');
+  }
+  try {
+    const ref = doc(db, 'parentLinks', link.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        ...link,
+        parentEmail: link.parentEmail ? link.parentEmail.trim().toLowerCase() : '',
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveParentLink', `parentLinks/${link.id}`);
+  }
+}
+
+export async function fetchParentStudentLinkFromFirestore(
+  schoolId: string,
+  grNumber: string
+): Promise<ParentStudentLink | null> {
+  if (!schoolId || !grNumber.trim()) return null;
+  const linkId = buildParentLinkId(schoolId, grNumber);
+  try {
+    const ref = doc(db, 'parentLinks', linkId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    return normalizeTimestamps(snap.data() as ParentStudentLink);
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchParentLink', `parentLinks/${linkId}`);
+  }
+}
+
+export async function verifyAndClaimParentLink(params: {
+  schoolId: string;
+  grNumber: string;
+  uid: string;
+  parentEmail?: string;
+  parentPhone?: string;
+  inviteCode?: string;
+}): Promise<ParentStudentLink> {
+  const { schoolId, grNumber, uid, parentEmail, parentPhone, inviteCode } = params;
+  const link = await fetchParentStudentLinkFromFirestore(schoolId, grNumber);
+  if (!link) {
+    throw new FirestoreSyncError(
+      `No student link found for GR "${grNumber.trim()}" at this school. Ask the School Admin to enable Parent Portal Access on your child's profile.`,
+      'not-found',
+      'verifyParentLink'
+    );
+  }
+
+  const normalizedEmail = (parentEmail || '').trim().toLowerCase();
+  const linkEmail = (link.parentEmail || '').trim().toLowerCase();
+  const normalizedCode = (inviteCode || '').trim().toUpperCase();
+  const linkCode = (link.inviteCode || '').trim().toUpperCase();
+  const normalizedPhoneDigits = (parentPhone || '').replace(/\D/g, '');
+  const linkPhoneDigits = (link.guardianPhone || '').replace(/\D/g, '');
+
+  const emailMatches = Boolean(linkEmail && normalizedEmail && linkEmail === normalizedEmail);
+  const codeMatches = Boolean(linkCode && normalizedCode && linkCode === normalizedCode);
+  const phoneMatches = Boolean(
+    linkPhoneDigits.length >= 7 &&
+    normalizedPhoneDigits.length >= 7 &&
+    linkPhoneDigits === normalizedPhoneDigits
+  );
+
+  if (!emailMatches && !codeMatches && !phoneMatches) {
+    throw new FirestoreSyncError(
+      'Verification failed: Email, Invite Code, or Guardian Phone does not match the school record for this GR Number.',
+      'permission-denied',
+      'verifyParentLink'
+    );
+  }
+
+  // Mark link claimed cleanly (non-fatal if already marked or rules defer)
+  try {
+    const ref = doc(db, 'parentLinks', link.id);
+    await setDoc(
+      ref,
+      sanitizeFirestoreData({
+        claimedByUid: uid,
+        claimedAt: new Date().toISOString(),
+        status: 'linked',
+        updatedAt: serverTimestamp(),
+      }),
+      { merge: true }
+    );
+  } catch {
+    // Non-fatal claim marker update
+  }
+
+  return {
+    ...link,
+    claimedByUid: uid,
+    status: 'linked',
+  };
+}
+
+export async function fetchSingleStudentFromFirestore(
+  schoolId: string,
+  studentId: string
+): Promise<Student | null> {
+  if (!schoolId || !studentId) return null;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'students', studentId);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data() as Student;
+    return normalizeTimestamps({ ...data, id: data.id || snap.id });
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchSingleStudent', `schools/${schoolId}/students/${studentId}`);
+  }
+}
+
+export async function fetchChildFeePaymentsFromFirestore(
+  schoolId: string,
+  studentId: string
+): Promise<FeePayment[]> {
+  if (!schoolId || !studentId) return [];
+  try {
+    const q = query(
+      collection(db, 'schools', schoolId, 'feePayments'),
+      where('studentId', '==', studentId)
+    );
+    const snapshot = await getDocs(q);
+    const payments: FeePayment[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as FeePayment;
+        payments.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return payments;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchChildFeePayments', `schools/${schoolId}/feePayments`);
+  }
+}
+
+export async function fetchChildMarksFromFirestore(
+  schoolId: string,
+  studentId: string
+): Promise<StudentExamMarks[]> {
+  if (!schoolId || !studentId) return [];
+  try {
+    const q = query(
+      collection(db, 'schools', schoolId, 'marks'),
+      where('studentId', '==', studentId)
+    );
+    const snapshot = await getDocs(q);
+    const marks: StudentExamMarks[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as StudentExamMarks;
+        marks.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return marks;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchChildMarks', `schools/${schoolId}/marks`);
+  }
+}
+
+export async function fetchPublishedExamsFromFirestore(schoolId: string): Promise<Exam[]> {
+  if (!schoolId) return [];
+  try {
+    const q = query(
+      collection(db, 'schools', schoolId, 'exams'),
+      where('status', '==', 'published')
+    );
+    const snapshot = await getDocs(q);
+    const exams: Exam[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as Exam;
+        exams.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return exams;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchPublishedExams', `schools/${schoolId}/exams`);
   }
 }

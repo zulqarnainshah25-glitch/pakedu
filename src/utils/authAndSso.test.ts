@@ -1204,6 +1204,110 @@ function runAllUnitTests() {
     console.log('✅ PASS: Global Firestore Undefined-Field Sanitization & Write Coverage Tests');
   }
 
+  // 19. Phase C: Parent Portal Routing, Strict Read-Only RBAC & Child Isolation Tests
+  {
+    const parentSchool: any = {
+      id: 'sch_401020304',
+      name: 'Govt. Boys High School Latifabad',
+      semisCode: '401020304',
+      status: 'active',
+      primaryAdminEmail: 'parent@family.pk', // Even if email collides, role==='parent' must NEVER get admin powers
+    };
+
+    const linkedParentProfile: any = {
+      uid: 'uid_parent_1',
+      email: 'parent@family.pk',
+      fullName: 'Ghulam Mustafa',
+      role: 'parent',
+      status: 'active',
+      schoolId: 'sch_401020304',
+      schoolName: 'Govt. Boys High School Latifabad',
+      semisCode: '401020304',
+      childStudentId: 'stu_ali_101',
+      childGrNumber: 'GR-1001',
+      childName: 'Ali Raza',
+      parentLinkId: 'sch_401020304__GR-1001',
+      assignedClassIds: [],
+      isSuperAdmin: false,
+      isAdmissionIncharge: false,
+    };
+
+    assert.equal(
+      hasAdminCapabilities({ email: 'parent@family.pk', uid: 'uid_parent_1' }, linkedParentProfile, [parentSchool]),
+      false,
+      'Parent role must NEVER inherit Admin capabilities'
+    );
+
+    const linkedParentRoute = determineSmartRoute(
+      { email: 'parent@family.pk', uid: 'uid_parent_1' },
+      linkedParentProfile,
+      [parentSchool]
+    );
+    assert.equal(linkedParentRoute.role, 'parent');
+    assert.equal(linkedParentRoute.targetTool, 'sms-parent');
+    assert.equal(typeof linkedParentRoute.reason, 'string');
+
+    const unlinkedParentProfile: any = {
+      uid: 'uid_parent_2',
+      email: 'newparent@family.pk',
+      fullName: 'Abdul Karim',
+      role: 'parent',
+      status: 'pending',
+      assignedClassIds: [],
+      isSuperAdmin: false,
+      isAdmissionIncharge: false,
+    };
+    assert.equal(
+      hasAdminCapabilities({ email: 'newparent@family.pk', uid: 'uid_parent_2' }, unlinkedParentProfile, [parentSchool]),
+      false
+    );
+    const unlinkedParentRoute = determineSmartRoute(
+      { email: 'newparent@family.pk', uid: 'uid_parent_2' },
+      unlinkedParentProfile,
+      [parentSchool]
+    );
+    assert.equal(unlinkedParentRoute.role, 'parent');
+    assert.equal(unlinkedParentRoute.targetTool, 'sms-parent');
+
+    // Verify Firestore Rules enforce strict read-only child-scoped isolation
+    const rulesSrc = fs.readFileSync(path.resolve(process.cwd(), 'firestore.rules'), 'utf-8');
+    assert.equal(rulesSrc.includes("in ['teacher', 'admin', 'principal']"), true, 'isSchoolMember must exclude parent');
+    assert.equal(rulesSrc.includes('function isSchoolParent(schoolId)'), true);
+    assert.equal(rulesSrc.includes('function isVerifiedParentClaim(data)'), true);
+    assert.equal(rulesSrc.includes("match /parentLinks/{linkId}"), true);
+    assert.equal(rulesSrc.includes("studentId == userDoc().get('childStudentId', '')"), true, 'Parent student read must be scoped to childStudentId');
+    assert.equal(rulesSrc.includes("existing().get('studentId', '') == userDoc().get('childStudentId', '')"), true, 'Parent marks & fees must be scoped to childStudentId');
+    assert.equal(rulesSrc.includes("existing().get('status', '') == 'published'"), true, 'Parent exam reads must be restricted to published exams');
+
+    // Verify SmsContext uses strict child-scoped Firestore queries for parents
+    const smsContextSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+    assert.equal(smsContextSrc.includes('fetchSingleStudentFromFirestore'), true);
+    assert.equal(smsContextSrc.includes('fetchChildFeePaymentsFromFirestore'), true);
+    assert.equal(smsContextSrc.includes('fetchChildMarksFromFirestore'), true);
+    assert.equal(smsContextSrc.includes('fetchPublishedExamsFromFirestore'), true);
+    assert.equal(smsContextSrc.includes('generateParentInviteForStudent'), true);
+
+    // Verify Parent Portal UI across StudentDirectory, AuthModal, ParentDashboard, and App
+    const studentDirSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/StudentDirectory.tsx'), 'utf-8');
+    const authModalSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/components/AuthModal.tsx'), 'utf-8');
+    const parentDashSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/features/sms/components/ParentDashboard.tsx'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(process.cwd(), 'src/App.tsx'), 'utf-8');
+
+    assert.equal(studentDirSrc.includes('Parent Portal Access'), true);
+    assert.equal(studentDirSrc.includes('Generate Invite Code & Link'), true);
+    assert.equal(studentDirSrc.includes('parentEmail'), true);
+    assert.equal(authModalSrc.includes("accountIntent === 'parent'"), true);
+    assert.equal(authModalSrc.includes('verifyAndClaimParentLink'), true);
+    assert.equal(authModalSrc.includes('parent_invite'), true);
+    assert.equal(parentDashSrc.includes('calculateStudentFeeLedger'), true);
+    assert.equal(parentDashSrc.includes('triggerPrintDocument'), true);
+    assert.equal(parentDashSrc.includes('Parent Portal · Strict Read-Only'), true);
+    assert.equal(appSrc.includes('isParentUser'), true);
+    assert.equal(appSrc.includes("activeTool === 'sms-parent'"), true);
+
+    console.log('✅ PASS: Phase C Parent Portal Routing, Strict Read-Only RBAC & Isolation Tests');
+  }
+
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');
 }
 
