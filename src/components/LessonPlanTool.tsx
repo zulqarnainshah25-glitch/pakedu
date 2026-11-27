@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { db, OperationType, handleFirestoreError } from '../firebase';
 import { sanitizeFirestoreData } from '../utils/firestoreSanitizer';
+import { enqueueOfflineMutation } from '../services/offlineSyncService';
 import {
   SUBJECT_OPTIONS,
   LessonPlanContent,
@@ -547,36 +548,75 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
 
         // If user is signed in, automatically persist this Google Sheet entry to Firestore `syllabus_data`
         if (currentUser && currentUser.emailVerified) {
-          try {
-            const sanitized = sanitizeLessonPlanForFirestore(
-              {
-                board,
-                section: sheetMatch.section,
-                className: sheetMatch.className,
-                subject: sheetMatch.subject,
-                chapter: sheetMatch.chapter,
-                topic: sheetMatch.topic,
-                duration,
-                planType,
-              },
-              sheetMatch,
-              currentUser.uid
-            );
-            await setDoc(
-              doc(db, 'syllabus_data', docId),
-              sanitizeFirestoreData({
-                ...sanitized,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              })
-            );
-            await refreshFirestoreCount();
-            setDataSource('firestore');
+          const sanitized = sanitizeLessonPlanForFirestore(
+            {
+              board,
+              section: sheetMatch.section,
+              className: sheetMatch.className,
+              subject: sheetMatch.subject,
+              chapter: sheetMatch.chapter,
+              topic: sheetMatch.topic,
+              duration,
+              planType,
+            },
+            sheetMatch,
+            currentUser.uid
+          );
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            await enqueueOfflineMutation({
+              entityType: 'lessonPlan',
+              action: 'upsert',
+              operation: 'saveLessonPlan',
+              schoolId: 'global',
+              userId: currentUser.uid,
+              docPath,
+              recordId: docId,
+              recordLabel: `Lesson Plan · ${sheetMatch.subject} (${sheetMatch.topic})`,
+              payload: sanitized,
+            });
+            // Offline plan queued locally in IndexedDB sync queue
             setStatusBanner(
-              `Loaded from Database & synced to Firestore "syllabus_data" (${board} · ${sheetMatch.className} · ${sheetMatch.subject} · ${sheetMatch.topic}).`
+              `Saved locally offline (${board} · ${sheetMatch.className} · ${sheetMatch.topic}) — queued to sync when online.`
             );
-          } catch (writeErr) {
-            handleFirestoreError(writeErr, OperationType.CREATE, docPath);
+          } else {
+            try {
+              await setDoc(
+                doc(db, 'syllabus_data', docId),
+                sanitizeFirestoreData({
+                  ...sanitized,
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                })
+              );
+              await refreshFirestoreCount();
+              setDataSource('firestore');
+              setStatusBanner(
+                `Loaded from Database & synced to Firestore "syllabus_data" (${board} · ${sheetMatch.className} · ${sheetMatch.subject} · ${sheetMatch.topic}).`
+              );
+            } catch (writeErr) {
+              const code = (writeErr as any)?.code || '';
+              if (
+                (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+                code === 'unavailable'
+              ) {
+                await enqueueOfflineMutation({
+                  entityType: 'lessonPlan',
+                  action: 'upsert',
+                  operation: 'saveLessonPlan',
+                  schoolId: 'global',
+                  userId: currentUser.uid,
+                  docPath,
+                  recordId: docId,
+                  recordLabel: `Lesson Plan · ${sheetMatch.subject} (${sheetMatch.topic})`,
+                  payload: sanitized,
+                });
+                setStatusBanner(
+                  `Saved locally (${board} · ${sheetMatch.topic}) — queued to sync when online.`
+                );
+              } else {
+                handleFirestoreError(writeErr, OperationType.CREATE, docPath);
+              }
+            }
           }
         } else {
           setStatusBanner(
@@ -657,35 +697,74 @@ export const LessonPlanTool: React.FC<LessonPlanToolProps> = ({
       setHasGeneratedPlan(true);
 
         if (currentUser && currentUser.emailVerified) {
-          try {
-            const sanitized = sanitizeLessonPlanForFirestore(
-              {
-                board,
-                section,
-                className,
-                subject: cleanSubject,
-                chapter: cleanChapter,
-                topic: cleanTopic,
-                duration,
-                planType,
-              },
-              generatedPlan,
-              currentUser.uid
-            );
-            await setDoc(
-              doc(db, 'syllabus_data', docId),
-              sanitizeFirestoreData({
-                ...sanitized,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-              })
-            );
-            await refreshFirestoreCount();
+          const sanitized = sanitizeLessonPlanForFirestore(
+            {
+              board,
+              section,
+              className,
+              subject: cleanSubject,
+              chapter: cleanChapter,
+              topic: cleanTopic,
+              duration,
+              planType,
+            },
+            generatedPlan,
+            currentUser.uid
+          );
+          if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+            await enqueueOfflineMutation({
+              entityType: 'lessonPlan',
+              action: 'upsert',
+              operation: 'saveLessonPlan',
+              schoolId: 'global',
+              userId: currentUser.uid,
+              docPath,
+              recordId: docId,
+              recordLabel: `Lesson Plan · ${cleanSubject} (${cleanTopic})`,
+              payload: sanitized,
+            });
+            // Offline plan queued locally in IndexedDB sync queue
             setStatusBanner(
-              `Generated via AI calibrated for ${board} — ${className} (${section}) difficulty and saved to Firestore "syllabus_data".`
+              `Offline mode: Saved lesson plan locally (${board} · ${cleanTopic}) and queued to sync when online.`
             );
-          } catch (writeErr) {
-            handleFirestoreError(writeErr, OperationType.CREATE, docPath);
+          } else {
+            try {
+              await setDoc(
+                doc(db, 'syllabus_data', docId),
+                sanitizeFirestoreData({
+                  ...sanitized,
+                  createdAt: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                })
+              );
+              await refreshFirestoreCount();
+              setStatusBanner(
+                `Generated via AI calibrated for ${board} — ${className} (${section}) difficulty and saved to Firestore "syllabus_data".`
+              );
+            } catch (writeErr) {
+              const code = (writeErr as any)?.code || '';
+              if (
+                (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+                code === 'unavailable'
+              ) {
+                await enqueueOfflineMutation({
+                  entityType: 'lessonPlan',
+                  action: 'upsert',
+                  operation: 'saveLessonPlan',
+                  schoolId: 'global',
+                  userId: currentUser.uid,
+                  docPath,
+                  recordId: docId,
+                  recordLabel: `Lesson Plan · ${cleanSubject} (${cleanTopic})`,
+                  payload: sanitized,
+                });
+                setStatusBanner(
+                  `Saved lesson plan locally (${board} · ${cleanTopic}) — queued to sync when online.`
+                );
+              } else {
+                handleFirestoreError(writeErr, OperationType.CREATE, docPath);
+              }
+            }
           }
         } else {
           setStatusBanner(

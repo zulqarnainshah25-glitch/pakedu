@@ -347,7 +347,7 @@ export const StudentDashboard: React.FC<StudentDashboardProps> = () => {
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 text-xs space-y-1 min-w-[240px]">
+            <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 text-xs space-y-1 w-full md:w-auto md:min-w-[240px]">
               <div className="flex items-center gap-1.5 text-[#FED7AA] font-bold text-[11px] uppercase">
                 <Building className="w-3.5 h-3.5" />
                 <span>{activeSchool.name}</span>

@@ -24,8 +24,10 @@ import {
   KeyRound,
   Copy,
   Check,
+  Banknote,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
+import { SmsLessonPlansSection } from './SmsLessonPlansSection';
 
 interface SmsDashboardProps {
   onNavigateToClasses: () => void;
@@ -37,6 +39,9 @@ interface SmsDashboardProps {
   onNavigateToTimetable?: () => void;
   onNavigateToHomework?: () => void;
   onNavigateToCertificates?: () => void;
+  onNavigateToPayroll?: () => void;
+  requestedTab?: 'overview' | 'notifications';
+  onTabChange?: (tab: 'overview' | 'notifications') => void;
 }
 
 export const SmsDashboard: React.FC<SmsDashboardProps> = ({
@@ -49,6 +54,9 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
   onNavigateToTimetable,
   onNavigateToHomework,
   onNavigateToCertificates,
+  onNavigateToPayroll,
+  requestedTab,
+  onTabChange,
 }) => {
   const {
     userRole,
@@ -73,9 +81,25 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
     studentPortalLinks,
     generateStudentInviteForStudent,
     generateMissingStudentInvites,
+    canAccessSalaryPayroll,
+    canViewOwnPayslips,
+    ownTeacherPayslips,
   } = useSms();
 
-  const [dashboardTab, setDashboardTab] = React.useState<'overview' | 'notifications'>('overview');
+  const [dashboardTab, setDashboardTab] = React.useState<'overview' | 'notifications'>(
+    requestedTab || 'overview'
+  );
+
+  React.useEffect(() => {
+    if (requestedTab && requestedTab !== dashboardTab) {
+      setDashboardTab(requestedTab);
+    }
+  }, [requestedTab]);
+
+  const selectDashboardTab = (tab: 'overview' | 'notifications') => {
+    setDashboardTab(tab);
+    onTabChange?.(tab);
+  };
   const [copiedStudentCodeId, setCopiedStudentCodeId] = React.useState<string | null>(null);
   const [isBulkGeneratingInvites, setIsBulkGeneratingInvites] = React.useState(false);
   const [inviteActionFeedback, setInviteActionFeedback] = React.useState<string | null>(null);
@@ -201,7 +225,7 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
                 )}
                 <button
                   type="button"
-                  onClick={() => setDashboardTab('notifications')}
+                  onClick={() => selectDashboardTab('notifications')}
                   className="min-h-[40px] px-3 py-1.5 rounded-xl bg-[#2C1215]/10 hover:bg-[#58181D]/20 text-xs font-semibold cursor-pointer whitespace-nowrap"
                 >
                   All Notices ({schoolNotices.length})
@@ -213,11 +237,11 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
       )}
 
       {/* Dashboard Tab Bar: Overview vs Notifications */}
-      <div className="flex items-center gap-2 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-2">
+      <div className="flex items-center gap-2 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-2 overflow-x-auto no-scrollbar">
         <button
           type="button"
-          onClick={() => setDashboardTab('overview')}
-          className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+          onClick={() => selectDashboardTab('overview')}
+          className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
             dashboardTab === 'overview'
               ? 'bg-[#7F1D1D] text-white shadow-xs'
               : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
@@ -229,8 +253,8 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
 
         <button
           type="button"
-          onClick={() => setDashboardTab('notifications')}
-          className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+          onClick={() => selectDashboardTab('notifications')}
+          className={`min-h-[42px] px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer shrink-0 ${
             dashboardTab === 'notifications'
               ? 'bg-[#7F1D1D] text-white shadow-xs'
               : 'text-[#57534E] dark:text-[#D6CCC2] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014]'
@@ -1141,8 +1165,71 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
               </button>
             </div>
           )}
+
+          {/* Module 8: Salary & Payroll (School Admin & Super Admin Only) */}
+          {canAccessSalaryPayroll && onNavigateToPayroll && (
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] border border-[#FECACA] dark:border-[#7F1D1D]/60">
+                    Admin · Payroll
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                  Salary &amp; Payroll
+                </h3>
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                  Staff pay structures, monthly payroll generation, printable PDF payslips &amp; payment history.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToPayroll}
+                className="mt-4 inline-flex items-center justify-between w-full min-h-[40px] px-3.5 py-2 bg-[#FEF2F2] dark:bg-[#3F1014]/60 hover:bg-[#FEE2E2] dark:hover:bg-[#58181D]/60 text-[#7F1D1D] dark:text-[#FCA5A5] text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>Open Salary &amp; Payroll</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Teacher Quick Access Card: Own Finalized Payslips (If Enabled by Admin) */}
+          {!isAdmin && canViewOwnPayslips && onNavigateToProfile && (
+            <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Banknote className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    {ownTeacherPayslips.length} Payslip{ownTeacherPayslips.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                  My Salary Payslips
+                </h3>
+                <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                  View and download PDF copies of your own finalized monthly salary slips.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onNavigateToProfile}
+                className="mt-4 inline-flex items-center justify-between w-full min-h-[40px] px-3.5 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-xs font-semibold rounded-xl transition cursor-pointer"
+              >
+                <span>View My Payslips</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Integrated AI Lesson Planner ("My Lesson Plans" for Teachers & Syllabus Review for Admins) */}
+      <SmsLessonPlansSection isAdmin={isAdmin} />
         </>
       )}
         </>

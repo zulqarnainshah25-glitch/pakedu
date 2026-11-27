@@ -38,6 +38,12 @@ import {
   FileBadge2,
   TrendingUp,
   Megaphone,
+  WifiOff,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle2,
+  Cloud,
+  Banknote,
 } from 'lucide-react';
 import { auth } from './firebase';
 import { LessonPlanTool } from './components/LessonPlanTool';
@@ -77,6 +83,7 @@ import { StudentDashboard } from './features/sms/components/StudentDashboard';
 import { TimetableManager } from './features/sms/components/TimetableManager';
 import { HomeworkManager } from './features/sms/components/HomeworkManager';
 import { CertificatesManager } from './features/sms/components/CertificatesManager';
+import { SalaryPayroll } from './features/sms/components/SalaryPayroll';
 
 export type ActiveToolId =
   | 'dashboard'
@@ -92,6 +99,7 @@ export type ActiveToolId =
   | 'sms-timetable'
   | 'sms-homework'
   | 'sms-certificates'
+  | 'sms-payroll'
   | 'sms-parent'
   | 'sms-student-portal'
   | 'super-admin'
@@ -216,6 +224,14 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
     iconBg: 'bg-amber-50 dark:bg-amber-950/60',
     iconColor: 'text-amber-600 dark:text-amber-400',
   },
+  'sms-payroll': {
+    title: 'Salary & Payroll Management',
+    subtitle: 'Staff salary structures, monthly payroll calculation, printable PDF payslips & salary history',
+    badge: 'Payroll · Finance',
+    icon: <Banknote className="w-5 h-5" />,
+    iconBg: 'bg-[#FEF2F2] dark:bg-[#3F1014]/60',
+    iconColor: 'text-[#7F1D1D] dark:text-[#FCA5A5]',
+  },
   'sms-parent': {
     title: 'Parent Portal & Child Progress',
     subtitle: 'Read-only student attendance, fee ledger, and published A4 exam report cards',
@@ -304,7 +320,20 @@ function AppContent() {
     isSuperAdmin,
     isImpersonating,
     exitImpersonation,
+    resetSmsSessionState,
     canCollectFee,
+    canAccessSalaryPayroll,
+    isOnline,
+    pendingSyncCount,
+    conflictItems,
+    isSyncing,
+    lastSyncSummary,
+    setIsSyncCenterOpen,
+    syncNow,
+    clearLastSyncSummary,
+    globalNotices,
+    unreadNoticesCount,
+    markNoticeAsRead,
   } = useSms();
   const {
     currentUser,
@@ -316,6 +345,20 @@ function AppContent() {
 
   const [activeTool, setActiveTool] = useState<ActiveToolId>('dashboard');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [smsDashboardTab, setSmsDashboardTab] = useState<'overview' | 'notifications'>('overview');
+  const [noticesModalOpen, setNoticesModalOpen] = useState(false);
+
+  // Prevent background page scroll when mobile drawer is open on Android / mobile viewports
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (mobileMenuOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [mobileMenuOpen]);
   const [pendingSmsRedirect, setPendingSmsRedirect] = useState(false);
   const [demoSession, setDemoSession] = useState<DemoUserSession | null>(() => {
     // Demo session is strictly disabled in production builds (gated behind DEV)
@@ -359,8 +402,11 @@ function AppContent() {
 
   const isSuperAdminSession =
     !demoMode &&
-    (isSuperAdmin ||
-      userRole === 'super-admin' ||
+    Boolean(currentUser) &&
+    Boolean(currentUserProfile) &&
+    currentUserProfile!.uid === currentUser!.uid &&
+    (Boolean(currentUserProfile?.isSuperAdmin) ||
+      currentUserProfile?.role === 'super-admin' ||
       currentUser?.email?.toLowerCase() === 'owner@pakedu.com');
 
   const isSuperAdminActive =
@@ -420,19 +466,43 @@ function AppContent() {
     }
   }, [isStudentUser, activeTool]);
 
-  // Strict Super Admin RBAC isolation: platform oversight ONLY, or 'sms-dashboard' during read-only view
+  // Strict Super Admin RBAC isolation: platform oversight & Salary/Payroll ONLY, or 'sms-dashboard' during read-only view;
+  // conversely, NEVER allow non-super-admin users to stay on 'super-admin', and restrict 'sms-payroll' to School Admin / Super Admin.
   useEffect(() => {
-    if (!isSuperAdminActive) return;
+    if (!isSuperAdminActive) {
+      if (activeTool === 'super-admin') {
+        setActiveTool(
+          isParentUser
+            ? 'sms-parent'
+            : isStudentUser
+            ? 'sms-student-portal'
+            : isAffiliatedUser
+            ? 'sms-dashboard'
+            : 'dashboard'
+        );
+      } else if (activeTool === 'sms-payroll' && !canAccessSalaryPayroll) {
+        setActiveTool(
+          isParentUser
+            ? 'sms-parent'
+            : isStudentUser
+            ? 'sms-student-portal'
+            : isAffiliatedUser
+            ? 'sms-dashboard'
+            : 'dashboard'
+        );
+      }
+      return;
+    }
     if (isImpersonating) {
       if (activeTool !== 'sms-dashboard') {
         setActiveTool('sms-dashboard');
       }
       return;
     }
-    if (activeTool !== 'super-admin') {
+    if (activeTool !== 'super-admin' && activeTool !== 'sms-payroll') {
       setActiveTool('super-admin');
     }
-  }, [isSuperAdminActive, isImpersonating, activeTool]);
+  }, [isSuperAdminActive, isImpersonating, activeTool, isParentUser, isStudentUser, isAffiliatedUser, canAccessSalaryPayroll]);
 
   // When an affiliated staff user enters the portal, ensure they land on the focused SMS dashboard unless they toggle public tools
   useEffect(() => {
@@ -440,8 +510,7 @@ function AppContent() {
       isAffiliatedUser &&
       !showPublicTools &&
       !activeTool.startsWith('sms-') &&
-      !isImpersonating &&
-      activeTool !== 'super-admin'
+      !isImpersonating
     ) {
       setActiveTool('sms-dashboard');
     }
@@ -467,11 +536,30 @@ function AppContent() {
   }, []);
 
   const performUnifiedLogout = useCallback(async (customNotice?: string) => {
+    hasInitialRoutedRef.current = null;
     setDemoSession(null);
+    setDemoMode(false);
+    setActiveTool('dashboard');
+    setSuperAdminTab('analytics');
+    setShowPublicTools(false);
+    setPendingSmsRedirect(false);
+    setSmsFilterClassId(undefined);
+    setSmsAttendanceClassId(undefined);
+    setMobileMenuOpen(false);
+    setUserRole('teacher');
+    exitImpersonation();
+    resetSmsSessionState();
     try {
       localStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
+      localStorage.removeItem('sms_current_user_profile');
+      localStorage.removeItem('sms_user_role');
+      localStorage.removeItem('demo_user_session');
       sessionStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
       sessionStorage.removeItem('pakedu_active_tool');
+      sessionStorage.removeItem('pakedu_signup_sms_role');
+      if (typeof window !== 'undefined' && (window.location.pathname !== '/' || window.location.search)) {
+        window.history.replaceState({}, document.title, '/');
+      }
     } catch {
       // Ignore storage errors
     }
@@ -485,7 +573,7 @@ function AppContent() {
       customNotice ||
         'Aap successfully Logout ho chuke hain. Portal kholne ke liye dobara Sign In karein.'
     );
-  }, [signOutUser]);
+  }, [signOutUser, setDemoMode, setUserRole, exitImpersonation, resetSmsSessionState]);
 
   // Listen to SSO query parameters (logout trigger only; unverified ?sso_email is disabled)
   useEffect(() => {
@@ -501,76 +589,72 @@ function AppContent() {
     }
   }, [performUnifiedLogout]);
 
-  // Automatic Smart Login Routing System & Session Persistence
+  // Automatic Smart Login Routing System & Role Transition Reset
   const hasInitialRoutedRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!authLoading && currentUser && smartRoute) {
+    if (!authLoading && currentUser && currentUserProfile && currentUserProfile.uid === currentUser.uid && smartRoute) {
       setLogoutNotice(null);
 
-      // Super Admin Impersonation: do not override active tool
-      if (isImpersonating) {
+      const resolvedSuperAdmin =
+        smartRoute.targetTool === 'super-admin' ||
+        smartRoute.role === 'super-admin' ||
+        Boolean(currentUserProfile.isSuperAdmin) ||
+        currentUserProfile.role === 'super-admin' ||
+        Boolean(currentUser.email && currentUser.email.toLowerCase() === 'owner@pakedu.com');
+
+      // Super Admin Impersonation: only preserve while an actual Super Admin is impersonating
+      if (isImpersonating && resolvedSuperAdmin) {
         return;
       }
 
+      // Force-exit stale impersonation if a non-super-admin account logged in
+      if (isImpersonating && !resolvedSuperAdmin) {
+        exitImpersonation();
+      }
+
       // Check if routing for this user + role/status state has already occurred
-      const routeSignature = `${currentUser.uid}:${currentUserProfile?.role || ''}:${currentUserProfile?.status || ''}:${smartRoute.targetTool}`;
+      const routeSignature = `${currentUser.uid}:${currentUserProfile.role || ''}:${currentUserProfile.status || ''}:${smartRoute.targetTool}`;
       if (hasInitialRoutedRef.current === routeSignature) {
         return;
       }
       hasInitialRoutedRef.current = routeSignature;
+      setShowPublicTools(false);
+      setSuperAdminTab('analytics');
 
-      // Condition A: Super Admin
-      if (
-        smartRoute.targetTool === 'super-admin' ||
-        isSuperAdmin ||
-        (currentUser.email && currentUser.email.toLowerCase() === 'owner@pakedu.com')
-      ) {
+      // Clear previous role's cached active tool on fresh user/role authentication
+      try {
+        sessionStorage.removeItem('pakedu_active_tool');
+      } catch {}
+
+      // Condition A: Super Admin (verified from current auth/profile only)
+      if (resolvedSuperAdmin) {
         setUserRole('super-admin');
         setActiveTool('super-admin');
         return;
       }
 
-      // Condition B: Pending Approval (Force to onboarding "Application Under Review")
+      // Condition B: Pending Approval / Unaffiliated (Force to onboarding "Application Under Review")
       if (smartRoute.targetTool === 'sms-onboarding') {
         setUserRole(smartRoute.role);
         setActiveTool('sms-onboarding');
         return;
       }
 
-      // Condition C: Verified School Admin
+      // Condition C: Verified School Admin -> Force-reset to default landing view (SMS Command Center)
       if (smartRoute.role === 'admin' || isAdminUser) {
         setUserRole('admin');
-        const savedSessionTool = typeof window !== 'undefined' ? sessionStorage.getItem('pakedu_active_tool') : null;
-        if (savedSessionTool && savedSessionTool.startsWith('sms-')) {
-          setActiveTool(savedSessionTool as ActiveToolId);
-        } else {
-          setActiveTool('sms-dashboard');
-        }
+        setActiveTool('sms-dashboard');
         return;
       }
 
-      // Restore session if teacher was already on an authorized SMS sub-tool
-      const savedSessionTool = typeof window !== 'undefined' ? sessionStorage.getItem('pakedu_active_tool') : null;
-      if (savedSessionTool) {
-        if (smartRoute.role === 'teacher' && savedSessionTool.startsWith('sms-') && savedSessionTool !== 'sms-staff' && savedSessionTool !== 'sms-fees') {
-          setUserRole('teacher');
-          setActiveTool(savedSessionTool as ActiveToolId);
-          return;
-        }
-        if (smartRoute.targetTool === 'dashboard' && !savedSessionTool.startsWith('sms-')) {
-          setActiveTool(savedSessionTool as ActiveToolId);
-          return;
-        }
-      }
-
-      // Condition D or E: Route directly to smartRoute.targetTool
+      // Condition D: Verified Teacher / Parent / Student / General User -> Force-reset to role default view
       setUserRole(smartRoute.role);
       setActiveTool(smartRoute.targetTool);
     } else if (!currentUser) {
       hasInitialRoutedRef.current = null;
     }
-  }, [authLoading, currentUser, smartRoute, isImpersonating, isSuperAdmin, isAdminUser, setUserRole]);
+  }, [authLoading, currentUser, currentUserProfile, smartRoute, isImpersonating, isAdminUser, setUserRole, exitImpersonation]);
 
   const handleDemoSessionSuccess = (session: DemoUserSession) => {
     // Demo sessions are strictly restricted to local development environments
@@ -670,7 +754,7 @@ function AppContent() {
       return;
     }
 
-    // Strict Super Admin RBAC Isolation: block all tenant Student/Class/Attendance/Fee/Exam/Staff modules
+    // Strict Super Admin RBAC Isolation: block all tenant Student/Class/Attendance/Fee/Exam/Staff modules (allow Platform Console + Salary & Payroll)
     if (isSuperAdminActive) {
       if (isImpersonating) {
         if (tool === 'super-admin') {
@@ -679,9 +763,18 @@ function AppContent() {
         } else {
           setActiveTool('sms-dashboard');
         }
+      } else if (tool === 'sms-payroll') {
+        setActiveTool('sms-payroll');
       } else {
         setActiveTool('super-admin');
       }
+      setMobileMenuOpen(false);
+      return;
+    }
+
+    // Strict Salary & Payroll RBAC guard: only School Admin or Super Admin
+    if (tool === 'sms-payroll' && !canAccessSalaryPayroll) {
+      setActiveTool(isAffiliatedUser ? 'sms-dashboard' : 'sms-onboarding');
       setMobileMenuOpen(false);
       return;
     }
@@ -812,10 +905,24 @@ function AppContent() {
     ? `${demoSession.displayName}`
     : 'Authenticated Educator';
 
-  const currentToolMeta = TOOL_METADATA[activeTool];
+  const guardedTool: ActiveToolId =
+    (activeTool === 'super-admin' && !isSuperAdminActive) ||
+    (activeTool === 'sms-payroll' && !canAccessSalaryPayroll)
+      ? isParentUser
+        ? 'sms-parent'
+        : isStudentUser
+        ? 'sms-student-portal'
+        : isAffiliatedUser
+        ? 'sms-dashboard'
+        : 'dashboard'
+      : activeTool;
+
+  const currentToolMeta = TOOL_METADATA[guardedTool];
+  const shellIdentityKey = `${currentUser?.uid || demoSession?.uid || 'anon'}-${currentUserProfile?.role || userRole}`;
 
   return (
     <div
+      key={shellIdentityKey}
       className={`min-h-screen flex flex-col lg:flex-row transition-colors w-full max-w-full overflow-x-hidden ${
         darkMode ? 'bg-[#160D0E] text-[#FAF8F5]' : 'bg-[#FAF8F5] text-[#1C1917]'
       }`}
@@ -834,7 +941,7 @@ function AppContent() {
 
       {/* Floating Exit Button when in A4 Print Preview Mode */}
       {isPrintPreview && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 bg-[#2C1215] text-white px-4 py-2.5 rounded-xl shadow-lg border border-[rgba(255,253,249,0.14)]">
+        <div className="fixed bottom-20 lg:bottom-5 right-3 sm:right-5 z-50 flex items-center gap-2 bg-[#2C1215] text-white px-4 py-2.5 rounded-xl shadow-lg border border-[rgba(255,253,249,0.14)]">
           <span className="text-xs font-medium">A4 Print Mode Active</span>
           <button
             type="button"
@@ -857,13 +964,13 @@ function AppContent() {
       {/* DESKTOP & MOBILE SIDEBAR NAVIGATION (Deep Espresso-Burgundy)        */}
       {/* =================================================================== */}
       <aside
-        className={`app-sidebar no-print fixed inset-y-0 left-0 z-40 w-72 bg-[#2C1215] border-r border-[rgba(255,253,249,0.10)] text-[#FAF8F5] flex flex-col justify-between transition-transform duration-200 ease-out lg:static lg:translate-x-0 shrink-0 shadow-xl ${
+        className={`app-sidebar no-print fixed inset-y-0 left-0 z-50 w-[272px] lg:w-72 h-[100dvh] max-h-[100dvh] overflow-y-auto overscroll-contain bg-[#2C1215] border-r border-[rgba(255,253,249,0.10)] text-[#FAF8F5] flex flex-col justify-between transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:z-30 lg:translate-x-0 shrink-0 shadow-xl ${
           mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div>
+        <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
           {/* Sidebar Brand Header */}
-          <div className="px-5 py-5 border-b border-[rgba(255,253,249,0.10)] flex items-center justify-between">
+          <div className="px-3 py-4 border-b border-[rgba(255,253,249,0.10)] flex items-center justify-between gap-2">
             <div
               onClick={() =>
                 selectTool(
@@ -880,29 +987,27 @@ function AppContent() {
                     : 'dashboard'
                 )
               }
-              className="flex items-center gap-3 cursor-pointer group"
+              className="flex items-center gap-2.5 flex-1 min-w-0 pr-2 cursor-pointer group"
             >
               <div className="w-10 h-10 rounded-xl bg-[#C2410C] text-[#FFFDF9] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
                 <GraduationCap className="w-5 h-5 text-[#FFFDF9]" />
               </div>
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-lg font-bold tracking-tight text-[#FAF8F5] leading-none">
-                    PakEdu
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded bg-[#C2410C]/25 text-[#FED7AA] border border-[#C2410C]/40">
-                    ENTERPRISE
-                  </span>
-                </div>
-                <span className="text-[11px] text-[#D6CCC2] block mt-1">
+              <div className="min-w-0 flex-1">
+                <span className="text-lg font-bold tracking-tight text-[#FAF8F5] leading-none block truncate">
+                  PakEdu
+                </span>
+                <span className="text-[11px] text-[#D6CCC2] block mt-1 truncate">
                   Sindh SELD Portal
                 </span>
               </div>
+              <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#C2410C]/25 text-[#FED7AA] border border-[#C2410C]/40">
+                ENTERPRISE
+              </span>
             </div>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="lg:hidden p-1.5 text-[#D6CCC2] hover:text-[#FAF8F5] rounded-lg cursor-pointer"
+              className="lg:hidden shrink-0 p-1.5 text-[#D6CCC2] hover:text-[#FAF8F5] rounded-lg cursor-pointer"
               aria-label="Close sidebar"
             >
               <X className="w-5 h-5" />
@@ -910,24 +1015,26 @@ function AppContent() {
           </div>
 
           {/* Tool Navigation Links */}
-          <div className="p-3.5 space-y-1">
+          <div className="px-3 py-3 space-y-1 overflow-x-hidden">
             {/* Dashboard / Home Link - HIDDEN for Affiliated Staff Users, Parents, Students & Super Admin */}
             {!isParentUser && !isStudentUser && !isSuperAdminActive && (!isAffiliatedUser || showPublicTools) && (
               <button
                 type="button"
                 onClick={() => selectTool('dashboard')}
-                className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                   activeTool === 'dashboard'
-                    ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                    : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                    ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                    : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                 }`}
               >
-                <Home className={`w-4 h-4 shrink-0 ${activeTool === 'dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                <div className="truncate">
-                  <span className="block truncate">Platform Overview</span>
-                  <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                    ERP Suite Dashboard
-                  </span>
+                <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                  <Home className={`w-4 h-4 shrink-0 ${activeTool === 'dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                  <div className="min-w-0 flex-1">
+                    <span className="block truncate">Platform Overview</span>
+                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                      ERP Suite Dashboard
+                    </span>
+                  </div>
                 </div>
               </button>
             )}
@@ -935,27 +1042,29 @@ function AppContent() {
             {/* Strict Read-Only Parent Portal Section */}
             {isParentUser && (
               <>
-                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between">
-                  <span>Parent Portal</span>
-                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <div className="pt-2 pb-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between gap-2">
+                  <span className="truncate flex-1 min-w-0 pr-2">Parent Portal</span>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                     Read-Only
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => selectTool('sms-parent')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-parent'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <Users className="w-4 h-4 shrink-0 text-[#FED7AA]" />
-                  <div className="truncate flex-1">
-                    <span className="block truncate">Child Progress Portal</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      Attendance, Fees &amp; Results
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Users className="w-4 h-4 shrink-0 text-[#FED7AA]" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">Child Progress Portal</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        Attendance, Fees &amp; Results
+                      </span>
+                    </div>
                   </div>
                 </button>
               </>
@@ -964,27 +1073,29 @@ function AppContent() {
             {/* Strict Read-Only Student Portal Section */}
             {isStudentUser && (
               <>
-                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between">
-                  <span>Student Portal</span>
-                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <div className="pt-2 pb-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between gap-2">
+                  <span className="truncate flex-1 min-w-0 pr-2">Student Portal</span>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                     Read-Only
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => selectTool('sms-student-portal')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-student-portal'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <GraduationCap className="w-4 h-4 shrink-0 text-[#FED7AA]" />
-                  <div className="truncate flex-1">
-                    <span className="block truncate">My Student Portal</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      Attendance, Homework &amp; Results
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <GraduationCap className="w-4 h-4 shrink-0 text-[#FED7AA]" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">My Student Portal</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        Attendance, Homework &amp; Results
+                      </span>
+                    </div>
                   </div>
                 </button>
               </>
@@ -992,21 +1103,21 @@ function AppContent() {
 
             {/* Affiliated School Context Card (Shown for Verified School Users; excluded for Super Admin) */}
             {isAffiliatedUser && !isSuperAdminActive && (
-              <div className="mb-2 p-3 rounded-xl bg-[#3F1014]/90 border border-[#7F1D1D]/30 text-xs">
-                <div className="flex items-center justify-between text-[10px] text-[#FED7AA] font-bold uppercase tracking-wider mb-1.5">
-                  <span className="flex items-center gap-1.5">
+              <div className="mb-2 p-3 rounded-xl bg-[#3F1014]/90 border border-[#7F1D1D]/30 text-xs overflow-hidden">
+                <div className="flex items-center justify-between gap-2 text-[10px] text-[#FED7AA] font-bold uppercase tracking-wider mb-1.5">
+                  <span className="flex items-center gap-1.5 flex-1 min-w-0 pr-2 truncate">
                     <Building className="w-3.5 h-3.5 text-[#FED7AA] shrink-0" />
-                    School Workspace
+                    <span className="truncate">School Workspace</span>
                   </span>
-                  <span className="px-1.5 py-0.5 rounded bg-[#7F1D1D]/20 text-[#FED7AA] font-mono text-[9px] font-bold border border-[#7F1D1D]/30">
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider font-mono bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
                     {activeSchool?.semisCode || 'SEMIS'}
                   </span>
                 </div>
                 <div className="font-semibold text-white truncate text-xs" title={activeSchool?.name || currentUserProfile?.schoolName}>
                   {activeSchool?.name || currentUserProfile?.schoolName || 'Govt. High School'}
                 </div>
-                <div className="mt-2 pt-2 border-t border-[rgba(255,253,249,0.10)] flex items-center justify-between text-[11px]">
-                  <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                <div className="mt-2 pt-2 border-t border-[rgba(255,253,249,0.10)] flex items-center justify-between gap-2 text-[11px]">
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase ${
                     userRole === 'admin'
                       ? 'bg-[#7F1D1D]/20 text-[#FED7AA]'
                       : 'bg-emerald-500/20 text-emerald-300'
@@ -1016,7 +1127,7 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => selectTool('sms-onboarding')}
-                    className="text-[#FED7AA] hover:text-[#FAF8F5] font-semibold hover:underline cursor-pointer"
+                    className="shrink-0 ml-auto text-[#FED7AA] hover:text-[#FAF8F5] font-semibold hover:underline cursor-pointer"
                   >
                     Switch School
                   </button>
@@ -1027,9 +1138,9 @@ function AppContent() {
             {/* Strict Super Admin Sidebar: ONLY Platform Overview, Super Admin Fleet, and Notice Board (or Read-Only School View) */}
             {isSuperAdminActive && !isImpersonating && (
               <>
-                <div className="pt-1 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between">
-                  <span>Platform Governance</span>
-                  <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                <div className="pt-1 pb-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between gap-2">
+                  <span className="truncate flex-1 min-w-0 pr-2">Platform Governance</span>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">
                     Super Admin
                   </span>
                 </div>
@@ -1040,18 +1151,20 @@ function AppContent() {
                     setSuperAdminTab('analytics');
                     selectTool('super-admin');
                   }}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'super-admin' && superAdminTab === 'analytics'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3'
                   }`}
                 >
-                  <TrendingUp className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'analytics' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
-                  <div className="truncate flex-1">
-                    <span className="block truncate font-semibold">Platform Overview</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]">
-                      Analytics &amp; System KPIs
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <TrendingUp className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'analytics' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">Platform Overview</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]">
+                        Analytics &amp; System KPIs
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1061,24 +1174,24 @@ function AppContent() {
                     setSuperAdminTab('directory');
                     selectTool('super-admin');
                   }}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
-                      ? 'bg-[#7F1D1D] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-rose-200/80 hover:text-white hover:bg-rose-950/40 pl-3.5'
+                      ? 'bg-[#7F1D1D] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-rose-200/80 hover:text-white hover:bg-rose-950/40 pl-3'
                   }`}
                 >
-                  <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests') ? 'text-rose-400' : 'text-rose-400/80'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests') ? 'text-rose-400' : 'text-rose-400/80'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate font-bold text-rose-200">Super Admin Fleet</span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0">
-                        Root
+                      <span className="text-[11px] block truncate text-[#D6CCC2]">
+                        Schools Directory &amp; Approvals
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]">
-                      Schools Directory &amp; Approvals
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    Root
+                  </span>
                 </button>
 
                 <button
@@ -1087,41 +1200,68 @@ function AppContent() {
                     setSuperAdminTab('notices');
                     selectTool('super-admin');
                   }}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'super-admin' && superAdminTab === 'notices'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3'
                   }`}
                 >
-                  <Megaphone className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'notices' ? 'text-amber-400' : 'text-[#D6CCC2]'}`} />
-                  <div className="truncate flex-1">
-                    <span className="block truncate font-semibold">Notice Board</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]">
-                      Global Announcements
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Megaphone className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'notices' ? 'text-amber-400' : 'text-[#D6CCC2]'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">Notice Board</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]">
+                        Global Announcements
+                      </span>
+                    </div>
                   </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => selectTool('sms-payroll')}
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    activeTool === 'sms-payroll'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Banknote className={`w-4 h-4 shrink-0 ${activeTool === 'sms-payroll' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate font-semibold">Salary &amp; Payroll</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]">
+                        Structures, Payslips &amp; History
+                      </span>
+                    </div>
+                  </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
+                    Payroll
+                  </span>
                 </button>
               </>
             )}
 
             {isSuperAdminActive && isImpersonating && (
               <>
-                <div className="mb-2 p-3 rounded-xl bg-amber-950/60 border border-amber-500/40 text-xs">
+                <div className="mb-2 p-3 rounded-xl bg-amber-950/60 border border-amber-500/40 text-xs overflow-hidden">
                   <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider mb-1">
                     Read-Only School View
                   </div>
                   <div className="font-semibold text-white truncate">{activeSchool?.name}</div>
-                  <div className="text-[11px] text-amber-200/80 mt-0.5">SEMIS {activeSchool?.semisCode}</div>
+                  <div className="text-[11px] text-amber-200/80 mt-0.5 truncate">SEMIS {activeSchool?.semisCode}</div>
                 </div>
                 <button
                   type="button"
                   onClick={() => selectTool('sms-dashboard')}
-                  className="w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3 cursor-pointer"
+                  className="w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5 cursor-pointer"
                 >
-                  <Eye className="w-4 h-4 shrink-0 text-amber-400" />
-                  <div className="truncate">
-                    <span className="block truncate">School Admin View</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]">Strict Read-Only Oversight</span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Eye className="w-4 h-4 shrink-0 text-amber-400" />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">School Admin View</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]">Strict Read-Only Oversight</span>
+                    </div>
                   </div>
                 </button>
                 <button
@@ -1131,10 +1271,12 @@ function AppContent() {
                     setSuperAdminTab('directory');
                     setActiveTool('super-admin');
                   }}
-                  className="w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm text-rose-300 hover:text-white hover:bg-rose-950/40 pl-3.5 transition cursor-pointer"
+                  className="w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm text-rose-300 hover:text-white hover:bg-rose-950/40 pl-3 transition cursor-pointer"
                 >
-                  <ArrowRight className="w-4 h-4 shrink-0 rotate-180" />
-                  <span className="truncate font-semibold">Exit Read-Only View</span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <ArrowRight className="w-4 h-4 shrink-0 rotate-180" />
+                    <span className="truncate font-semibold">Exit Read-Only View</span>
+                  </div>
                 </button>
               </>
             )}
@@ -1145,10 +1287,10 @@ function AppContent() {
             {/* ======================================================= */}
             {(isAffiliatedUser || (demoMode && userRole !== 'super-admin')) && !isSuperAdminActive && (
               <>
-                <div className="pt-2 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between">
-                  <span>{isAffiliatedUser ? 'School Operations' : 'School Management (SMS)'}</span>
+                <div className="pt-2 pb-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-[#FED7AA] flex items-center justify-between gap-2">
+                  <span className="truncate flex-1 min-w-0 pr-2">{isAffiliatedUser ? 'School Operations' : 'School Management (SMS)'}</span>
                   {demoMode ? (
-                    <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider ${
+                    <span className={`shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase font-mono ${
                       userRole === 'admin'
                         ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/40'
                         : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
@@ -1156,34 +1298,35 @@ function AppContent() {
                       {userRole === 'admin' ? '👑 Admin (Demo)' : '🧑‍🏫 Teacher (Demo)'}
                     </span>
                   ) : isAffiliatedUser ? (
-                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
                       Verified
                     </span>
                   ) : (
-                    <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase font-mono bg-rose-500/20 text-rose-300 border border-rose-500/40">
                       Super Admin
                     </span>
                   )}
                 </div>
-                {/* SMS Command Center */}
                 {/* SMS Command Center / My Dashboard */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-dashboard')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-dashboard'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <SchoolIcon className={`w-4 h-4 shrink-0 ${activeTool === 'sms-dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <span className="block truncate">
-                      {userRole === 'teacher' ? 'My Dashboard' : 'SMS Command Center'}
-                    </span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'teacher' ? 'Teaching Overview & Schedule' : 'School Admin & Overview'}
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <SchoolIcon className={`w-4 h-4 shrink-0 ${activeTool === 'sms-dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">
+                        {userRole === 'teacher' ? 'My Dashboard' : 'SMS Command Center'}
+                      </span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'teacher' ? 'Teaching Overview & Schedule' : 'School Admin & Overview'}
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1191,30 +1334,30 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('sms-classes')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-classes'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <GraduationCap className={`w-4 h-4 shrink-0 ${activeTool === 'sms-classes' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <GraduationCap className={`w-4 h-4 shrink-0 ${activeTool === 'sms-classes' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'My Classes' : 'Classes & Sections'}
                       </span>
-                      <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
-                        userRole === 'admin'
-                          ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30'
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                      }`}>
-                        {userRole === 'admin' ? 'Admin' : 'Assigned'}
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'admin' ? 'Manage KG–12 & Incharges' : 'Assigned Sections & Subjects'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'admin' ? 'Manage KG–12 & Incharges' : 'Assigned Sections & Subjects'}
-                    </span>
                   </div>
+                  <span className={`shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase ${
+                    userRole === 'admin'
+                      ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30'
+                      : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  }`}>
+                    {userRole === 'admin' ? 'Admin' : 'Assigned'}
+                  </span>
                 </button>
 
                 {/* Student Register (SIS) / My Students */}
@@ -1224,26 +1367,26 @@ function AppContent() {
                     setSmsFilterClassId(undefined);
                     selectTool('sms-students');
                   }}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-students'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <Users className={`w-4 h-4 shrink-0 ${activeTool === 'sms-students' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Users className={`w-4 h-4 shrink-0 ${activeTool === 'sms-students' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'My Students' : 'Student Register (SIS)'}
                       </span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        {userRole === 'teacher' ? 'Roster' : 'Active'}
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'teacher' ? 'Assigned Class Students' : 'GR Admissions & B-Form'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'teacher' ? 'Assigned Class Students' : 'GR Admissions & B-Form'}
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {userRole === 'teacher' ? 'Roster' : 'Active'}
+                  </span>
                 </button>
 
                 {/* Daily Attendance Register / Take Attendance */}
@@ -1253,98 +1396,98 @@ function AppContent() {
                     setSmsAttendanceClassId(undefined);
                     selectTool('sms-attendance');
                   }}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-attendance'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <CalendarCheck2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-attendance' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <CalendarCheck2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-attendance' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'Take Attendance' : 'Daily Attendance'}
                       </span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        {userRole === 'teacher' ? 'Roll Call' : 'Active'}
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'teacher' ? 'Daily Section Register' : 'Roll Call & A4 Register'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'teacher' ? 'Daily Section Register' : 'Roll Call & A4 Register'}
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    {userRole === 'teacher' ? 'Roll Call' : 'Active'}
+                  </span>
                 </button>
 
                 {/* Exams & Results (Admin Setup + Teacher Assigned-Class Marks) */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-exams')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-exams'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <Award className={`w-4 h-4 shrink-0 ${activeTool === 'sms-exams' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Award className={`w-4 h-4 shrink-0 ${activeTool === 'sms-exams' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">Exams &amp; Results</span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
-                        {userRole === 'teacher' ? 'Marks' : 'Phase B'}
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'teacher' ? 'Marks Entry & Report Cards' : 'Exam Setup, Marks & PDF Cards'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'teacher' ? 'Marks Entry & Report Cards' : 'Exam Setup, Marks & PDF Cards'}
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
+                    {userRole === 'teacher' ? 'Marks' : 'Phase B'}
+                  </span>
                 </button>
 
                 {/* Phase D: Class Timetable */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-timetable')}
-                  className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-timetable'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <CalendarDays className={`w-4 h-4 shrink-0 ${activeTool === 'sms-timetable' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <CalendarDays className={`w-4 h-4 shrink-0 ${activeTool === 'sms-timetable' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">Timetable &amp; Routine</span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-[#C2410C]/20 text-[#FED7AA] border border-[#C2410C]/30 shrink-0">
-                        Phase D
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'admin' ? 'Build Period Schedule' : 'Class Period Routine'}
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'admin' ? 'Build Period Schedule' : 'Class Period Routine'}
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#C2410C]/20 text-[#FED7AA] border border-[#C2410C]/30">
+                    Phase D
+                  </span>
                 </button>
 
                 {/* Phase D: Daily Homework Diary */}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-homework')}
-                  className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-homework'
-                      ? 'bg-[#3F1014] text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'sms-homework' ? 'text-emerald-400' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'sms-homework' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">Homework &amp; Diary</span>
-                      <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 shrink-0">
-                        Diary
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        Daily Subject Assignments
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      Daily Subject Assignments
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Diary
+                  </span>
                 </button>
 
                 {/* Phase D (Admin Only): Transfer & Character Certificates */}
@@ -1352,24 +1495,24 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => selectTool('sms-certificates')}
-                    className={`w-full flex items-center gap-3 py-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-certificates'
-                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
-                    <FileBadge2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-certificates' ? 'text-amber-400' : 'text-[#D6CCC2]/75'}`} />
-                    <div className="truncate flex-1">
-                      <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                      <FileBadge2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-certificates' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <div className="min-w-0 flex-1">
                         <span className="block truncate">Certificates (TC / CC)</span>
-                        <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                          Admin
+                        <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                          Transfer &amp; Character A4
                         </span>
                       </div>
-                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                        Transfer &amp; Character A4
-                      </span>
                     </div>
+                    <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      Admin
+                    </span>
                   </button>
                 )}
 
@@ -1378,30 +1521,30 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => selectTool('sms-staff')}
-                    className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-staff'
-                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
-                    <UserCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-staff' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                    <div className="truncate flex-1">
-                      <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                      <UserCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-staff' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <div className="min-w-0 flex-1">
                         <span className="block truncate">Faculty &amp; Requests</span>
-                        {pendingJoinRequests.length > 0 ? (
-                          <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0 animate-pulse">
-                            {pendingJoinRequests.length} Pending
-                          </span>
-                        ) : (
-                          <span className="px-1.5 py-0.2 text-[8px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
-                            Admin
-                          </span>
-                        )}
+                        <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                          Incharges &amp; Approvals
+                        </span>
                       </div>
-                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                        Incharges &amp; Approvals
-                      </span>
                     </div>
+                    {pendingJoinRequests.length > 0 ? (
+                      <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse">
+                        {pendingJoinRequests.length} Pending
+                      </span>
+                    ) : (
+                      <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
+                        Admin
+                      </span>
+                    )}
                   </button>
                 )}
 
@@ -1410,28 +1553,54 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => selectTool('sms-fees')}
-                    className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-fees'
-                        ? 'bg-[#3F1014] text-white font-semibold shadow-xs border-l-[3px] border-emerald-500 pl-3'
-                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
-                    <Receipt className={`w-4 h-4 shrink-0 ${activeTool === 'sms-fees' ? 'text-emerald-400' : 'text-[#D6CCC2]/75'}`} />
-                    <div className="truncate flex-1">
-                      <div className="flex items-center justify-between gap-1">
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                      <Receipt className={`w-4 h-4 shrink-0 ${activeTool === 'sms-fees' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <div className="min-w-0 flex-1">
                         <span className="block truncate">Fee Management</span>
-                        <span className={`px-1.5 py-0.2 text-[8px] font-bold uppercase rounded shrink-0 ${
-                          userRole === 'admin'
-                            ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30'
-                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        }`}>
-                          {userRole === 'admin' ? 'Accounts' : 'Incharge'}
+                        <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                          Structure, Vouchers &amp; Reports
                         </span>
                       </div>
-                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                        Structure, Vouchers &amp; Reports
-                      </span>
                     </div>
+                    <span className={`shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase ${
+                      userRole === 'admin'
+                        ? 'bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}>
+                      {userRole === 'admin' ? 'Accounts' : 'Incharge'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Salary & Payroll (School Admin Only) */}
+                {canAccessSalaryPayroll && (
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-payroll')}
+                    className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
+                      activeTool === 'sms-payroll'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                      <Banknote className={`w-4 h-4 shrink-0 ${activeTool === 'sms-payroll' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate">Salary &amp; Payroll</span>
+                        <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                          Structures, Payslips &amp; History
+                        </span>
+                      </div>
+                    </div>
+                    <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
+                      Admin
+                    </span>
                   </button>
                 )}
 
@@ -1439,20 +1608,22 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('sms-profile')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'sms-profile'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-profile' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <span className="block truncate">
-                      {userRole === 'teacher' ? 'My Profile' : 'My School Profile'}
-                    </span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      {userRole === 'teacher' ? 'Institutional Credentials & Roles' : 'Admin Credentials & School Info'}
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-profile' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">
+                        {userRole === 'teacher' ? 'My Profile' : 'My School Profile'}
+                      </span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        {userRole === 'teacher' ? 'Institutional Credentials & Roles' : 'Admin Credentials & School Info'}
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1461,18 +1632,20 @@ function AppContent() {
                   <button
                     type="button"
                     onClick={() => selectTool('sms-onboarding')}
-                    className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                       activeTool === 'sms-onboarding'
-                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                        ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                        : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
-                    <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                    <div className="truncate flex-1">
-                      <span className="block truncate">{isAffiliatedUser ? 'Switch / Add School' : 'Join / Register School'}</span>
-                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                        Affiliation &amp; Verification
-                      </span>
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                      <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <div className="min-w-0 flex-1">
+                        <span className="block truncate">{isAffiliatedUser ? 'Switch / Add School' : 'Join / Register School'}</span>
+                        <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                          Affiliation &amp; Verification
+                        </span>
+                      </div>
                     </div>
                   </button>
                 )}
@@ -1485,10 +1658,10 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => setShowPublicTools(true)}
-                  className="w-full py-2 px-3 rounded-xl border border-dashed border-[rgba(255,253,249,0.10)] hover:border-[rgba(255,253,249,0.28)] bg-[#2C1215]/40 hover:bg-[#58181D]/50 text-[#D6CCC2] hover:text-[#FAF8F5] text-xs font-medium flex items-center justify-between transition cursor-pointer"
+                  className="w-full py-2 px-2.5 rounded-xl border border-dashed border-[rgba(255,253,249,0.10)] hover:border-[rgba(255,253,249,0.28)] bg-[#2C1215]/40 hover:bg-[#58181D]/50 text-[#D6CCC2] hover:text-[#FAF8F5] text-xs font-medium flex items-center justify-between gap-2 transition cursor-pointer"
                 >
-                  <span>Explore Public Tools</span>
-                  <span className="text-[10px] text-[#FED7AA] font-semibold">AI Studio →</span>
+                  <span className="truncate flex-1 min-w-0 pr-2 text-left">Explore Public Tools</span>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider text-[#FED7AA]">AI Studio →</span>
                 </button>
               </div>
             )}
@@ -1502,10 +1675,10 @@ function AppContent() {
                     setShowPublicTools(false);
                     setActiveTool('sms-dashboard');
                   }}
-                  className="w-full py-2 px-3 rounded-xl bg-[#7F1D1D]/20 hover:bg-[#651414]/30 border border-[#7F1D1D]/40 text-[#FED7AA] text-xs font-medium flex items-center justify-between transition cursor-pointer"
+                  className="w-full py-2 px-2.5 rounded-xl bg-[#7F1D1D]/20 hover:bg-[#651414]/30 border border-[#7F1D1D]/40 text-[#FED7AA] text-xs font-medium flex items-center justify-between gap-2 transition cursor-pointer"
                 >
-                  <span>← Return to School SMS</span>
-                  <span className="text-[10px] uppercase font-bold px-1.5 py-0.5 rounded bg-[#7F1D1D]/30">Focused</span>
+                  <span className="truncate flex-1 min-w-0 pr-2 text-left">← Return to School SMS</span>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/30">Focused</span>
                 </button>
               </div>
             )}
@@ -1516,10 +1689,10 @@ function AppContent() {
             {/* ======================================================= */}
             {!isParentUser && !isStudentUser && !isSuperAdminActive && (!isAffiliatedUser || showPublicTools) && (
               <>
-                <div className="pt-4 pb-1 px-3 text-[10px] font-bold uppercase tracking-wider text-[#D6CCC2]/75 flex items-center justify-between">
-                  <span>Teacher's AI Studio</span>
+                <div className="pt-4 pb-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-[#D6CCC2]/75 flex items-center justify-between gap-2">
+                  <span className="truncate flex-1 min-w-0 pr-2">Teacher's AI Studio</span>
                   {isAffiliatedUser && (
-                    <span className="text-[9px] text-[#FED7AA] font-semibold uppercase">Public</span>
+                    <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase text-[#FED7AA] bg-[#7F1D1D]/20 border border-[#7F1D1D]/30">Public</span>
                   )}
                 </div>
 
@@ -1527,18 +1700,20 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('lesson-plan')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'lesson-plan'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'lesson-plan' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate">
-                    <span className="block truncate">1. AI Lesson Planner</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      STBB / PTB Plans
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'lesson-plan' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">1. AI Lesson Planner</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        STBB / PTB Plans
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1546,18 +1721,20 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('salary-calculator')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'salary-calculator'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <Calculator className={`w-4 h-4 shrink-0 ${activeTool === 'salary-calculator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate">
-                    <span className="block truncate">2. Sindh Salary Calculator</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      Budget 2026 · BPS-01 to 22
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Calculator className={`w-4 h-4 shrink-0 ${activeTool === 'salary-calculator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">2. Sindh Salary Calculator</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        Budget 2026 · BPS-01 to 22
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1565,18 +1742,20 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('leave-generator')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'leave-generator'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <FileSignature className={`w-4 h-4 shrink-0 ${activeTool === 'leave-generator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate">
-                    <span className="block truncate">3. SELD FRAMES Leave</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      38 Leave Types · A4 Proforma
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <FileSignature className={`w-4 h-4 shrink-0 ${activeTool === 'leave-generator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">3. SELD FRAMES Leave</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        38 Leave Types · A4 Proforma
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1584,42 +1763,44 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('atlier-cv')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'atlier-cv'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <Briefcase className={`w-4 h-4 shrink-0 ${activeTool === 'atlier-cv' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <Briefcase className={`w-4 h-4 shrink-0 ${activeTool === 'atlier-cv' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">4. AtlierCV Studio</span>
-                      <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
-                        ATS
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        AI Resume Studio
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      AI Resume Studio
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
+                    ATS
+                  </span>
                 </button>
 
                 {/* MODULE 5: Service Book Calculator */}
                 <button
                   type="button"
                   onClick={() => selectTool('service-book')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'service-book'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <BookCheck className={`w-4 h-4 shrink-0 ${activeTool === 'service-book' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <span className="block truncate">5. Service Book &amp; Pension</span>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      Time Scale &amp; 365d Leave
-                    </span>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <BookCheck className={`w-4 h-4 shrink-0 ${activeTool === 'service-book' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
+                      <span className="block truncate">5. Service Book &amp; Pension</span>
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        Time Scale &amp; 365d Leave
+                      </span>
+                    </div>
                   </div>
                 </button>
 
@@ -1627,24 +1808,24 @@ function AppContent() {
                 <button
                   type="button"
                   onClick={() => selectTool('question-paper')}
-                  className={`w-full flex items-center gap-3 py-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                  className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
                     activeTool === 'question-paper'
-                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-3'
-                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3.5'
+                      ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
+                      : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
-                  <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTool === 'question-paper' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
-                  <div className="truncate flex-1">
-                    <div className="flex items-center justify-between gap-1">
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
+                    <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTool === 'question-paper' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate">6. AI Question Paper</span>
-                      <span className="px-1.5 py-0.2 text-[9px] font-bold uppercase rounded bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30 shrink-0">
-                        AI
+                      <span className="text-[11px] block truncate text-[#D6CCC2]/75">
+                        Class 1–12 Exam Maker
                       </span>
                     </div>
-                    <span className="text-[11px] block truncate text-[#D6CCC2]/75">
-                      Class 1–12 Exam Maker
-                    </span>
                   </div>
+                  <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
+                    AI
+                  </span>
                 </button>
               </>
             )}
@@ -1652,7 +1833,7 @@ function AppContent() {
         </div>
 
         {/* Sidebar Footer: Unified Auth Card */}
-        <div className="p-4 border-t border-[rgba(255,253,249,0.10)] bg-black/20 space-y-3">
+        <div className="shrink-0 p-4 border-t border-[rgba(255,253,249,0.10)] bg-black/20 space-y-3">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center shrink-0">
               <UserCheck className="w-4 h-4 text-emerald-400" />
@@ -1681,7 +1862,7 @@ function AppContent() {
       {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
-          className="no-print fixed inset-0 z-30 bg-[#2C1215]/60 backdrop-blur-xs lg:hidden"
+          className="no-print fixed inset-0 z-40 bg-[#2C1215]/60 backdrop-blur-xs lg:hidden"
         />
       )}
 
@@ -1734,6 +1915,120 @@ function AppContent() {
             </button>
           </div>
         )}
+
+        {/* Offline Status Banner (Red / Orange Visual Indicator) */}
+        {!isOnline && (
+          <div
+            role="status"
+            className="no-print bg-gradient-to-r from-red-600 via-orange-600 to-red-600 text-white px-4 sm:px-6 py-2.5 text-xs font-semibold flex flex-wrap items-center justify-between gap-2 shadow-sm"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <WifiOff className="w-4 h-4 text-orange-100 shrink-0 animate-pulse" />
+              <span>
+                You are offline. Data is saved locally and will sync when online.
+              </span>
+              {pendingSyncCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/25 text-orange-100 border border-white/20 shrink-0">
+                  {pendingSyncCount} Queued
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSyncCenterOpen(true)}
+                className="px-3 py-1 rounded-lg bg-[#FFFDF9]/15 hover:bg-[#FFFDF9]/25 text-white text-xs font-bold border border-white/25 transition cursor-pointer"
+              >
+                View Queue
+              </button>
+              <button
+                type="button"
+                onClick={() => void syncNow()}
+                disabled={isSyncing}
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-[#FFFDF9] text-red-700 hover:bg-orange-50 text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-60"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>Sync Now</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Online Pending Queue / Conflict Warning Banner */}
+        {isOnline && !demoMode && (pendingSyncCount > 0 || conflictItems.length > 0) && (
+          <div
+            role="status"
+            className={`no-print px-4 sm:px-6 py-2.5 text-xs font-semibold flex flex-wrap items-center justify-between gap-2 shadow-sm ${
+              conflictItems.length > 0
+                ? 'bg-rose-600 text-white'
+                : 'bg-orange-500 text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              {conflictItems.length > 0 ? (
+                <AlertTriangle className="w-4 h-4 text-amber-200 shrink-0" />
+              ) : (
+                <Cloud className="w-4 h-4 text-orange-100 shrink-0" />
+              )}
+              <span>
+                {conflictItems.length > 0
+                  ? `Sync conflict detected on ${conflictItems.length} record(s) modified online while you were offline.`
+                  : `Back online! ${pendingSyncCount} locally saved change(s) ready to push to Firestore.`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsSyncCenterOpen(true)}
+                className="px-3 py-1 rounded-lg bg-black/20 hover:bg-black/30 text-white text-xs font-bold border border-white/25 transition cursor-pointer"
+              >
+                {conflictItems.length > 0 ? 'Resolve Conflicts' : 'Inspect Queue'}
+              </button>
+              <button
+                type="button"
+                onClick={() => void syncNow()}
+                disabled={isSyncing}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-lg bg-[#FFFDF9] text-[#7F1D1D] hover:bg-orange-50 text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-60"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                <span>{isSyncing ? 'Syncing...' : 'Sync Now'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Recent Sync Results Summary Banner */}
+        {isOnline &&
+          pendingSyncCount === 0 &&
+          lastSyncSummary &&
+          lastSyncSummary.totalProcessed > 0 && (
+            <div className="no-print bg-emerald-600 text-white px-4 sm:px-6 py-2 text-xs font-semibold flex flex-wrap items-center justify-between gap-2 shadow-xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-100 shrink-0" />
+                <span>
+                  Offline queue synced: {lastSyncSummary.syncedCount} item(s) pushed to Firestore successfully
+                  {lastSyncSummary.failedCount > 0 ? ` (${lastSyncSummary.failedCount} failed)` : ''}.
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSyncCenterOpen(true)}
+                  className="px-2.5 py-0.5 rounded-lg bg-white/15 hover:bg-white/25 text-white text-[11px] font-bold cursor-pointer"
+                >
+                  View Sync Report
+                </button>
+                <button
+                  type="button"
+                  onClick={clearLastSyncSummary}
+                  className="p-1 hover:bg-emerald-700 rounded-md text-emerald-100 hover:text-white cursor-pointer"
+                  aria-label="Dismiss sync report"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
 
         {/* Top Navbar */}
         <header className="app-topbar no-print bg-[#FFFDF9] dark:bg-[#211415] border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.12)] shadow-2xs px-3 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-2 sm:gap-3 sticky top-0 z-20 w-full max-w-full">
@@ -1874,6 +2169,17 @@ function AppContent() {
                   >
                     Notice Board
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-payroll')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'sms-payroll'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
+                    }`}
+                  >
+                    Salary &amp; Payroll
+                  </button>
                 </>
               )
             ) : isAffiliatedUser && !showPublicTools ? (
@@ -2000,6 +2306,19 @@ function AppContent() {
                     Fees &amp; Accounts
                   </button>
                 )}
+                {canAccessSalaryPayroll && (
+                  <button
+                    type="button"
+                    onClick={() => selectTool('sms-payroll')}
+                    className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      activeTool === 'sms-payroll'
+                        ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
+                        : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
+                    }`}
+                  >
+                    Payroll
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => selectTool('sms-profile')}
@@ -2108,6 +2427,55 @@ function AppContent() {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 flex-wrap justify-end">
+            {/* Prominent Cloud / Offline Sync Status & Sync Now Trigger */}
+            {!demoMode && (currentUser || pendingSyncCount > 0 || !isOnline) && (
+              <div className="flex items-center gap-1">
+                {conflictItems.length > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsSyncCenterOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-full shadow-xs transition cursor-pointer animate-pulse"
+                    title="Resolve offline sync conflicts"
+                  >
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Conflicts ({conflictItems.length})</span>
+                  </button>
+                ) : !isOnline || pendingSyncCount > 0 || isSyncing ? (
+                  <button
+                    type="button"
+                    onClick={() => void syncNow()}
+                    disabled={isSyncing}
+                    className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 text-xs font-bold rounded-full shadow-xs transition cursor-pointer disabled:opacity-60 ${
+                      !isOnline
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-[#C2410C] hover:bg-[#9A3412] text-[#FFFDF9]'
+                    }`}
+                    title={
+                      !isOnline
+                        ? 'Offline: Data saved locally. Click Sync Now when reconnected.'
+                        : `Sync ${pendingSyncCount} locally queued change(s) to Firestore`
+                    }
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isSyncing ? 'Syncing...' : 'Sync Now'}
+                      {pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ''}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsSyncCenterOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 border border-emerald-200 dark:border-emerald-800/60 rounded-full transition cursor-pointer"
+                    title="All data synced. Open Offline Sync Center"
+                  >
+                    <Cloud className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden md:inline">Sync Now</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Quick RBAC Role Switcher: DEMO ONLY */}
             {demoMode && (
               <div className="flex items-center gap-0.5 sm:gap-1 bg-amber-50 dark:bg-amber-950/40 p-1 rounded-xl text-xs font-semibold border border-amber-200 dark:border-amber-800 shadow-2xs">
@@ -2251,7 +2619,7 @@ function AppContent() {
         </header>
 
         {/* Main Content Container */}
-        <main className="app-content-container flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 space-y-6 min-w-0 overflow-x-hidden">
+        <main className="app-content-container flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 pt-4 pb-24 lg:py-6 space-y-5 sm:space-y-6 min-w-0 overflow-x-hidden">
           {/* Animated Updates Ticker */}
           <div className="no-print flex items-center bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-xl shadow-xs overflow-hidden">
             <div className="bg-[#2C1215] dark:bg-[#2C1215] text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 z-10">
@@ -2591,6 +2959,9 @@ function AppContent() {
                 onNavigateToTimetable={() => selectTool('sms-timetable')}
                 onNavigateToHomework={() => selectTool('sms-homework')}
                 onNavigateToCertificates={() => selectTool('sms-certificates')}
+                onNavigateToPayroll={() => selectTool('sms-payroll')}
+                requestedTab={smsDashboardTab}
+                onTabChange={setSmsDashboardTab}
               />
             )}
 
@@ -2675,21 +3046,34 @@ function AppContent() {
               <CertificatesManager onBack={() => selectTool('sms-dashboard')} />
             )}
 
+            {/* Salary & Payroll Management (School Admin & Super Admin Only) */}
+            {guardedTool === 'sms-payroll' && canAccessSalaryPayroll && (
+              <SalaryPayroll
+                onBack={() => selectTool(isSuperAdminActive ? 'super-admin' : 'sms-dashboard')}
+              />
+            )}
+
             {/* Phase C: Parent Portal (Strict Read-Only Child Progress) */}
             {activeTool === 'sms-parent' && <ParentDashboard />}
 
             {/* Student Portal (Strict Read-Only Self Progress) */}
             {activeTool === 'sms-student-portal' && <StudentDashboard />}
 
-            {/* SUPER ADMIN CONSOLE VIEW */}
-            {activeTool === 'super-admin' && (
-              <SuperAdminDashboard
-                activeTab={superAdminTab}
-                onTabChange={setSuperAdminTab}
-                onNavigateToSchool={() => setActiveTool('sms-dashboard')}
-                onOpenRegisterSchool={() => selectTool('sms-onboarding')}
-              />
-            )}
+            {/* SUPER ADMIN CONSOLE VIEW (Strict Role Guard) */}
+            {guardedTool === 'super-admin' &&
+              isSuperAdminActive &&
+              (demoMode ||
+                currentUserProfile?.role === 'super-admin' ||
+                Boolean(currentUserProfile?.isSuperAdmin) ||
+                currentUser?.email?.toLowerCase() === 'owner@pakedu.com') && (
+                <SuperAdminDashboard
+                  activeTab={superAdminTab}
+                  onTabChange={setSuperAdminTab}
+                  onNavigateToSchool={() => setActiveTool('sms-dashboard')}
+                  onOpenRegisterSchool={() => selectTool('sms-onboarding')}
+                  onOpenPayroll={() => selectTool('sms-payroll')}
+                />
+              )}
 
             {/* TEACHER'S AI STUDIO VIEWS (EXISTING MODULES) */}
             {activeTool === 'lesson-plan' && (
@@ -2723,16 +3107,16 @@ function AppContent() {
         </main>
 
         {/* Enterprise SaaS Footer */}
-        <footer className="app-footer no-print border-t border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#211415] px-6 py-4 text-xs text-[#57534E] dark:text-[#D6CCC2] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
+        <footer className="app-footer no-print border-t border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] bg-[#FFFDF9] dark:bg-[#211415] px-4 sm:px-6 pt-4 pb-6 lg:py-4 text-xs text-[#57534E] dark:text-[#D6CCC2] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap justify-center sm:justify-start text-center sm:text-left">
             <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
               PakEdu &amp; Sindh SELD Official Portal
             </span>
             <span className="font-mono text-[11px] bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] px-2 py-0.5 rounded">
               v{portalVersion}
             </span>
-            <span>·</span>
-            <span>
+            <span className="hidden sm:inline">·</span>
+            <span className="hidden sm:inline">
               School Education &amp; Literacy Department (SELD) · STBB &amp; PTB Aligned
             </span>
           </div>
@@ -2747,6 +3131,251 @@ function AppContent() {
           </div>
         </footer>
       </div>
+
+      {/* =================================================================== */}
+      {/* MOBILE-ONLY FIXED BOTTOM NAVIGATION BAR (Web Mobile & Android APK)  */}
+      {/* =================================================================== */}
+      <nav
+        aria-label="Mobile Bottom Navigation"
+        className="app-bottom-nav no-print lg:hidden fixed bottom-0 inset-x-0 z-30 bg-[#2C1215] border-t border-[rgba(255,253,249,0.14)] text-[#D6CCC2] shadow-[0_-4px_20px_rgba(0,0,0,0.3)]"
+      >
+        <div className="grid grid-cols-5 h-16 max-w-full">
+          {/* 1. Home (Dashboard) */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              if (isParentUser) {
+                selectTool('sms-parent');
+              } else if (isStudentUser) {
+                selectTool('sms-student-portal');
+              } else if (isSuperAdminActive) {
+                if (isImpersonating) {
+                  setSmsDashboardTab('overview');
+                  selectTool('sms-dashboard');
+                } else {
+                  setSuperAdminTab('analytics');
+                  selectTool('super-admin');
+                }
+              } else if (isAffiliatedUser) {
+                setShowPublicTools(false);
+                setSmsDashboardTab('overview');
+                selectTool('sms-dashboard');
+              } else {
+                selectTool('dashboard');
+              }
+            }}
+            className={`min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
+              !mobileMenuOpen &&
+              !noticesModalOpen &&
+              (activeTool === 'dashboard' ||
+                activeTool === 'sms-parent' ||
+                activeTool === 'sms-student-portal' ||
+                (activeTool === 'sms-dashboard' && smsDashboardTab === 'overview') ||
+                (activeTool === 'super-admin' && superAdminTab === 'analytics'))
+                ? 'text-[#FED7AA] bg-[#C2410C]/20'
+                : 'text-[#D6CCC2] hover:text-white'
+            }`}
+          >
+            <Home className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">Home</span>
+          </button>
+
+          {/* 2. Profile (User Profile) */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              if (isParentUser) {
+                selectTool('sms-parent');
+              } else if (isStudentUser) {
+                selectTool('sms-student-portal');
+              } else if (isSuperAdminActive && !isImpersonating) {
+                setSuperAdminTab('directory');
+                selectTool('super-admin');
+              } else if (isAffiliatedUser || demoMode) {
+                selectTool('sms-profile');
+              } else if (currentUser) {
+                selectTool('sms-onboarding');
+              } else {
+                openAuthModal('signin');
+              }
+            }}
+            className={`min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
+              !mobileMenuOpen &&
+              (activeTool === 'sms-profile' || activeTool === 'sms-onboarding')
+                ? 'text-[#FED7AA] bg-[#C2410C]/20'
+                : 'text-[#D6CCC2] hover:text-white'
+            }`}
+          >
+            <UserCheck className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">Profile</span>
+          </button>
+
+          {/* 3. Sync (Offline Sync Status & Sync Center) */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setIsSyncCenterOpen(true);
+            }}
+            className={`relative min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
+              conflictItems.length > 0
+                ? 'text-rose-300'
+                : !isOnline
+                ? 'text-orange-300'
+                : pendingSyncCount > 0
+                ? 'text-amber-300'
+                : 'text-[#D6CCC2] hover:text-white'
+            }`}
+          >
+            <div className="relative inline-flex items-center justify-center">
+              {!isOnline ? (
+                <WifiOff className="w-5 h-5 shrink-0 text-red-400" />
+              ) : conflictItems.length > 0 ? (
+                <AlertTriangle className="w-5 h-5 shrink-0 text-rose-400" />
+              ) : isSyncing ? (
+                <RefreshCw className="w-5 h-5 shrink-0 animate-spin text-[#FED7AA]" />
+              ) : (
+                <Cloud className="w-5 h-5 shrink-0" />
+              )}
+              {(pendingSyncCount > 0 || !isOnline || conflictItems.length > 0) && (
+                <span
+                  className={`absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full text-[9px] font-bold flex items-center justify-center text-white ${
+                    conflictItems.length > 0
+                      ? 'bg-rose-600'
+                      : !isOnline
+                      ? 'bg-red-600'
+                      : 'bg-[#C2410C]'
+                  }`}
+                >
+                  {conflictItems.length > 0
+                    ? conflictItems.length
+                    : pendingSyncCount > 0
+                    ? pendingSyncCount
+                    : '!'}
+                </span>
+              )}
+            </div>
+            <span className="truncate max-w-full">Sync</span>
+          </button>
+
+          {/* 4. Notifications (Notice Board) */}
+          <button
+            type="button"
+            onClick={() => {
+              setMobileMenuOpen(false);
+              if (isSuperAdminActive && !isImpersonating) {
+                setSuperAdminTab('notices');
+                selectTool('super-admin');
+              } else if (isAffiliatedUser || (demoMode && userRole !== 'super-admin')) {
+                setShowPublicTools(false);
+                setSmsDashboardTab('notifications');
+                selectTool('sms-dashboard');
+              } else {
+                setNoticesModalOpen(true);
+              }
+            }}
+            className={`relative min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
+              !mobileMenuOpen &&
+              (noticesModalOpen ||
+                (activeTool === 'super-admin' && superAdminTab === 'notices') ||
+                (activeTool === 'sms-dashboard' && smsDashboardTab === 'notifications'))
+                ? 'text-[#FED7AA] bg-[#C2410C]/20'
+                : 'text-[#D6CCC2] hover:text-white'
+            }`}
+          >
+            <div className="relative inline-flex items-center justify-center">
+              <Bell className="w-5 h-5 shrink-0" />
+              {unreadNoticesCount > 0 && (
+                <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center">
+                  {unreadNoticesCount > 9 ? '9+' : unreadNoticesCount}
+                </span>
+              )}
+            </div>
+            <span className="truncate max-w-full">Notices</span>
+          </button>
+
+          {/* 5. More (Opens Full Sidebar Drawer) */}
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            className={`min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
+              mobileMenuOpen ? 'text-[#FED7AA] bg-[#C2410C]/25' : 'text-[#D6CCC2] hover:text-white'
+            }`}
+          >
+            <Menu className="w-5 h-5 shrink-0" />
+            <span className="truncate max-w-full">More</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* Mobile Quick Notice Board Modal (for roles outside SMS Command Center) */}
+      {noticesModalOpen && (
+        <div
+          className="no-print fixed inset-0 z-50 bg-[#2C1215]/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Notice Board"
+        >
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.16)] rounded-2xl w-full max-w-lg max-h-[85dvh] flex flex-col overflow-hidden shadow-2xl">
+            <div className="px-4 py-3.5 bg-[#2C1215] text-[#FAF8F5] flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Megaphone className="w-4 h-4 text-[#FED7AA] shrink-0" />
+                <h3 className="text-sm font-bold truncate">Notice Board &amp; Announcements</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setNoticesModalOpen(false)}
+                className="p-1.5 text-[#D6CCC2] hover:text-white rounded-lg cursor-pointer"
+                aria-label="Close notice board"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-3 text-xs">
+              {globalNotices.length === 0 ? (
+                <div className="py-8 text-center text-[#78716C] dark:text-[#D6CCC2]">
+                  No institutional announcements published right now.
+                </div>
+              ) : (
+                globalNotices.map((notice) => {
+                  const isRead = Boolean(
+                    activeSchool.id && (notice.readBySchools || {})[activeSchool.id]
+                  );
+                  return (
+                    <div
+                      key={notice.id}
+                      className="p-3.5 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.12)] bg-[#FAF8F5] dark:bg-[#2C1215]/70 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                          {notice.title}
+                        </span>
+                        <span className="text-[10px] font-mono text-[#78716C] shrink-0">
+                          {notice.date}
+                        </span>
+                      </div>
+                      <p className="text-[#44403C] dark:text-[#E7E0D4] leading-relaxed">
+                        {notice.message}
+                      </p>
+                      {activeSchool.id && !isParentUser && !isStudentUser && !isRead && (
+                        <button
+                          type="button"
+                          onClick={() => void markNoticeAsRead(notice.id)}
+                          className="mt-1 px-2.5 py-1 rounded-lg bg-[#C2410C] text-white text-[10px] font-bold cursor-pointer"
+                        >
+                          Mark as Read
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

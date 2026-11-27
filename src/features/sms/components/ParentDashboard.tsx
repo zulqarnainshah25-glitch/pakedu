@@ -51,6 +51,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
     examMarks,
     timetableEntries,
     homeworkItems,
+    filteredLessonPlansForUser,
     linkParentToStudent,
     ensureChildStudentInviteForParent,
   } = useSms();
@@ -388,7 +389,7 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
               </div>
             </div>
 
-            <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 text-xs space-y-1 min-w-[240px]">
+            <div className="bg-white/10 backdrop-blur-xs border border-white/15 rounded-2xl p-4 text-xs space-y-1 w-full md:w-auto md:min-w-[240px]">
               <div className="flex items-center gap-1.5 text-[#FED7AA] font-bold text-[11px] uppercase">
                 <Building className="w-3.5 h-3.5" />
                 <span>{activeSchool.name}</span>
@@ -576,6 +577,64 @@ export const ParentDashboard: React.FC<ParentDashboardProps> = () => {
           homeworkItems={childHomework}
           classLabel={`${childStudent.grade} - ${childStudent.section}`}
         />
+
+        {/* Shared Class Syllabus & Lesson Plans Overview (Parent Read-Only) */}
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 sm:p-6 space-y-4 shadow-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                Class Syllabus &amp; Shared Lesson Overview
+              </h2>
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
+                Read-only lesson plans and Student Learning Outcomes shared by {childStudent.grade} teachers.
+              </p>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+              {filteredLessonPlansForUser.length} Shared Topic{filteredLessonPlansForUser.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          {filteredLessonPlansForUser.length === 0 ? (
+            <div className="p-5 text-center text-xs text-[#78716C] border border-dashed border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl">
+              No shared syllabus lesson plans posted for {childStudent.grade} yet.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {filteredLessonPlansForUser.map((plan) => (
+                <div
+                  key={plan.id}
+                  className="p-4 rounded-xl border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] bg-[#FAF8F5]/80 dark:bg-[#2C1215]/60 space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] border border-[#FED7AA] dark:border-[#C2410C]/40">
+                      {plan.subject} · {plan.board}
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#57534E] dark:text-[#D6CCC2]">
+                      {plan.teacherName}
+                    </span>
+                  </div>
+                  <div className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                    {plan.topic}
+                  </div>
+                  <div className="text-[11px] font-semibold text-[#57534E] dark:text-[#D6CCC2]">
+                    {plan.chapter} ({plan.duration})
+                  </div>
+                  <div className="text-xs text-[#44403C] dark:text-[#E7E0D4] whitespace-pre-line leading-relaxed pt-1 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.10)]">
+                    <strong className="text-[10px] uppercase tracking-wider text-[#7F1D1D] dark:text-[#FCA5A5] block mb-0.5">
+                      Learning Outcomes (SLOs)
+                    </strong>
+                    {plan.slos}
+                  </div>
+                  {plan.homework && (
+                    <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] bg-[#FFFDF9] dark:bg-[#211415] p-2.5 rounded-lg border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.10)]">
+                      <strong>Home Review:</strong> {plan.homework}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <PublishedExamsSection
           publishedExams={publishedExamsForChild}

@@ -110,11 +110,61 @@ body.dark-mode {
     word-break: break-word;
   }
 
+  /* Prevent form controls from causing horizontal overflow on narrow mobile viewports */
+  input,
+  select,
+  textarea {
+    max-width: 100%;
+  }
+
   /* Responsive media defaults */
   img, svg, video, canvas {
     max-width: 100%;
     height: auto;
   }
+}
+
+/* ==========================================================================
+   MOBILE & ANDROID APK SIDEBAR SCROLLING + BOTTOM NAVIGATION BAR
+   ========================================================================== */
+.app-sidebar {
+  height: 100vh;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (min-width: 1024px) {
+  .app-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+}
+
+.app-bottom-nav {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 1023px) {
+  .app-main-wrapper {
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 /* Top Accent Progress Bar */
@@ -230,6 +280,7 @@ body.dark-mode {
 
 body.printing-mode .no-print,
 body.printing-mode .app-sidebar,
+body.printing-mode .app-bottom-nav,
 body.printing-mode .app-topbar,
 body.printing-mode .app-footer,
 body.printing-mode .allforu-progress-bar {
@@ -275,6 +326,7 @@ body.printing-mode .printable-a4-sheet {
 
   .no-print,
   .app-sidebar,
+  .app-bottom-nav,
   .app-topbar,
   .app-footer,
   .allforu-progress-bar {

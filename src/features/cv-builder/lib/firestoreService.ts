@@ -15,6 +15,11 @@ import {
 import { db, auth, handleFirestoreError, OperationType } from './firebase';
 import { sanitizeFirestoreData } from '../../../utils/firestoreSanitizer';
 import {
+  enqueueOfflineMutation,
+  recordServerBaseline,
+  removeServerBaseline,
+} from '../../../services/offlineSyncService';
+import {
   CVDocument,
   CVTemplate,
   UserProfile,
@@ -972,6 +977,23 @@ export async function updatePaymentProofStatus(
 export async function saveCVToFirestore(cv: CVDocument, uid: string): Promise<CVDocument> {
   const sanitized = sanitizeCVForFirestore(cv, uid);
   const cvRef = doc(db, 'cvs', sanitized.id);
+  const docPath = `cvs/${sanitized.id}`;
+  const localDoc: CVDocument = { ...cv, id: sanitized.id, userId: sanitized.userId };
+
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    await enqueueOfflineMutation({
+      entityType: 'cvDocument',
+      action: 'upsert',
+      operation: 'saveCV',
+      schoolId: 'global',
+      userId: sanitized.userId,
+      docPath,
+      recordId: sanitized.id,
+      recordLabel: `CV Document · ${sanitized.title || sanitized.fullName || sanitized.id}`,
+      payload: sanitized,
+    });
+    return localDoc;
+  }
 
   try {
     const existingSnap = await getDoc(cvRef);
@@ -994,14 +1016,37 @@ export async function saveCVToFirestore(cv: CVDocument, uid: string): Promise<CV
         })
       );
     }
-    return { ...cv, id: sanitized.id, userId: sanitized.userId };
-  } catch {
-    // Return sanitized local document even if offline
-    return { ...cv, id: sanitized.id, userId: sanitized.userId };
+    void recordServerBaseline(docPath, sanitized, (cv as any).updatedAt);
+    return localDoc;
+  } catch (err) {
+    const code = (err as any)?.code || '';
+    const msg = String((err as any)?.message || err).toLowerCase();
+    if (
+      (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+      code === 'unavailable' ||
+      msg.includes('offline')
+    ) {
+      await enqueueOfflineMutation({
+        entityType: 'cvDocument',
+        action: 'upsert',
+        operation: 'saveCV',
+        schoolId: 'global',
+        userId: sanitized.userId,
+        docPath,
+        recordId: sanitized.id,
+        recordLabel: `CV Document · ${sanitized.title || sanitized.fullName || sanitized.id}`,
+        payload: sanitized,
+      });
+    }
+    return localDoc;
   }
 }
 
 export async function flushPendingSyncAndSave(cv: CVDocument, uid: string): Promise<boolean> {
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    await saveCVToFirestore(cv, uid);
+    return false;
+  }
   try {
     await saveCVToFirestore(cv, uid);
     await Promise.race([
@@ -1036,12 +1081,36 @@ export async function fetchUserCVs(uid: string): Promise<CVDocument[]> {
 
 export async function deleteCVFromFirestore(cvId: string): Promise<void> {
   const path = `cvs/${cvId}`;
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    await enqueueOfflineMutation({
+      entityType: 'cvDocument',
+      action: 'delete',
+      operation: 'deleteCV',
+      schoolId: 'global',
+      docPath: path,
+      recordId: cvId,
+      recordLabel: `Delete CV · ${cvId}`,
+      payload: { id: cvId },
+    });
+    return;
+  }
   try {
     await withDbTimeout(deleteDoc(doc(db, 'cvs', cvId)), 1500, undefined);
+    void removeServerBaseline(path);
   } catch (error) {
     if (error instanceof Error && error.message.includes('Missing or insufficient permissions')) {
       handleFirestoreError(error, OperationType.DELETE, path);
     }
+    await enqueueOfflineMutation({
+      entityType: 'cvDocument',
+      action: 'delete',
+      operation: 'deleteCV',
+      schoolId: 'global',
+      docPath: path,
+      recordId: cvId,
+      recordLabel: `Delete CV · ${cvId}`,
+      payload: { id: cvId },
+    });
   }
 }
 

@@ -302,8 +302,8 @@ export const HomeworkManager: React.FC<{ onBack: () => void }> = ({ onBack }) =>
 
       {/* Assign Homework Modal */}
       {isModalOpen && canPostHomework && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#2C1215]/70 backdrop-blur-xs">
-          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 sm:p-6 max-w-lg w-full shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#2C1215]/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-6 max-w-lg w-full max-h-[90dvh] overflow-y-auto shadow-2xl space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
                 <BookOpen className="w-5 h-5 text-[#7F1D1D]" />

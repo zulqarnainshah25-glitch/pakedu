@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { AlertCircle, RefreshCw, X, WifiOff } from 'lucide-react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { AlertCircle, RefreshCw, X } from 'lucide-react';
 import {
   UserRole,
   School,
@@ -23,7 +23,16 @@ import {
   GlobalNotice,
   SchoolAnalyticsSummary,
   StudentPortalLink,
+  SalaryStructure,
+  EmployeePayslip,
+  PayrollSettings,
+  SchoolLessonPlan,
+  SchoolQuestionPaper,
 } from '../types';
+import {
+  filterLessonPlansForRole,
+  filterQuestionPapersForRole,
+} from '../utils/aiIntegrationHelpers';
 import {
   INITIAL_MOCK_SCHOOL,
   INITIAL_MOCK_SCHOOLS,
@@ -42,9 +51,16 @@ import {
   INITIAL_MOCK_HOMEWORK,
   INITIAL_MOCK_CERTIFICATES,
   INITIAL_MOCK_GLOBAL_NOTICES,
+  INITIAL_MOCK_SALARY_STRUCTURES,
+  INITIAL_MOCK_PAYSLIPS,
+  INITIAL_MOCK_SCHOOL_LESSON_PLANS,
+  INITIAL_MOCK_SCHOOL_QUESTION_PAPERS,
 } from '../data/mockSmsData';
 import {
   FirestoreSyncError,
+  isDeviceOffline,
+  classifyFirestoreError,
+  syncOfflineQueueItemToFirestore,
   saveSchoolToFirestore,
   fetchSchoolsFromFirestore,
   saveUserProfileToFirestore,
@@ -106,7 +122,40 @@ import {
   fetchNoticesForSchoolFromFirestore,
   markGlobalNoticeAsReadInFirestore,
   deleteGlobalNoticeFromFirestore,
+  saveSalaryStructureToFirestore,
+  fetchSalaryStructuresFromFirestore,
+  deleteSalaryStructureFromFirestore,
+  savePayslipToFirestore,
+  fetchPayslipsFromFirestore,
+  fetchTeacherOwnPayslipsFromFirestore,
+  deletePayslipFromFirestore,
+  savePayrollSettingsToFirestore,
+  fetchPayrollSettingsFromFirestore,
+  saveSchoolLessonPlanToFirestore,
+  fetchSchoolLessonPlansFromFirestore,
+  fetchSharedLessonPlansForParentFromFirestore,
+  deleteSchoolLessonPlanFromFirestore,
+  saveSchoolQuestionPaperToFirestore,
+  fetchSchoolQuestionPapersFromFirestore,
+  deleteSchoolQuestionPaperFromFirestore,
 } from '../services/smsFirestoreService';
+import { doesPayslipBelongToUser, sanitizePayrollIdSegment } from '../utils/payrollCalculations';
+import {
+  getOfflineQueue,
+  subscribeOfflineQueue,
+  enqueueOfflineMutation,
+  updateOfflineQueueItem,
+  removeOfflineQueueItem,
+  normalizeTimestampValue,
+  recordServerBaseline,
+  removeServerBaseline,
+  type OfflineSyncItem,
+  type OfflineSyncRunSummary,
+  type ConflictResolutionChoice,
+  type EnqueueOfflineMutationInput,
+  type SyncItemResult,
+} from '../../../services/offlineSyncService';
+import { OfflineSyncCenterModal } from '../components/OfflineSyncCenterModal';
 import { useAuth } from '../../../context/AuthContext';
 import { hasAdminCapabilities } from '../../../utils/smartRouting';
 
@@ -151,6 +200,18 @@ interface SmsContextType {
   clearSyncError: () => void;
   isPendingSync: boolean;
   isOnline: boolean;
+  offlineQueue: OfflineSyncItem[];
+  pendingSyncCount: number;
+  conflictItems: OfflineSyncItem[];
+  isSyncing: boolean;
+  lastSyncSummary: OfflineSyncRunSummary | null;
+  lastSyncedAt: string | null;
+  isSyncCenterOpen: boolean;
+  setIsSyncCenterOpen: (open: boolean) => void;
+  syncNow: () => Promise<OfflineSyncRunSummary>;
+  resolveSyncConflict: (queueItemId: string, choice: ConflictResolutionChoice) => Promise<boolean>;
+  discardOfflineItem: (queueItemId: string) => Promise<void>;
+  clearLastSyncSummary: () => void;
 
   // Roles & Persona
   userRole: UserRole;
@@ -165,6 +226,7 @@ interface SmsContextType {
   isImpersonating: boolean;
   impersonateSchool: (schoolId: string) => void;
   exitImpersonation: () => void;
+  resetSmsSessionState: () => void;
   toggleSchoolStatus: (schoolId: string, reason?: string) => void;
 
   // Schools & Registration
@@ -321,6 +383,62 @@ interface SmsContextType {
   canPostHomework: boolean;
   canManageCertificates: boolean;
 
+  // Salary & Payroll Management (Admin & Super Admin + Optional Teacher Payslip Self-View)
+  salaryStructures: SalaryStructure[];
+  payslips: EmployeePayslip[];
+  ownTeacherPayslips: EmployeePayslip[];
+  payrollSettings: PayrollSettings;
+  canAccessSalaryPayroll: boolean;
+  canViewOwnPayslips: boolean;
+  saveSalaryStructure: (
+    structure: Omit<SalaryStructure, 'schoolId'>,
+    overrideSchoolId?: string
+  ) => Promise<boolean>;
+  deleteSalaryStructure: (employeeId: string, overrideSchoolId?: string) => Promise<boolean>;
+  savePayslip: (
+    payslip: Omit<EmployeePayslip, 'schoolId'>,
+    overrideSchoolId?: string
+  ) => Promise<boolean>;
+  saveBulkPayslips: (
+    payslipList: Array<Omit<EmployeePayslip, 'schoolId'>>,
+    overrideSchoolId?: string
+  ) => Promise<boolean>;
+  deletePayslip: (payslipId: string, overrideSchoolId?: string) => Promise<boolean>;
+  updatePayrollSettings: (
+    updates: Partial<PayrollSettings>,
+    overrideSchoolId?: string
+  ) => Promise<boolean>;
+  loadSchoolPayrollData: (schoolId: string) => Promise<{
+    teachers: TeacherInfo[];
+    salaryStructures: SalaryStructure[];
+    payslips: EmployeePayslip[];
+    payrollSettings: PayrollSettings;
+  }>;
+
+  // School AI Integration: Lesson Plans & Question Papers (strictly isolated from Super Admin)
+  schoolLessonPlans: SchoolLessonPlan[];
+  schoolQuestionPapers: SchoolQuestionPaper[];
+  filteredLessonPlansForUser: SchoolLessonPlan[];
+  filteredQuestionPapersForUser: SchoolQuestionPaper[];
+  canAccessSchoolAiContent: boolean;
+  saveSchoolLessonPlan: (
+    plan: Omit<SchoolLessonPlan, 'schoolId'>
+  ) => Promise<boolean>;
+  toggleShareLessonPlanWithParents: (
+    planId: string,
+    shared: boolean
+  ) => Promise<boolean>;
+  deleteSchoolLessonPlan: (planId: string) => Promise<boolean>;
+  saveSchoolQuestionPaper: (
+    paper: Omit<SchoolQuestionPaper, 'schoolId'>
+  ) => Promise<boolean>;
+  attachQuestionPaperToExam: (
+    paperId: string,
+    examId: string,
+    attach?: boolean
+  ) => Promise<boolean>;
+  deleteSchoolQuestionPaper: (paperId: string) => Promise<boolean>;
+
   // Super Admin Strict Read-Only Impersonation & Global Notice Board
   isReadOnlyImpersonation: boolean;
   globalNotices: GlobalNotice[];
@@ -364,6 +482,11 @@ const SMS_TIMETABLE_STORAGE_KEY = 'pakedu_sms_timetable_v1';
 const SMS_HOMEWORK_STORAGE_KEY = 'pakedu_sms_homework_v1';
 const SMS_CERTIFICATES_STORAGE_KEY = 'pakedu_sms_certificates_v1';
 const SMS_GLOBAL_NOTICES_STORAGE_KEY = 'pakedu_sms_global_notices_v1';
+const SMS_SALARY_STRUCTURES_STORAGE_KEY = 'pakedu_sms_salary_structures_v1';
+const SMS_PAYSLIPS_STORAGE_KEY = 'pakedu_sms_payslips_v1';
+const SMS_PAYROLL_SETTINGS_STORAGE_KEY = 'pakedu_sms_payroll_settings_v1';
+const SMS_SCHOOL_LESSON_PLANS_STORAGE_KEY = 'pakedu_sms_school_lesson_plans_v1';
+const SMS_SCHOOL_QUESTION_PAPERS_STORAGE_KEY = 'pakedu_sms_school_question_papers_v1';
 
 const SmsContext = createContext<SmsContextType | undefined>(undefined);
 
@@ -407,8 +530,21 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (authCtx.currentUserProfile.role) {
           setUserRoleState(authCtx.currentUserProfile.role);
         }
+        if (
+          authCtx.currentUserProfile.role !== 'super-admin' &&
+          !authCtx.currentUserProfile.isSuperAdmin
+        ) {
+          setIsImpersonating(false);
+          setImpersonationOriginalRole(null);
+        }
+      } else if (!authCtx.authLoading && !authCtx.currentUser) {
+        setCurrentUserProfile(null);
+        setUserRoleState('teacher');
+        setIsImpersonating(false);
+        setImpersonationOriginalRole(null);
+        setActiveSchool(EMPTY_DEFAULT_SCHOOL);
       }
-    }, [authCtx.currentUserProfile]);
+    }, [authCtx.currentUserProfile, authCtx.currentUser, authCtx.authLoading]);
   } catch {
     // If rendered outside AuthProvider (e.g. standalone test)
   }
@@ -471,14 +607,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [impersonationOriginalRole, setImpersonationOriginalRole] = useState<UserRole | null>(null);
 
   const isSuperAdmin = useMemo(() => {
-    const email = (currentUserProfile?.email || '').trim().toLowerCase();
-    return (
-      Boolean(currentUserProfile?.isSuperAdmin) ||
-      currentUserProfile?.role === 'super-admin' ||
-      email === 'owner@pakedu.com' ||
-      userRole === 'super-admin'
-    );
-  }, [currentUserProfile, userRole]);
+    if (currentUserProfile) {
+      const email = (currentUserProfile.email || '').trim().toLowerCase();
+      return (
+        Boolean(currentUserProfile.isSuperAdmin) ||
+        currentUserProfile.role === 'super-admin' ||
+        email === 'owner@pakedu.com'
+      );
+    }
+    return demoMode && userRole === 'super-admin';
+  }, [currentUserProfile, demoMode, userRole]);
 
   const isReadOnlyImpersonation = useMemo(() => {
     return Boolean(isImpersonating && (isSuperAdmin || impersonationOriginalRole === 'super-admin'));
@@ -520,17 +658,59 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [registeredSchools, currentUserProfile?.schoolId, currentUserProfile?.semisCode, isImpersonating, isSuperAdmin]);
 
-  // Cloud Sync Resilience & Error Diagnostics State
+  // Cloud Sync Resilience, IndexedDB Queue & Conflict Resolution State
   const [syncError, setSyncError] = useState<SyncErrorInfo | null>(null);
-  const [isPendingSync, setIsPendingSync] = useState(false);
+  const [isPendingSyncState, setIsPendingSyncState] = useState(false);
   const [isOnline, setIsOnline] = useState<boolean>(() => {
-    return typeof navigator !== 'undefined' ? navigator.onLine : true;
+    return !isDeviceOffline();
   });
+  const [offlineQueue, setOfflineQueue] = useState<OfflineSyncItem[]>([]);
+  const offlineQueueRef = useRef<OfflineSyncItem[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [lastSyncSummary, setLastSyncSummary] = useState<OfflineSyncRunSummary | null>(null);
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
+  const [isSyncCenterOpen, setIsSyncCenterOpen] = useState(false);
+
+  const syncInFlightRef = useRef(false);
+  const hasAutoSyncedMountRef = useRef(false);
+  const syncNowRef = useRef<((options?: { backgroundAuto?: boolean }) => Promise<OfflineSyncRunSummary>) | null>(null);
+
+  const isPendingSync = isPendingSyncState || offlineQueue.length > 0;
+  const pendingSyncCount = offlineQueue.length;
+  const conflictItems = useMemo(
+    () => offlineQueue.filter((item) => item.status === 'conflict'),
+    [offlineQueue]
+  );
+
+  const refreshOfflineQueue = useCallback(async () => {
+    try {
+      const items = await getOfflineQueue();
+      offlineQueueRef.current = items;
+      setOfflineQueue(items);
+      if (items.length === 0) {
+        setIsPendingSyncState(false);
+      }
+      return items;
+    } catch {
+      return offlineQueueRef.current;
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshOfflineQueue();
+    const unsubscribe = subscribeOfflineQueue(() => {
+      void refreshOfflineQueue();
+    });
+    return () => unsubscribe();
+  }, [refreshOfflineQueue]);
 
   useEffect(() => {
     const handleOnline = () => {
       setIsOnline(true);
-      setIsPendingSync(false);
+      setIsPendingSyncState(false);
+      setTimeout(() => {
+        void syncNowRef.current?.({ backgroundAuto: true });
+      }, 450);
     };
     const handleOffline = () => {
       setIsOnline(false);
@@ -546,6 +726,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const clearSyncError = () => setSyncError(null);
+  const clearLastSyncSummary = () => setLastSyncSummary(null);
 
   const PLATFORM_SYNC_OPERATIONS = new Set([
     'toggleSchoolStatus',
@@ -556,6 +737,12 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     'publishGlobalNotice',
     'deleteGlobalNotice',
     'markNoticeAsRead',
+    'saveSalaryStructure',
+    'deleteSalaryStructure',
+    'savePayslip',
+    'saveBulkPayslips',
+    'deletePayslip',
+    'savePayrollSettings',
   ]);
 
   const blockSchoolMutation = (operation: string): boolean => {
@@ -582,7 +769,510 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return false;
   };
 
-  const performSync = async (operation: string, syncFn: () => Promise<any>): Promise<boolean> => {
+  const applyRemoteRecordToLocalState = useCallback(
+    (item: OfflineSyncItem, remoteData: Record<string, any> | null) => {
+      switch (item.entityType) {
+        case 'attendance':
+          setAttendanceRegisters((prev) => {
+            const copy = { ...prev };
+            if (remoteData) {
+              copy[remoteData.id || item.recordId] = remoteData as DailyClassAttendance;
+            } else {
+              delete copy[item.recordId];
+            }
+            return copy;
+          });
+          break;
+        case 'feePayment':
+          setFeePayments((prev) => {
+            const filtered = prev.filter((p) => p.id !== item.recordId);
+            if (!remoteData) return filtered;
+            const targetId = remoteData.id || item.recordId;
+            const exists = filtered.some((p) => p.id === targetId);
+            return exists
+              ? filtered.map((p) => (p.id === targetId ? (remoteData as FeePayment) : p))
+              : [remoteData as FeePayment, ...filtered];
+          });
+          break;
+        case 'feeStructure':
+          setFeeStructures((prev) => {
+            const filtered = prev.filter((f) => f.id !== item.recordId && f.classId !== item.recordId);
+            return remoteData ? [...filtered, remoteData as ClassFeeStructure] : filtered;
+          });
+          break;
+        case 'feeConcession':
+          setFeeConcessions((prev) => {
+            const filtered = prev.filter((r) => r.id !== item.recordId);
+            return remoteData ? [remoteData as FeeConcessionRule, ...filtered] : filtered;
+          });
+          break;
+        case 'student':
+        case 'studentInvite':
+          setStudents((prev) => {
+            const filtered = prev.filter((s) => s.id !== item.recordId);
+            return remoteData ? [remoteData as Student, ...filtered] : filtered;
+          });
+          break;
+        case 'class':
+          setClasses((prev) => {
+            const filtered = prev.filter((c) => c.id !== item.recordId);
+            return remoteData ? [remoteData as ClassSection, ...filtered] : filtered;
+          });
+          break;
+        case 'teacher':
+          setTeachers((prev) => {
+            const filtered = prev.filter((t) => t.id !== item.recordId);
+            return remoteData ? [remoteData as TeacherInfo, ...filtered] : filtered;
+          });
+          break;
+        case 'exam':
+          setExams((prev) => {
+            const filtered = prev.filter((e) => e.id !== item.recordId);
+            return remoteData ? [remoteData as Exam, ...filtered] : filtered;
+          });
+          break;
+        case 'marks':
+          setExamMarks((prev) => {
+            const filtered = prev.filter((m) => m.id !== item.recordId);
+            return remoteData ? [remoteData as StudentExamMarks, ...filtered] : filtered;
+          });
+          break;
+        case 'timetable':
+          setTimetableEntries((prev) => {
+            const filtered = prev.filter((t) => t.id !== item.recordId);
+            return remoteData ? [remoteData as TimetableEntry, ...filtered] : filtered;
+          });
+          break;
+        case 'homework':
+          setHomeworkItems((prev) => {
+            const filtered = prev.filter((h) => h.id !== item.recordId);
+            return remoteData ? [remoteData as HomeworkItem, ...filtered] : filtered;
+          });
+          break;
+        case 'certificate':
+          setCertificates((prev) => {
+            const filtered = prev.filter((c) => c.id !== item.recordId);
+            return remoteData ? [remoteData as StudentCertificate, ...filtered] : filtered;
+          });
+          break;
+        case 'salaryStructure':
+          setSalaryStructures((prev) => {
+            const filtered = prev.filter(
+              (s) => s.id !== item.recordId && s.employeeId !== item.recordId
+            );
+            return remoteData ? [remoteData as SalaryStructure, ...filtered] : filtered;
+          });
+          break;
+        case 'payslip':
+          setPayslips((prev) => {
+            const filtered = prev.filter((p) => p.id !== item.recordId);
+            return remoteData ? [remoteData as EmployeePayslip, ...filtered] : filtered;
+          });
+          break;
+        case 'payrollSettings':
+          if (remoteData) {
+            setPayrollSettings(remoteData as PayrollSettings);
+          }
+          break;
+        case 'school':
+        case 'schoolLogo':
+          if (remoteData) {
+            setRegisteredSchools((prev) =>
+              prev.map((s) => (s.id === (remoteData.id || item.recordId) ? (remoteData as School) : s))
+            );
+            setActiveSchool((prev) =>
+              prev.id === (remoteData.id || item.recordId) ? (remoteData as School) : prev
+            );
+          }
+          break;
+        case 'globalNotice':
+        case 'noticeRead':
+          setGlobalNotices((prev) => {
+            const filtered = prev.filter((n) => n.id !== item.recordId);
+            return remoteData ? [remoteData as GlobalNotice, ...filtered] : filtered;
+          });
+          break;
+        case 'schoolLessonPlan':
+          setSchoolLessonPlans((prev) => {
+            const filtered = prev.filter((p) => p.id !== item.recordId);
+            return remoteData ? [remoteData as SchoolLessonPlan, ...filtered] : filtered;
+          });
+          break;
+        case 'schoolQuestionPaper':
+          setSchoolQuestionPapers((prev) => {
+            const filtered = prev.filter((qp) => qp.id !== item.recordId);
+            return remoteData ? [remoteData as SchoolQuestionPaper, ...filtered] : filtered;
+          });
+          break;
+        default:
+          break;
+      }
+    },
+    []
+  );
+
+  const mergeQueueIntoCollection = useCallback(
+    <T extends { id: string }>(
+      entityTypes: OfflineSyncItem['entityType'][],
+      schoolId: string,
+      remoteList: T[],
+      queueItems: OfflineSyncItem[]
+    ): T[] => {
+      const relevant = queueItems.filter(
+        (q) =>
+          entityTypes.includes(q.entityType) &&
+          (!q.schoolId || q.schoolId === schoolId || q.schoolId === 'global')
+      );
+      if (relevant.length === 0) return remoteList;
+
+      const map = new Map<string, T>();
+      for (const item of remoteList) {
+        if (item?.id) map.set(item.id, item);
+      }
+      for (const q of relevant) {
+        if (q.action === 'delete') {
+          map.delete(q.recordId);
+        } else if (q.payload) {
+          const id = (q.payload as any).id || q.recordId;
+          map.set(id, { ...(map.get(id) || {}), ...(q.payload as T), id });
+        }
+      }
+      return Array.from(map.values());
+    },
+    []
+  );
+
+  const mergeQueueIntoAttendanceMap = useCallback(
+    (
+      schoolId: string,
+      remoteMap: Record<string, DailyClassAttendance>,
+      queueItems: OfflineSyncItem[]
+    ): Record<string, DailyClassAttendance> => {
+      const relevant = queueItems.filter(
+        (q) => q.entityType === 'attendance' && q.schoolId === schoolId
+      );
+      if (relevant.length === 0) return remoteMap;
+
+      const merged = { ...remoteMap };
+      for (const q of relevant) {
+        if (q.action === 'delete') {
+          delete merged[q.recordId];
+        } else if (q.payload) {
+          const att = q.payload as DailyClassAttendance;
+          merged[att.id || q.recordId] = att;
+        }
+      }
+      return merged;
+    },
+    []
+  );
+
+  const syncNow = useCallback(
+    async (options?: { backgroundAuto?: boolean }): Promise<OfflineSyncRunSummary> => {
+      const startedAt = new Date().toISOString();
+      if (demoMode) {
+        return {
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          totalProcessed: 0,
+          syncedCount: 0,
+          conflictCount: 0,
+          failedCount: 0,
+          results: [],
+        };
+      }
+
+      if (syncInFlightRef.current) {
+        return (
+          lastSyncSummary || {
+            startedAt,
+            finishedAt: new Date().toISOString(),
+            totalProcessed: 0,
+            syncedCount: 0,
+            conflictCount: 0,
+            failedCount: 0,
+            results: [],
+          }
+        );
+      }
+
+      if (isDeviceOffline()) {
+        setIsOnline(false);
+        const queued = await refreshOfflineQueue();
+        const offlineSummary: OfflineSyncRunSummary = {
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          totalProcessed: 0,
+          syncedCount: 0,
+          conflictCount: queued.filter((q) => q.status === 'conflict').length,
+          failedCount: 0,
+          results: [],
+        };
+        if (!options?.backgroundAuto && queued.length > 0) {
+          setIsSyncCenterOpen(true);
+        }
+        return offlineSummary;
+      }
+
+      syncInFlightRef.current = true;
+      setIsSyncing(true);
+      setIsOnline(true);
+
+      const results: SyncItemResult[] = [];
+      let syncedCount = 0;
+      let conflictCount = 0;
+      let failedCount = 0;
+
+      try {
+        const snapshot = await getOfflineQueue();
+        const processable = snapshot.filter((item) => item.status !== 'conflict');
+
+        for (const item of processable) {
+          if (isDeviceOffline()) {
+            failedCount += 1;
+            results.push({
+              id: item.id,
+              recordId: item.recordId,
+              recordLabel: item.recordLabel,
+              entityType: item.entityType,
+              docPath: item.docPath,
+              status: 'failed',
+              message: 'Network disconnected mid-sync. Kept in queue.',
+            });
+            await updateOfflineQueueItem(item.id, {
+              status: 'failed',
+              errorMessage: 'Connection lost during sync. Kept in offline queue.',
+              attempts: item.attempts + 1,
+              lastAttemptAt: new Date().toISOString(),
+            });
+            break;
+          }
+
+          await updateOfflineQueueItem(item.id, { status: 'syncing' });
+          const outcome = await syncOfflineQueueItemToFirestore(item);
+
+          if (outcome.status === 'synced') {
+            syncedCount += 1;
+            if (
+              outcome.resolvedRecordId &&
+              item.entityType === 'feePayment' &&
+              outcome.resolvedRecordId !== item.recordId
+            ) {
+              setFeePayments((prev) =>
+                prev.map((p) =>
+                  p.id === item.recordId ? { ...p, id: outcome.resolvedRecordId! } : p
+                )
+              );
+            }
+            await removeOfflineQueueItem(item.id);
+            results.push({
+              id: item.id,
+              recordId: outcome.resolvedRecordId || item.recordId,
+              recordLabel: item.recordLabel,
+              entityType: item.entityType,
+              docPath: outcome.resolvedDocPath || item.docPath,
+              status: 'synced',
+              message: 'Synced cleanly to Firestore.',
+            });
+          } else if (outcome.status === 'conflict') {
+            conflictCount += 1;
+            await updateOfflineQueueItem(item.id, {
+              status: 'conflict',
+              remoteSnapshot: outcome.remoteSnapshot,
+              remoteUpdatedAt: outcome.remoteUpdatedAt,
+              conflictReason: outcome.conflictReason,
+              attempts: item.attempts + 1,
+              lastAttemptAt: new Date().toISOString(),
+            });
+            results.push({
+              id: item.id,
+              recordId: item.recordId,
+              recordLabel: item.recordLabel,
+              entityType: item.entityType,
+              docPath: item.docPath,
+              status: 'conflict',
+              message: outcome.conflictReason,
+            });
+          } else if (outcome.status === 'failed') {
+            failedCount += 1;
+            await updateOfflineQueueItem(item.id, {
+              status: 'failed',
+              errorMessage: outcome.errorMessage,
+              attempts: item.attempts + 1,
+              lastAttemptAt: new Date().toISOString(),
+            });
+            results.push({
+              id: item.id,
+              recordId: item.recordId,
+              recordLabel: item.recordLabel,
+              entityType: item.entityType,
+              docPath: item.docPath,
+              status: 'failed',
+              message: outcome.errorMessage,
+            });
+          }
+        }
+
+        const remaining = await refreshOfflineQueue();
+        setIsPendingSyncState(remaining.length > 0);
+        if (syncedCount > 0) {
+          setLastSyncedAt(new Date().toISOString());
+          setSyncError(null);
+        }
+
+        const summary: OfflineSyncRunSummary = {
+          startedAt,
+          finishedAt: new Date().toISOString(),
+          totalProcessed: results.length,
+          syncedCount,
+          conflictCount,
+          failedCount,
+          results,
+        };
+
+        if (results.length > 0 || !options?.backgroundAuto) {
+          setLastSyncSummary(summary);
+        }
+        if (conflictCount > 0) {
+          setIsSyncCenterOpen(true);
+        }
+        return summary;
+      } finally {
+        syncInFlightRef.current = false;
+        setIsSyncing(false);
+      }
+    },
+    [demoMode, lastSyncSummary, refreshOfflineQueue]
+  );
+
+  useEffect(() => {
+    syncNowRef.current = syncNow;
+  }, [syncNow]);
+
+  // Automatic Background Sync on Initial Online Load if Queue Has Pending Items
+  useEffect(() => {
+    if (
+      !demoMode &&
+      !hasAutoSyncedMountRef.current &&
+      isOnline &&
+      !isDeviceOffline() &&
+      offlineQueue.some((item) => item.status === 'pending' || item.status === 'failed')
+    ) {
+      hasAutoSyncedMountRef.current = true;
+      const timer = setTimeout(() => {
+        void syncNow({ backgroundAuto: true });
+      }, 900);
+      return () => clearTimeout(timer);
+    }
+  }, [demoMode, isOnline, offlineQueue, syncNow]);
+
+  const resolveSyncConflict = useCallback(
+    async (queueItemId: string, choice: ConflictResolutionChoice): Promise<boolean> => {
+      const queue = await getOfflineQueue();
+      const target = queue.find((i) => i.id === queueItemId);
+      if (!target) return false;
+
+      if (isDeviceOffline()) {
+        setIsOnline(false);
+        return false;
+      }
+
+      await updateOfflineQueueItem(queueItemId, { status: 'syncing' });
+      const outcome = await syncOfflineQueueItemToFirestore(target, choice);
+
+      if (choice === 'keep-remote' && outcome.status === 'resolved-remote') {
+        applyRemoteRecordToLocalState(target, outcome.remoteData);
+        await removeOfflineQueueItem(queueItemId);
+        await refreshOfflineQueue();
+        setLastSyncedAt(new Date().toISOString());
+        setLastSyncSummary((prev) => ({
+          startedAt: prev?.startedAt || new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+          totalProcessed: (prev?.totalProcessed || 0) + 1,
+          syncedCount: (prev?.syncedCount || 0) + 1,
+          conflictCount: Math.max(0, (prev?.conflictCount || 1) - 1),
+          failedCount: prev?.failedCount || 0,
+          results: [
+            ...(prev?.results.filter((r) => r.id !== target.id) || []),
+            {
+              id: target.id,
+              recordId: target.recordId,
+              recordLabel: target.recordLabel,
+              entityType: target.entityType,
+              docPath: target.docPath,
+              status: 'synced',
+              message: 'Conflict resolved: kept online server version.',
+            },
+          ],
+        }));
+        return true;
+      }
+
+      if (choice === 'keep-local' && outcome.status === 'synced') {
+        if (
+          outcome.resolvedRecordId &&
+          target.entityType === 'feePayment' &&
+          outcome.resolvedRecordId !== target.recordId
+        ) {
+          setFeePayments((prev) =>
+            prev.map((p) =>
+              p.id === target.recordId ? { ...p, id: outcome.resolvedRecordId! } : p
+            )
+          );
+        }
+        await removeOfflineQueueItem(queueItemId);
+        await refreshOfflineQueue();
+        setLastSyncedAt(new Date().toISOString());
+        setLastSyncSummary((prev) => ({
+          startedAt: prev?.startedAt || new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+          totalProcessed: (prev?.totalProcessed || 0) + 1,
+          syncedCount: (prev?.syncedCount || 0) + 1,
+          conflictCount: Math.max(0, (prev?.conflictCount || 1) - 1),
+          failedCount: prev?.failedCount || 0,
+          results: [
+            ...(prev?.results.filter((r) => r.id !== target.id) || []),
+            {
+              id: target.id,
+              recordId: outcome.resolvedRecordId || target.recordId,
+              recordLabel: target.recordLabel,
+              entityType: target.entityType,
+              docPath: outcome.resolvedDocPath || target.docPath,
+              status: 'synced',
+              message: 'Conflict resolved: pushed local version to Firestore.',
+            },
+          ],
+        }));
+        return true;
+      }
+
+      const failMsg =
+        outcome.status === 'failed'
+          ? outcome.errorMessage
+          : 'Failed to resolve conflict. Please retry when online.';
+      await updateOfflineQueueItem(queueItemId, {
+        status: 'conflict',
+        errorMessage: failMsg,
+      });
+      await refreshOfflineQueue();
+      return false;
+    },
+    [applyRemoteRecordToLocalState, refreshOfflineQueue]
+  );
+
+  const discardOfflineItem = useCallback(
+    async (queueItemId: string): Promise<void> => {
+      await removeOfflineQueueItem(queueItemId);
+      await refreshOfflineQueue();
+    },
+    [refreshOfflineQueue]
+  );
+
+  const performSync = async (
+    operation: string,
+    syncFn: () => Promise<any>,
+    queueEntries?: EnqueueOfflineMutationInput[]
+  ): Promise<boolean> => {
     if (demoMode) return true;
     const isReadOnlyPortalAccount =
       currentUserProfile?.role === 'student' ||
@@ -600,10 +1290,44 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
       return false;
     }
+
+    const enqueueAll = async () => {
+      if (queueEntries && queueEntries.length > 0) {
+        await Promise.all(queueEntries.map((entry) => enqueueOfflineMutation(entry)));
+        await refreshOfflineQueue();
+      }
+      setIsPendingSyncState(true);
+      setSyncError(null);
+    };
+
+    // Immediate offline short-circuit into IndexedDB queue (prevents hanging writes)
+    if (isDeviceOffline()) {
+      setIsOnline(false);
+      if (queueEntries && queueEntries.length > 0) {
+        await enqueueAll();
+        return true;
+      }
+      setIsPendingSyncState(true);
+      return false;
+    }
+
     try {
       await syncFn();
       setSyncError(null);
-      setIsPendingSync(false);
+      if (queueEntries && queueEntries.length > 0) {
+        await Promise.all(
+          queueEntries.map((entry) =>
+            entry.action === 'delete'
+              ? removeServerBaseline(entry.docPath)
+              : recordServerBaseline(
+                  entry.docPath,
+                  entry.payload as Record<string, any>,
+                  (entry.payload as any)?.updatedAt
+                )
+          )
+        );
+      }
+      setIsPendingSyncState(offlineQueueRef.current.length > 0);
       if (
         operation === 'submitSchoolRegistration' ||
         operation === 'submitJoinRequest' ||
@@ -617,20 +1341,26 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       return true;
     } catch (err: any) {
-      console.error(`[SmsContext] Sync error during ${operation}:`, err);
+      const classified = classifyFirestoreError(err, operation);
       const isOfflineError =
-        err?.isOffline ||
-        (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        classified.isOffline ||
+        isDeviceOffline() ||
         err?.code === 'unavailable' ||
         err?.code === 'offline';
 
       if (isOfflineError) {
-        setIsPendingSync(true);
+        if (isDeviceOffline()) setIsOnline(false);
+        if (queueEntries && queueEntries.length > 0) {
+          await enqueueAll();
+          return true;
+        }
+        setIsPendingSyncState(true);
       } else {
+        console.error(`[SmsContext] Sync error during ${operation}:`, err);
         const errorReason =
-          err?.code === 'permission-denied'
+          classified.isPermissionDenied
             ? 'Permission denied by institutional security policy'
-            : err?.message || 'Institutional cloud write failed';
+            : classified.message || 'Institutional cloud write failed';
 
         setSyncError({
           id: `${operation}_${Date.now()}`,
@@ -639,7 +1369,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           operation,
           retry: async () => {
             setSyncError(null);
-            await performSync(operation, syncFn);
+            await performSync(operation, syncFn, queueEntries);
           },
         });
       }
@@ -648,6 +1378,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleSchoolStatus = (schoolId: string, reason?: string) => {
+    const existingSchool = registeredSchools.find((s) => s.id === schoolId);
     setRegisteredSchools((prev) =>
       prev.map((s) => {
         if (s.id === schoolId) {
@@ -658,7 +1389,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             suspendedReason: nextStatus === 'suspended' ? reason || 'Administrative Policy Review' : undefined,
           };
           if (!demoMode) {
-            performSync('toggleSchoolStatus', () => saveSchoolToFirestore(updated));
+            void performSync(
+              'toggleSchoolStatus',
+              () => saveSchoolToFirestore(updated),
+              [
+                {
+                  entityType: 'school',
+                  action: 'upsert',
+                  operation: 'toggleSchoolStatus',
+                  schoolId: updated.id,
+                  docPath: `schools/${updated.id}`,
+                  recordId: updated.id,
+                  recordLabel: `School Status · ${updated.name}`,
+                  payload: updated,
+                  baseUpdatedAt: normalizeTimestampValue((existingSchool as any)?.updatedAt),
+                  baseSnapshot: existingSchool || null,
+                },
+              ]
+            );
           }
           return updated;
         }
@@ -687,8 +1435,30 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsImpersonating(false);
     if (impersonationOriginalRole) {
       setUserRoleState(impersonationOriginalRole);
+    } else if (currentUserProfile?.role) {
+      setUserRoleState(currentUserProfile.role);
     } else {
-      setUserRoleState('super-admin');
+      setUserRoleState('teacher');
+    }
+  };
+
+  const resetSmsSessionState = () => {
+    setCurrentUserProfile(null);
+    setUserRoleState('teacher');
+    setIsImpersonating(false);
+    setImpersonationOriginalRole(null);
+    setActiveSchool(EMPTY_DEFAULT_SCHOOL);
+    if (!demoMode) {
+      setSalaryStructures([]);
+      setPayslips([]);
+      setSchoolLessonPlans([]);
+      setSchoolQuestionPapers([]);
+    }
+    try {
+      localStorage.removeItem(SMS_USER_PROFILE_STORAGE_KEY);
+      localStorage.removeItem(SMS_ROLE_STORAGE_KEY);
+    } catch {
+      // Ignore storage errors
     }
   };
 
@@ -989,6 +1759,114 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
+  const [salaryStructures, setSalaryStructures] = useState<SalaryStructure[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_SALARY_STRUCTURES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_SALARY_STRUCTURES;
+          return parsed.filter(
+            (s: SalaryStructure) => s.schoolId !== 'school_latifabad_403020101'
+          );
+        }
+      }
+      return isDemo ? INITIAL_MOCK_SALARY_STRUCTURES : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [payslips, setPayslips] = useState<EmployeePayslip[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_PAYSLIPS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) return parsed.length > 0 ? parsed : INITIAL_MOCK_PAYSLIPS;
+          return parsed.filter(
+            (p: EmployeePayslip) => p.schoolId !== 'school_latifabad_403020101'
+          );
+        }
+      }
+      return isDemo ? INITIAL_MOCK_PAYSLIPS : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [payrollSettings, setPayrollSettings] = useState<PayrollSettings>(() => {
+    try {
+      const saved = localStorage.getItem(SMS_PAYROLL_SETTINGS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          return {
+            id: 'config',
+            schoolId: parsed.schoolId || '',
+            teacherPayslipAccessEnabled:
+              parsed.teacherPayslipAccessEnabled !== undefined
+                ? Boolean(parsed.teacherPayslipAccessEnabled)
+                : true,
+            defaultPaymentMethod: parsed.defaultPaymentMethod || 'Bank Transfer',
+          };
+        }
+      }
+    } catch {
+      // Ignore
+    }
+    return {
+      id: 'config',
+      schoolId: '',
+      teacherPayslipAccessEnabled: true,
+      defaultPaymentMethod: 'Bank Transfer',
+    };
+  });
+
+  const [schoolLessonPlans, setSchoolLessonPlans] = useState<SchoolLessonPlan[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_SCHOOL_LESSON_PLANS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) {
+            return parsed.length > 0 ? parsed : INITIAL_MOCK_SCHOOL_LESSON_PLANS;
+          }
+          return parsed.filter(
+            (p: SchoolLessonPlan) => !String(p.id || '').startsWith('lp_demo_')
+          );
+        }
+      }
+      return isDemo ? INITIAL_MOCK_SCHOOL_LESSON_PLANS : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [schoolQuestionPapers, setSchoolQuestionPapers] = useState<SchoolQuestionPaper[]>(() => {
+    try {
+      const isDemo = localStorage.getItem(SMS_DEMO_MODE_STORAGE_KEY) === 'true';
+      const saved = localStorage.getItem(SMS_SCHOOL_QUESTION_PAPERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          if (isDemo) {
+            return parsed.length > 0 ? parsed : INITIAL_MOCK_SCHOOL_QUESTION_PAPERS;
+          }
+          return parsed.filter(
+            (qp: SchoolQuestionPaper) => !String(qp.id || '').startsWith('qp_demo_')
+          );
+        }
+      }
+      return isDemo ? INITIAL_MOCK_SCHOOL_QUESTION_PAPERS : [];
+    } catch {
+      return [];
+    }
+  });
+
   const setDemoMode = (enabled: boolean) => {
     if (!import.meta.env.DEV) {
       setDemoModeState(false);
@@ -1021,6 +1899,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setHomeworkItems(INITIAL_MOCK_HOMEWORK);
       setCertificates(INITIAL_MOCK_CERTIFICATES);
       setGlobalNotices(INITIAL_MOCK_GLOBAL_NOTICES);
+      setSalaryStructures(INITIAL_MOCK_SALARY_STRUCTURES);
+      setPayslips(INITIAL_MOCK_PAYSLIPS);
+      setSchoolLessonPlans(INITIAL_MOCK_SCHOOL_LESSON_PLANS);
+      setSchoolQuestionPapers(INITIAL_MOCK_SCHOOL_QUESTION_PAPERS);
+      setPayrollSettings({
+        id: 'config',
+        schoolId: INITIAL_MOCK_SCHOOL.id,
+        teacherPayslipAccessEnabled: true,
+        defaultPaymentMethod: 'Bank Transfer',
+      });
     } else {
       try {
         const savedSchools = localStorage.getItem(SMS_SCHOOLS_STORAGE_KEY);
@@ -1084,6 +1972,38 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const parsedNotices = savedNotices ? JSON.parse(savedNotices) : [];
         setGlobalNotices(parsedNotices.filter((n: GlobalNotice) => !n.id.startsWith('notice_mock_')));
 
+        const savedSalaryStructures = localStorage.getItem(SMS_SALARY_STRUCTURES_STORAGE_KEY);
+        const parsedSalaryStructures = savedSalaryStructures ? JSON.parse(savedSalaryStructures) : [];
+        setSalaryStructures(
+          parsedSalaryStructures.filter(
+            (s: SalaryStructure) => s.schoolId !== 'school_latifabad_403020101'
+          )
+        );
+
+        const savedPayslips = localStorage.getItem(SMS_PAYSLIPS_STORAGE_KEY);
+        const parsedPayslips = savedPayslips ? JSON.parse(savedPayslips) : [];
+        setPayslips(
+          parsedPayslips.filter(
+            (p: EmployeePayslip) => p.schoolId !== 'school_latifabad_403020101'
+          )
+        );
+
+        const savedSchoolLessonPlans = localStorage.getItem(SMS_SCHOOL_LESSON_PLANS_STORAGE_KEY);
+        const parsedSchoolPlans = savedSchoolLessonPlans ? JSON.parse(savedSchoolLessonPlans) : [];
+        setSchoolLessonPlans(
+          parsedSchoolPlans.filter(
+            (p: SchoolLessonPlan) => !String(p.id || '').startsWith('lp_demo_')
+          )
+        );
+
+        const savedSchoolQuestionPapers = localStorage.getItem(SMS_SCHOOL_QUESTION_PAPERS_STORAGE_KEY);
+        const parsedSchoolPapers = savedSchoolQuestionPapers ? JSON.parse(savedSchoolQuestionPapers) : [];
+        setSchoolQuestionPapers(
+          parsedSchoolPapers.filter(
+            (qp: SchoolQuestionPaper) => !String(qp.id || '').startsWith('qp_demo_')
+          )
+        );
+
         setAttendanceRegisters({});
       } catch {
         setRegisteredSchools([]);
@@ -1102,10 +2022,36 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHomeworkItems([]);
         setCertificates([]);
         setGlobalNotices([]);
+        setSalaryStructures([]);
+        setPayslips([]);
+        setSchoolLessonPlans([]);
+        setSchoolQuestionPapers([]);
         setAttendanceRegisters({});
       }
     }
   };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMS_SCHOOL_LESSON_PLANS_STORAGE_KEY,
+        JSON.stringify(schoolLessonPlans)
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [schoolLessonPlans]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SMS_SCHOOL_QUESTION_PAPERS_STORAGE_KEY,
+        JSON.stringify(schoolQuestionPapers)
+      );
+    } catch {
+      // Ignore storage errors
+    }
+  }, [schoolQuestionPapers]);
 
   // Save classes changes to localStorage
   useEffect(() => {
@@ -1228,6 +2174,30 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [globalNotices]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_SALARY_STRUCTURES_STORAGE_KEY, JSON.stringify(salaryStructures));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [salaryStructures]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_PAYSLIPS_STORAGE_KEY, JSON.stringify(payslips));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [payslips]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SMS_PAYROLL_SETTINGS_STORAGE_KEY, JSON.stringify(payrollSettings));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [payrollSettings]);
+
   const setUserRole = (role: UserRole) => {
     setUserRoleState(role);
     try {
@@ -1240,13 +2210,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshActiveSchoolClasses = async (overrideSchoolId?: string): Promise<ClassSection[]> => {
     const targetId = overrideSchoolId || activeSchool.id;
     if (!targetId || targetId === 'sch_seld_khi_01') return classes;
-    if (demoMode) return classes;
+    if (demoMode || isDeviceOffline()) return classes;
 
     setLoadingClasses(true);
     try {
       const remoteClasses = await fetchClassesFromFirestore(targetId);
-      setClasses(remoteClasses);
-      return remoteClasses;
+      const merged = mergeQueueIntoCollection(['class'], targetId, remoteClasses, offlineQueueRef.current);
+      setClasses(merged);
+      return merged;
     } catch (err) {
       console.warn('[Firestore] Notice: Classes refresh error:', err);
       return classes;
@@ -1257,14 +2228,17 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Sync Schools Directory & Registration Requests on mount / auth state / mode change
   useEffect(() => {
-    if (demoMode) return;
+    if (demoMode || isDeviceOffline()) return;
     let cancelled = false;
 
     fetchSchoolsFromFirestore()
       .then((remoteSchools) => {
         if (cancelled) return;
         if (remoteSchools && remoteSchools.length > 0) {
-          setRegisteredSchools(remoteSchools.filter((s) => s.id && s.id !== 'sch_seld_khi_01'));
+          const filtered = remoteSchools.filter((s) => s.id && s.id !== 'sch_seld_khi_01');
+          setRegisteredSchools(
+            mergeQueueIntoCollection(['school', 'schoolLogo'], 'global', filtered, offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: School fetch error:', err));
@@ -1281,7 +2255,11 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (isSuperAdmin) {
       fetchAllGlobalNoticesFromFirestore()
         .then((remoteNotices) => {
-          if (!cancelled) setGlobalNotices(remoteNotices || []);
+          if (!cancelled) {
+            setGlobalNotices(
+              mergeQueueIntoCollection(['globalNotice'], 'global', remoteNotices || [], offlineQueueRef.current)
+            );
+          }
         })
         .catch((err) => console.warn('[Firestore] Notice: Global notices fetch error:', err));
     } else if (
@@ -1292,7 +2270,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ) {
       fetchNoticesForSchoolFromFirestore(activeSchool.id)
         .then((remoteNotices) => {
-          if (!cancelled) setGlobalNotices(remoteNotices || []);
+          if (!cancelled) {
+            setGlobalNotices(
+              mergeQueueIntoCollection(
+                ['globalNotice', 'noticeRead'],
+                activeSchool.id,
+                remoteNotices || [],
+                offlineQueueRef.current
+              )
+            );
+          }
         })
         .catch((err) => console.warn('[Firestore] Notice: School notices fetch error:', err));
     }
@@ -1300,12 +2287,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => {
       cancelled = true;
     };
-  }, [demoMode, authUserUid, currentUserProfile?.role, currentUserProfile?.status, isSuperAdmin, activeSchool.id]);
+  }, [demoMode, authUserUid, currentUserProfile?.role, currentUserProfile?.status, isSuperAdmin, activeSchool.id, isOnline, mergeQueueIntoCollection]);
 
   // Cloud Firestore Sync for active school subcollections when not in demo mode
   useEffect(() => {
     if (demoMode) return;
     if (!activeSchool.id || activeSchool.id === 'sch_seld_khi_01') return;
+    if (isDeviceOffline()) return;
 
     let cancelled = false;
     const schoolId = activeSchool.id;
@@ -1330,6 +2318,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setHomeworkItems([]);
         setCertificates([]);
         setStudentPortalLinks({});
+        setSchoolLessonPlans([]);
+        setSchoolQuestionPapers([]);
         setLoadingClasses(false);
         return () => {
           cancelled = true;
@@ -1419,6 +2409,18 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 if (!cancelled) setFeeStructures(remoteStructures || []);
               })
               .catch(() => {});
+
+            if (studentDoc?.classId) {
+              fetchSharedLessonPlansForParentFromFirestore(schoolId, studentDoc.classId)
+                .then((sharedPlans) => {
+                  if (!cancelled) setSchoolLessonPlans(sharedPlans || []);
+                })
+                .catch(() => {
+                  if (!cancelled) setSchoolLessonPlans([]);
+                });
+            } else {
+              setSchoolLessonPlans([]);
+            }
           }
         } catch {
           if (!cancelled) {
@@ -1458,13 +2460,17 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTeachers([]);
       setJoinRequests([]);
       setStudentPortalLinks({});
+      setSalaryStructures([]);
+      setPayslips([]);
+      setSchoolLessonPlans([]);
+      setSchoolQuestionPapers([]);
 
       return () => {
         cancelled = true;
       };
     }
 
-    // Strict Super Admin RBAC Isolation: Never query or expose tenant student/class/attendance/fee/exam subcollections
+    // Strict Super Admin RBAC Isolation: Never query or expose tenant student/class/attendance/fee/exam/AI subcollections
     if (isSuperAdmin) {
       setClasses([]);
       setTeachers([]);
@@ -1479,6 +2485,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setTimetableEntries([]);
       setHomeworkItems([]);
       setCertificates([]);
+      setSalaryStructures([]);
+      setPayslips([]);
+      setSchoolLessonPlans([]);
+      setSchoolQuestionPapers([]);
       setLoadingClasses(false);
       return () => {
         cancelled = true;
@@ -1488,11 +2498,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Reset school-scoped collections before loading when switching schools so stale data doesn't linger
     setLoadingClasses(true);
 
-    // 2. Sync classes for active school
+    // 2. Sync classes for active school (overlaying queued offline mutations)
     fetchClassesFromFirestore(schoolId)
       .then((remoteClasses) => {
         if (!cancelled) {
-          setClasses(remoteClasses || []);
+          setClasses(
+            mergeQueueIntoCollection(['class'], schoolId, remoteClasses || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Classes fetch error:', err))
@@ -1504,25 +2516,36 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchTeachersFromFirestore(schoolId)
       .then((remoteTeachers) => {
         if (!cancelled) {
-          setTeachers(remoteTeachers || []);
+          setTeachers(
+            mergeQueueIntoCollection(['teacher'], schoolId, remoteTeachers || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Teachers fetch error:', err));
 
-    // 3. Sync students for active school
+    // 3. Sync students for active school (overlaying queued offline mutations)
     fetchStudentsFromFirestore(schoolId)
       .then((remoteStudents) => {
         if (!cancelled) {
-          setStudents(remoteStudents || []);
+          setStudents(
+            mergeQueueIntoCollection(
+              ['student', 'studentInvite'],
+              schoolId,
+              remoteStudents || [],
+              offlineQueueRef.current
+            )
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Students fetch error:', err));
 
-    // 4. Sync attendance for active school
+    // 4. Sync attendance for active school (overlaying queued offline registers)
     fetchAttendanceFromFirestore(schoolId)
       .then((remoteAttendance) => {
         if (!cancelled) {
-          setAttendanceRegisters(remoteAttendance || {});
+          setAttendanceRegisters(
+            mergeQueueIntoAttendanceMap(schoolId, remoteAttendance || {}, offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Attendance fetch error:', err));
@@ -1540,16 +2563,20 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchFeeStructuresFromFirestore(schoolId)
       .then((remoteStructures) => {
         if (!cancelled) {
-          setFeeStructures(remoteStructures || []);
+          setFeeStructures(
+            mergeQueueIntoCollection(['feeStructure'], schoolId, remoteStructures || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee structures fetch error:', err));
 
-    // 7. Sync fee payments for active school
+    // 7. Sync fee payments for active school (overlaying queued offline fee payments)
     fetchFeePaymentsFromFirestore(schoolId)
       .then((remotePayments) => {
         if (!cancelled) {
-          setFeePayments(remotePayments || []);
+          setFeePayments(
+            mergeQueueIntoCollection(['feePayment'], schoolId, remotePayments || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee payments fetch error:', err));
@@ -1558,7 +2585,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchFeeConcessionsFromFirestore(schoolId)
       .then((remoteConcessions) => {
         if (!cancelled) {
-          setFeeConcessions(remoteConcessions || []);
+          setFeeConcessions(
+            mergeQueueIntoCollection(['feeConcession'], schoolId, remoteConcessions || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Fee concessions fetch error:', err));
@@ -1567,7 +2596,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchExamsFromFirestore(schoolId)
       .then((remoteExams) => {
         if (!cancelled) {
-          setExams(remoteExams || []);
+          setExams(
+            mergeQueueIntoCollection(['exam'], schoolId, remoteExams || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Exams fetch error:', err));
@@ -1576,7 +2607,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchMarksFromFirestore(schoolId)
       .then((remoteMarks) => {
         if (!cancelled) {
-          setExamMarks(remoteMarks || []);
+          setExamMarks(
+            mergeQueueIntoCollection(['marks'], schoolId, remoteMarks || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Exam marks fetch error:', err));
@@ -1585,7 +2618,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchTimetableFromFirestore(schoolId)
       .then((remoteTimetable) => {
         if (!cancelled) {
-          setTimetableEntries(remoteTimetable || []);
+          setTimetableEntries(
+            mergeQueueIntoCollection(['timetable'], schoolId, remoteTimetable || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Timetable fetch error:', err));
@@ -1593,7 +2628,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchHomeworkFromFirestore(schoolId)
       .then((remoteHomework) => {
         if (!cancelled) {
-          setHomeworkItems(remoteHomework || []);
+          setHomeworkItems(
+            mergeQueueIntoCollection(['homework'], schoolId, remoteHomework || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Homework fetch error:', err));
@@ -1601,7 +2638,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     fetchCertificatesFromFirestore(schoolId)
       .then((remoteCertificates) => {
         if (!cancelled) {
-          setCertificates(remoteCertificates || []);
+          setCertificates(
+            mergeQueueIntoCollection(['certificate'], schoolId, remoteCertificates || [], offlineQueueRef.current)
+          );
         }
       })
       .catch((err) => console.warn('[Firestore] Notice: Certificates fetch error:', err));
@@ -1614,10 +2653,121 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })
       .catch(() => {});
 
+    // 12. Sync Salary & Payroll (RBAC-enforced: Admin gets full payroll; Teacher gets ONLY own finalized payslips if enabled)
+    const isAdminForSync =
+      currentUserProfile?.role === 'admin' ||
+      currentUserProfile?.role === 'principal' ||
+      hasAdminCapabilities(null, currentUserProfile, registeredSchools);
+
+    fetchPayrollSettingsFromFirestore(schoolId)
+      .then((remoteSettings) => {
+        if (cancelled) return;
+        const resolvedSettings: PayrollSettings = remoteSettings || {
+          id: 'config',
+          schoolId,
+          teacherPayslipAccessEnabled: true,
+          defaultPaymentMethod: 'Bank Transfer',
+        };
+        setPayrollSettings(resolvedSettings);
+
+        if (isAdminForSync) {
+          fetchSalaryStructuresFromFirestore(schoolId)
+            .then((remoteStructures) => {
+              if (!cancelled) {
+                setSalaryStructures(
+                  mergeQueueIntoCollection(
+                    ['salaryStructure'],
+                    schoolId,
+                    remoteStructures || [],
+                    offlineQueueRef.current
+                  )
+                );
+              }
+            })
+            .catch((err) => console.warn('[Firestore] Notice: Salary structures fetch error:', err));
+
+          fetchPayslipsFromFirestore(schoolId)
+            .then((remotePayslips) => {
+              if (!cancelled) {
+                setPayslips(
+                  mergeQueueIntoCollection(
+                    ['payslip'],
+                    schoolId,
+                    remotePayslips || [],
+                    offlineQueueRef.current
+                  )
+                );
+              }
+            })
+            .catch((err) => console.warn('[Firestore] Notice: Payslips fetch error:', err));
+        } else {
+          setSalaryStructures([]);
+          if (resolvedSettings.teacherPayslipAccessEnabled) {
+            fetchTeacherOwnPayslipsFromFirestore(schoolId, {
+              uid: authUserUid || currentUserProfile?.uid,
+              email: currentUserProfile?.email,
+            })
+              .then((ownSlips) => {
+                if (!cancelled) {
+                  setPayslips(ownSlips || []);
+                }
+              })
+              .catch(() => {
+                if (!cancelled) setPayslips([]);
+              });
+          } else {
+            setPayslips([]);
+          }
+        }
+      })
+      .catch(() => {
+        if (!cancelled && !isAdminForSync) {
+          setSalaryStructures([]);
+          setPayslips([]);
+        }
+      });
+
+    // 13. Sync School AI Lesson Plans & Question Papers (RBAC-enforced: Admin gets all; Teacher gets assigned classes only; Super Admin excluded above)
+    const teacherAssignedClassIdsForAi = isAdminForSync
+      ? undefined
+      : Array.isArray(currentUserProfile?.assignedClassIds)
+      ? currentUserProfile.assignedClassIds
+      : [];
+
+    fetchSchoolLessonPlansFromFirestore(schoolId, teacherAssignedClassIdsForAi)
+      .then((remotePlans) => {
+        if (!cancelled) {
+          setSchoolLessonPlans(
+            mergeQueueIntoCollection(
+              ['schoolLessonPlan'],
+              schoolId,
+              remotePlans || [],
+              offlineQueueRef.current
+            )
+          );
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Lesson plans fetch error:', err));
+
+    fetchSchoolQuestionPapersFromFirestore(schoolId, teacherAssignedClassIdsForAi)
+      .then((remotePapers) => {
+        if (!cancelled) {
+          setSchoolQuestionPapers(
+            mergeQueueIntoCollection(
+              ['schoolQuestionPaper'],
+              schoolId,
+              remotePapers || [],
+              offlineQueueRef.current
+            )
+          );
+        }
+      })
+      .catch((err) => console.warn('[Firestore] Notice: Question papers fetch error:', err));
+
     return () => {
       cancelled = true;
     };
-  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status, currentUserProfile?.role, currentUserProfile?.childStudentId, currentUserProfile?.studentId, isSuperAdmin]);
+  }, [demoMode, activeSchool.id, authUserUid, currentUserProfile?.status, currentUserProfile?.role, currentUserProfile?.childStudentId, currentUserProfile?.studentId, currentUserProfile?.email, JSON.stringify(currentUserProfile?.assignedClassIds || []), isSuperAdmin, isOnline, registeredSchools, mergeQueueIntoCollection, mergeQueueIntoAttendanceMap]);
 
   // Register a new school as an Admin (with Primary Admin Selection)
   const registerNewSchool = (
@@ -2154,6 +3304,9 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Update Teacher Profile (Admin can edit any teacher; teachers see their own)
   const updateTeacherProfile = (teacherId: string, updates: Partial<TeacherInfo>) => {
     if (blockSchoolMutation('updateTeacherProfile')) return;
+    const existing = teachers.find((t) => t.id === teacherId);
+    const updatedTeacher = existing ? { ...existing, ...updates } : null;
+
     setTeachers((prev) =>
       prev.map((t) => (t.id === teacherId ? { ...t, ...updates } : t))
     );
@@ -2181,13 +3334,26 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
     }
 
-    if (!demoMode && activeSchool.id) {
-      const existing = teachers.find((t) => t.id === teacherId);
-      if (existing) {
-        performSync('updateTeacherProfile', () =>
-          saveTeacherToFirestore(activeSchool.id, { ...existing, ...updates })
-        );
-      }
+    if (!demoMode && activeSchool.id && updatedTeacher) {
+      void performSync(
+        'updateTeacherProfile',
+        () => saveTeacherToFirestore(activeSchool.id, updatedTeacher),
+        [
+          {
+            entityType: 'teacher',
+            action: 'upsert',
+            operation: 'updateTeacherProfile',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/teachers/${teacherId}`,
+            recordId: teacherId,
+            recordLabel: `Faculty · ${updatedTeacher.name}`,
+            payload: updatedTeacher,
+            baseUpdatedAt: normalizeTimestampValue((existing as any)?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
     }
   };
 
@@ -2211,40 +3377,89 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setClasses((prev) => [newClass, ...prev]);
 
     if (!demoMode && activeSchool.id) {
-      performSync('addClass', () => saveClassToFirestore(activeSchool.id, newClass));
+      void performSync(
+        'addClass',
+        () => saveClassToFirestore(activeSchool.id, newClass),
+        [
+          {
+            entityType: 'class',
+            action: 'upsert',
+            operation: 'addClass',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/classes/${id}`,
+            recordId: id,
+            recordLabel: `Class · ${newClass.grade} - ${newClass.section}`,
+            payload: newClass,
+          },
+        ]
+      );
     }
   };
 
   const updateClass = (id: string, updated: Partial<ClassSection>) => {
     if (blockSchoolMutation('updateClass')) return;
-    setClasses((prev) =>
-      prev.map((c) => {
-        if (c.id === id) {
-          const merged = { ...c, ...updated };
-          if (!demoMode && activeSchool.id) {
-            performSync('updateClass', () => saveClassToFirestore(activeSchool.id, merged));
-          }
-          return merged;
-        }
-        return c;
-      })
-    );
+    const existingClass = classes.find((c) => c.id === id);
+    if (!existingClass) return;
+    const merged = { ...existingClass, ...updated };
+    setClasses((prev) => prev.map((c) => (c.id === id ? merged : c)));
+
+    if (!demoMode && activeSchool.id) {
+      void performSync(
+        'updateClass',
+        () => saveClassToFirestore(activeSchool.id, merged),
+        [
+          {
+            entityType: 'class',
+            action: 'upsert',
+            operation: 'updateClass',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/classes/${id}`,
+            recordId: id,
+            recordLabel: `Class · ${merged.grade} - ${merged.section}`,
+            payload: merged,
+            baseUpdatedAt: normalizeTimestampValue((existingClass as any).updatedAt),
+            baseSnapshot: existingClass,
+          },
+        ]
+      );
+    }
   };
 
   const deleteClass = (id: string) => {
     if (blockSchoolMutation('deleteClass')) return;
+    const existingClass = classes.find((c) => c.id === id);
     setClasses((prev) => prev.filter((c) => c.id !== id));
     if (!demoMode && activeSchool.id) {
-      performSync('deleteClass', () => deleteClassFromFirestore(activeSchool.id, id));
+      void performSync(
+        'deleteClass',
+        () => deleteClassFromFirestore(activeSchool.id, id),
+        [
+          {
+            entityType: 'class',
+            action: 'delete',
+            operation: 'deleteClass',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/classes/${id}`,
+            recordId: id,
+            recordLabel: `Delete Class · ${existingClass ? `${existingClass.grade} - ${existingClass.section}` : id}`,
+            payload: { id },
+            baseUpdatedAt: normalizeTimestampValue((existingClass as any)?.updatedAt),
+            baseSnapshot: existingClass || null,
+          },
+        ]
+      );
     }
   };
 
-  const syncParentLinkForStudent = (student: Student) => {
-    if (demoMode || !activeSchool.id || !student.grNumber) return;
-    const inviteCode = student.parentInviteCode || generateParentInviteCode(student.grNumber);
-    const linkId = buildParentLinkId(activeSchool.id, student.grNumber);
-    saveParentStudentLinkToFirestore({
-      id: linkId,
+  const buildStudentLinkPayloads = (student: Student) => {
+    if (!activeSchool.id || !student.grNumber) return null;
+    const parentInviteCode = student.parentInviteCode || generateParentInviteCode(student.grNumber);
+    const parentLinkId = buildParentLinkId(activeSchool.id, student.grNumber);
+    const parentLink = {
+      id: parentLinkId,
       schoolId: activeSchool.id,
       schoolName: activeSchool.name,
       semisCode: activeSchool.semisCode,
@@ -2256,22 +3471,19 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       grNumber: student.grNumber.trim().toUpperCase(),
       parentEmail: student.parentEmail?.trim().toLowerCase() || '',
       guardianPhone: student.guardianPhone || '',
-      inviteCode,
+      inviteCode: parentInviteCode,
       claimedByUid: student.parentUid,
-      status: student.parentUid ? 'linked' : 'available',
-    }).catch((err) => console.warn('[ParentLink] Sync notice:', err));
-  };
+      status: (student.parentUid ? 'linked' : 'available') as 'linked' | 'available',
+    };
 
-  const syncStudentLinkForStudent = (student: Student) => {
-    if (demoMode || !activeSchool.id || !student.grNumber) return;
-    const inviteCode = student.studentInviteCode || generateStudentInviteCode(student.grNumber);
+    const studentInviteCode = student.studentInviteCode || generateStudentInviteCode(student.grNumber);
     const linkIds = Array.from(
       new Set([
         buildParentLinkId(activeSchool.id, student.grNumber),
         ...(student.id ? [buildParentLinkId(activeSchool.id, student.id)] : []),
       ])
     );
-    const primaryLinkPayload: StudentPortalLink = {
+    const primaryStudentLink: StudentPortalLink = {
       id: linkIds[0],
       schoolId: activeSchool.id,
       schoolName: activeSchool.name,
@@ -2283,21 +3495,41 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       section: student.section,
       grNumber: student.grNumber.trim().toUpperCase(),
       studentEmail: student.studentEmail?.trim().toLowerCase() || '',
-      inviteCode,
+      inviteCode: studentInviteCode,
       claimedByUid: student.studentUid,
       status: student.studentUid ? 'linked' : 'available',
     };
+    const studentLinks = linkIds.map((docId) => ({ ...primaryStudentLink, id: docId }));
+    return { parentLink, primaryStudentLink, studentLinks };
+  };
+
+  const syncParentLinkForStudent = (student: Student) => {
+    if (demoMode || isDeviceOffline() || !activeSchool.id || !student.grNumber) return;
+    const built = buildStudentLinkPayloads(student);
+    if (!built) return;
+    saveParentStudentLinkToFirestore(built.parentLink).catch((err) =>
+      console.warn('[ParentLink] Sync notice:', err)
+    );
+  };
+
+  const syncStudentLinkForStudent = (student: Student) => {
+    if (demoMode || !activeSchool.id || !student.grNumber) return;
+    const built = buildStudentLinkPayloads(student);
+    if (!built) return;
     setStudentPortalLinks((prev) => ({
       ...prev,
       [student.id]: prev[student.id]?.claimedByUid
-        ? { ...primaryLinkPayload, claimedByUid: prev[student.id].claimedByUid, status: 'linked' }
-        : primaryLinkPayload,
+        ? {
+            ...built.primaryStudentLink,
+            claimedByUid: prev[student.id].claimedByUid,
+            status: 'linked',
+          }
+        : built.primaryStudentLink,
     }));
-    Promise.all(
-      linkIds.map((docId) =>
-        saveStudentPortalLinkToFirestore({ ...primaryLinkPayload, id: docId })
-      )
-    ).catch((err) => console.warn('[StudentLink] Sync notice:', err));
+    if (isDeviceOffline()) return;
+    Promise.all(built.studentLinks.map((lnk) => saveStudentPortalLinkToFirestore(lnk))).catch((err) =>
+      console.warn('[StudentLink] Sync notice:', err)
+    );
   };
 
   const addStudent = (newStudentData: Omit<Student, 'id'>): Student | void => {
@@ -2307,6 +3539,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newStudentData.parentInviteCode || generateParentInviteCode(newStudentData.grNumber);
     const studentInviteCode =
       newStudentData.studentInviteCode || generateStudentInviteCode(newStudentData.grNumber);
+    const nowIso = new Date().toISOString();
     const newStudent: Student = {
       ...newStudentData,
       id,
@@ -2327,11 +3560,57 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (!demoMode && activeSchool.id) {
-      performSync('addStudent', async () => {
-        await saveStudentToFirestore(activeSchool.id, newStudent);
-        syncParentLinkForStudent(newStudent);
-        syncStudentLinkForStudent(newStudent);
-      });
+      const builtLinks = buildStudentLinkPayloads(newStudent);
+      syncStudentLinkForStudent(newStudent);
+
+      const queueEntries: EnqueueOfflineMutationInput[] = [
+        {
+          entityType: 'student',
+          action: 'upsert',
+          operation: 'addStudent',
+          schoolId: activeSchool.id,
+          userId: authUserUid || undefined,
+          docPath: `schools/${activeSchool.id}/students/${newStudent.id}`,
+          recordId: newStudent.id,
+          recordLabel: `Student Admission · ${newStudent.fullName} (GR ${newStudent.grNumber})`,
+          payload: { ...newStudent, updatedAt: nowIso },
+        },
+        ...(builtLinks
+          ? [
+              {
+                entityType: 'parentLink' as const,
+                action: 'upsert' as const,
+                operation: 'addStudent:parentLink',
+                schoolId: activeSchool.id,
+                userId: authUserUid || undefined,
+                docPath: `parentLinks/${builtLinks.parentLink.id}`,
+                recordId: builtLinks.parentLink.id,
+                recordLabel: `Parent Portal Link · ${newStudent.grNumber}`,
+                payload: builtLinks.parentLink,
+              },
+              ...builtLinks.studentLinks.map((lnk) => ({
+                entityType: 'studentLink' as const,
+                action: 'upsert' as const,
+                operation: 'addStudent:studentLink',
+                schoolId: activeSchool.id,
+                userId: authUserUid || undefined,
+                docPath: `studentLinks/${lnk.id}`,
+                recordId: lnk.id,
+                recordLabel: `Student Portal Link · ${newStudent.grNumber}`,
+                payload: lnk,
+              })),
+            ]
+          : []),
+      ];
+
+      void performSync(
+        'addStudent',
+        async () => {
+          await saveStudentToFirestore(activeSchool.id, newStudent);
+          syncParentLinkForStudent(newStudent);
+        },
+        queueEntries
+      );
     }
     return newStudent;
   };
@@ -2385,11 +3664,61 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
 
     if (!demoMode && activeSchool.id) {
-      performSync('updateStudent', async () => {
-        await saveStudentToFirestore(activeSchool.id, updatedStudent);
-        syncParentLinkForStudent(updatedStudent);
-        syncStudentLinkForStudent(updatedStudent);
-      });
+      const builtLinks = buildStudentLinkPayloads(updatedStudent);
+      syncStudentLinkForStudent(updatedStudent);
+
+      const queueEntries: EnqueueOfflineMutationInput[] = [
+        {
+          entityType: 'student',
+          action: 'upsert',
+          operation: 'updateStudent',
+          schoolId: activeSchool.id,
+          userId: authUserUid || undefined,
+          docPath: `schools/${activeSchool.id}/students/${updatedStudent.id}`,
+          recordId: updatedStudent.id,
+          recordLabel: `Student Update · ${updatedStudent.fullName} (GR ${updatedStudent.grNumber})`,
+          payload: updatedStudent,
+          baseUpdatedAt: normalizeTimestampValue((existing as any).updatedAt),
+          baseSnapshot: existing,
+        },
+        ...(builtLinks
+          ? [
+              {
+                entityType: 'parentLink' as const,
+                action: 'upsert' as const,
+                operation: 'updateStudent:parentLink',
+                schoolId: activeSchool.id,
+                userId: authUserUid || undefined,
+                docPath: `parentLinks/${builtLinks.parentLink.id}`,
+                recordId: builtLinks.parentLink.id,
+                recordLabel: `Parent Portal Link · ${updatedStudent.grNumber}`,
+                payload: builtLinks.parentLink,
+                baseUpdatedAt: normalizeTimestampValue((existing as any).updatedAt),
+              },
+              ...builtLinks.studentLinks.map((lnk) => ({
+                entityType: 'studentLink' as const,
+                action: 'upsert' as const,
+                operation: 'updateStudent:studentLink',
+                schoolId: activeSchool.id,
+                userId: authUserUid || undefined,
+                docPath: `studentLinks/${lnk.id}`,
+                recordId: lnk.id,
+                recordLabel: `Student Portal Link · ${updatedStudent.grNumber}`,
+                payload: lnk,
+                baseUpdatedAt: normalizeTimestampValue((existing as any).updatedAt),
+              })),
+            ]
+          : []),
+      ];
+
+      void performSync(
+        'updateStudent',
+        async () => {
+          await saveStudentToFirestore(activeSchool.id, updatedStudent);
+          syncParentLinkForStudent(updatedStudent);
+        },
+        queueEntries
+      );
     }
   };
 
@@ -2410,20 +3739,71 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
 
     if (!demoMode && activeSchool.id) {
-      performSync('deleteStudent', () => deleteStudentFromFirestore(activeSchool.id, id));
+      void performSync(
+        'deleteStudent',
+        () => deleteStudentFromFirestore(activeSchool.id, id),
+        [
+          {
+            entityType: 'student',
+            action: 'delete',
+            operation: 'deleteStudent',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/students/${id}`,
+            recordId: id,
+            recordLabel: `Delete Student · ${existing.fullName} (GR ${existing.grNumber})`,
+            payload: { id },
+            baseUpdatedAt: normalizeTimestampValue((existing as any).updatedAt),
+            baseSnapshot: existing,
+          },
+        ]
+      );
     }
   };
 
   // Save or update attendance register (keyed by "YYYY-MM-DD_{classId}")
   const saveAttendance = (attendance: DailyClassAttendance) => {
     if (blockSchoolMutation('saveAttendance')) return;
+    const existingAttendance = attendanceRegisters[attendance.id];
+    const normalizedPayload = {
+      ...attendance,
+      schoolId: activeSchool.id || 'default_school',
+      conductedBy: attendance.markedByName || 'Faculty',
+      conductedByUid: attendance.markedByUid || 'system',
+    };
+
     setAttendanceRegisters((prev) => ({
       ...prev,
       [attendance.id]: attendance,
     }));
 
     if (!demoMode && activeSchool.id) {
-      performSync('saveAttendance', () => saveAttendanceToFirestore(activeSchool.id, attendance));
+      void performSync(
+        'saveAttendance',
+        () => saveAttendanceToFirestore(activeSchool.id, attendance),
+        [
+          {
+            entityType: 'attendance',
+            action: 'upsert',
+            operation: 'saveAttendance',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/attendance/${attendance.id}`,
+            recordId: attendance.id,
+            recordLabel: `Attendance · ${attendance.grade} - ${attendance.section} (${attendance.date})`,
+            payload: normalizedPayload,
+            baseUpdatedAt: normalizeTimestampValue((existingAttendance as any)?.updatedAt),
+            baseSnapshot: existingAttendance
+              ? {
+                  ...existingAttendance,
+                  schoolId: activeSchool.id,
+                  conductedBy: existingAttendance.markedByName || 'Faculty',
+                  conductedByUid: existingAttendance.markedByUid || 'system',
+                }
+              : null,
+          },
+        ]
+      );
     }
   };
 
@@ -2464,36 +3844,30 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [teachers, demoMode, currentUserProfile]);
 
-  // Determine effective role: In Demo mode, userRoleState controls it; in Live mode, profile controls it
+  // Determine effective role: In Demo mode, userRoleState controls it; in Live mode, currentUserProfile controls it
   const effectiveRole = useMemo<UserRole>(() => {
     if (demoMode) return userRole;
-    if (currentUserProfile?.role === 'parent') {
-      return 'parent';
-    }
-    if (currentUserProfile?.role === 'student') {
-      return 'student';
-    }
-    const email = (currentUserProfile?.email || '').trim().toLowerCase();
-    if (
-      currentUserProfile?.isSuperAdmin ||
-      currentUserProfile?.role === 'super-admin' ||
-      email === 'owner@pakedu.com' ||
-      userRole === 'super-admin'
-    ) {
-      return 'super-admin';
-    }
-    if (
-      currentUserProfile?.role === 'admin' ||
-      currentUserProfile?.role === 'principal' ||
-      email === 'zulqarnainshah25@gmail.com' ||
-      email === 'waleedshah1@gmail.com' ||
-      userRole === 'admin' ||
-      hasAdminCapabilities(null, currentUserProfile, registeredSchools)
-    ) {
-      return 'admin';
-    }
-    if (currentUserProfile?.role) {
-      return currentUserProfile.role;
+    if (currentUserProfile) {
+      if (currentUserProfile.role === 'parent') return 'parent';
+      if (currentUserProfile.role === 'student') return 'student';
+      const email = (currentUserProfile.email || '').trim().toLowerCase();
+      if (
+        currentUserProfile.isSuperAdmin ||
+        currentUserProfile.role === 'super-admin' ||
+        email === 'owner@pakedu.com'
+      ) {
+        return 'super-admin';
+      }
+      if (
+        currentUserProfile.role === 'admin' ||
+        currentUserProfile.role === 'principal' ||
+        hasAdminCapabilities(null, currentUserProfile, registeredSchools)
+      ) {
+        return 'admin';
+      }
+      if (currentUserProfile.role) {
+        return currentUserProfile.role;
+      }
     }
     return userRole || 'teacher';
   }, [demoMode, userRole, currentUserProfile, registeredSchools]);
@@ -2696,6 +4070,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     structure: Omit<ClassFeeStructure, 'schoolId'>
   ): Promise<boolean> => {
     if (blockSchoolMutation('saveFeeStructure')) return false;
+    const existing = feeStructures.find((f) => f.classId === structure.classId);
     const fullStructure: ClassFeeStructure = {
       ...structure,
       schoolId: activeSchool.id || 'default_school',
@@ -2713,8 +4088,25 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveFeeStructure', () =>
-        saveFeeStructureToFirestore(activeSchool.id, fullStructure)
+      const docId = fullStructure.id || fullStructure.classId;
+      return await performSync(
+        'saveFeeStructure',
+        () => saveFeeStructureToFirestore(activeSchool.id, fullStructure),
+        [
+          {
+            entityType: 'feeStructure',
+            action: 'upsert',
+            operation: 'saveFeeStructure',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/feeStructures/${docId}`,
+            recordId: docId,
+            recordLabel: `Fee Structure · ${fullStructure.grade}`,
+            payload: fullStructure,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -2722,10 +4114,27 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteClassFeeStructure = async (classId: string): Promise<boolean> => {
     if (blockSchoolMutation('deleteFeeStructure')) return false;
+    const existing = feeStructures.find((f) => f.classId === classId || f.id === classId);
     setFeeStructures((prev) => prev.filter((f) => f.classId !== classId && f.id !== classId));
     if (!demoMode && activeSchool.id) {
-      return await performSync('deleteFeeStructure', () =>
-        deleteFeeStructureFromFirestore(activeSchool.id, classId)
+      return await performSync(
+        'deleteFeeStructure',
+        () => deleteFeeStructureFromFirestore(activeSchool.id, classId),
+        [
+          {
+            entityType: 'feeStructure',
+            action: 'delete',
+            operation: 'deleteFeeStructure',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/feeStructures/${classId}`,
+            recordId: classId,
+            recordLabel: `Delete Fee Structure · ${existing?.grade || classId}`,
+            payload: { id: classId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -2735,9 +4144,16 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     payment: Omit<FeePayment, 'schoolId'>
   ): Promise<boolean> => {
     if (blockSchoolMutation('saveFeePayment')) return false;
+    const existing = feePayments.find(
+      (p) => p.id === payment.id || (p.studentId === payment.studentId && p.month === payment.month)
+    );
     const fullPayment: FeePayment = {
       ...payment,
       schoolId: activeSchool.id || 'default_school',
+      receiptNumber: payment.receiptNumber || '',
+      paymentMethod: payment.paymentMethod || 'Cash',
+      notes: payment.notes || '',
+      installments: Array.isArray(payment.installments) ? payment.installments : [],
       updatedAt: new Date().toISOString(),
     };
 
@@ -2754,8 +4170,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveFeePayment', () =>
-        saveFeePaymentToFirestore(activeSchool.id, fullPayment)
+      return await performSync(
+        'saveFeePayment',
+        () => saveFeePaymentToFirestore(activeSchool.id, fullPayment),
+        [
+          {
+            entityType: 'feePayment',
+            action: 'upsert',
+            operation: 'saveFeePayment',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/feePayments/${fullPayment.id}`,
+            recordId: fullPayment.id,
+            recordLabel: `Fee Payment · ${fullPayment.studentName} (${fullPayment.monthLabel || fullPayment.month})`,
+            payload: fullPayment,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -2767,9 +4199,14 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (blockSchoolMutation('saveBulkFeePayments')) return false;
     if (!payments.length) return true;
     const schoolId = activeSchool.id || 'default_school';
+    const existingMap = new Map(feePayments.map((p) => [p.id, p]));
     const fullPayments: FeePayment[] = payments.map((p) => ({
       ...p,
       schoolId,
+      receiptNumber: p.receiptNumber || '',
+      paymentMethod: p.paymentMethod || 'Cash',
+      notes: p.notes || '',
+      installments: Array.isArray(p.installments) ? p.installments : [],
       updatedAt: new Date().toISOString(),
     }));
 
@@ -2789,8 +4226,25 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveBulkFeePayments', () =>
-        Promise.all(fullPayments.map((fp) => saveFeePaymentToFirestore(activeSchool.id, fp)))
+      return await performSync(
+        'saveBulkFeePayments',
+        () => Promise.all(fullPayments.map((fp) => saveFeePaymentToFirestore(activeSchool.id, fp))),
+        fullPayments.map((fp) => {
+          const existing = existingMap.get(fp.id);
+          return {
+            entityType: 'feePayment' as const,
+            action: 'upsert' as const,
+            operation: 'saveBulkFeePayments',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/feePayments/${fp.id}`,
+            recordId: fp.id,
+            recordLabel: `Fee Voucher · ${fp.studentName} (${fp.monthLabel || fp.month})`,
+            payload: fp,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          };
+        })
       );
     }
     return true;
@@ -2800,6 +4254,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     rule: Omit<FeeConcessionRule, 'schoolId'>
   ): Promise<boolean> => {
     if (blockSchoolMutation('saveFeeConcession')) return false;
+    const existing = feeConcessions.find((r) => r.id === rule.id);
     const fullRule: FeeConcessionRule = {
       ...rule,
       schoolId: activeSchool.id || 'default_school',
@@ -2818,8 +4273,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveFeeConcession', () =>
-        saveFeeConcessionToFirestore(activeSchool.id, fullRule)
+      return await performSync(
+        'saveFeeConcession',
+        () => saveFeeConcessionToFirestore(activeSchool.id, fullRule),
+        [
+          {
+            entityType: 'feeConcession',
+            action: 'upsert',
+            operation: 'saveFeeConcession',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/feeConcessions/${fullRule.id}`,
+            recordId: fullRule.id,
+            recordLabel: `Fee Concession · ${fullRule.title}`,
+            payload: fullRule,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -2827,10 +4298,27 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteFeeConcessionRule = async (concessionId: string): Promise<boolean> => {
     if (blockSchoolMutation('deleteFeeConcession')) return false;
+    const existing = feeConcessions.find((r) => r.id === concessionId);
     setFeeConcessions((prev) => prev.filter((r) => r.id !== concessionId));
     if (!demoMode && activeSchool.id) {
-      return await performSync('deleteFeeConcession', () =>
-        deleteFeeConcessionFromFirestore(activeSchool.id, concessionId)
+      return await performSync(
+        'deleteFeeConcession',
+        () => deleteFeeConcessionFromFirestore(activeSchool.id, concessionId),
+        [
+          {
+            entityType: 'feeConcession',
+            action: 'delete',
+            operation: 'deleteFeeConcession',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/feeConcessions/${concessionId}`,
+            recordId: concessionId,
+            recordLabel: `Delete Fee Concession · ${existing?.title || concessionId}`,
+            payload: { id: concessionId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -2863,8 +4351,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudents((prev) => prev.map((s) => (s.id === studentId ? updatedStudent : s)));
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('applyStudentConcession', () =>
-        saveStudentToFirestore(activeSchool.id, updatedStudent)
+      return await performSync(
+        'applyStudentConcession',
+        () => saveStudentToFirestore(activeSchool.id, updatedStudent),
+        [
+          {
+            entityType: 'student',
+            action: 'upsert',
+            operation: 'applyStudentConcession',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/students/${updatedStudent.id}`,
+            recordId: updatedStudent.id,
+            recordLabel: `Student Concession · ${updatedStudent.fullName}`,
+            payload: updatedStudent,
+            baseUpdatedAt: normalizeTimestampValue((existing as any).updatedAt),
+            baseSnapshot: existing,
+          },
+        ]
       );
     }
     return true;
@@ -2921,6 +4425,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    const existing = exams.find((e) => e.id === examData.id);
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullExam: Exam = {
       ...examData,
@@ -2942,8 +4447,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveExam', () =>
-        saveExamToFirestore(activeSchool.id, fullExam)
+      return await performSync(
+        'saveExam',
+        () => saveExamToFirestore(activeSchool.id, fullExam),
+        [
+          {
+            entityType: 'exam',
+            action: 'upsert',
+            operation: 'saveExam',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/exams/${fullExam.id}`,
+            recordId: fullExam.id,
+            recordLabel: `Exam · ${fullExam.title}`,
+            payload: fullExam,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -2952,17 +4473,49 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteExam = async (examId: string): Promise<boolean> => {
     if (blockSchoolMutation('deleteExam')) return false;
     if (!canManageExams) return false;
+    const existingExam = exams.find((e) => e.id === examId);
     const linkedMarks = examMarks.filter((m) => m.examId === examId);
     setExams((prev) => prev.filter((e) => e.id !== examId));
     setExamMarks((prev) => prev.filter((m) => m.examId !== examId));
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('deleteExam', async () => {
-        await deleteExamFromFirestore(activeSchool.id, examId);
-        await Promise.all(
-          linkedMarks.map((m) => deleteStudentMarksFromFirestore(activeSchool.id, m.id))
-        );
-      });
+      return await performSync(
+        'deleteExam',
+        async () => {
+          await deleteExamFromFirestore(activeSchool.id, examId);
+          await Promise.all(
+            linkedMarks.map((m) => deleteStudentMarksFromFirestore(activeSchool.id, m.id))
+          );
+        },
+        [
+          {
+            entityType: 'exam',
+            action: 'delete',
+            operation: 'deleteExam',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/exams/${examId}`,
+            recordId: examId,
+            recordLabel: `Delete Exam · ${existingExam?.title || examId}`,
+            payload: { id: examId },
+            baseUpdatedAt: normalizeTimestampValue(existingExam?.updatedAt),
+            baseSnapshot: existingExam || null,
+          },
+          ...linkedMarks.map((m) => ({
+            entityType: 'marks' as const,
+            action: 'delete' as const,
+            operation: 'deleteStudentMarks',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/marks/${m.id}`,
+            recordId: m.id,
+            recordLabel: `Delete Marks · ${m.studentName}`,
+            payload: { id: m.id },
+            baseUpdatedAt: normalizeTimestampValue(m.updatedAt),
+            baseSnapshot: m,
+          })),
+        ]
+      );
     }
     return true;
   };
@@ -2982,6 +4535,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    const existing = examMarks.find((m) => m.id === marksData.id);
     const fullMarks: StudentExamMarks = {
       ...marksData,
       schoolId: activeSchool.id || 'default_school',
@@ -3002,8 +4556,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveStudentMarks', () =>
-        saveStudentMarksToFirestore(activeSchool.id, fullMarks)
+      return await performSync(
+        'saveStudentMarks',
+        () => saveStudentMarksToFirestore(activeSchool.id, fullMarks),
+        [
+          {
+            entityType: 'marks',
+            action: 'upsert',
+            operation: 'saveStudentMarks',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/marks/${fullMarks.id}`,
+            recordId: fullMarks.id,
+            recordLabel: `Exam Marks · ${fullMarks.studentName} (${fullMarks.grade})`,
+            payload: fullMarks,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3026,6 +4596,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return false;
     }
 
+    const existingMap = new Map(examMarks.map((m) => [m.id, m]));
     const nowIso = new Date().toISOString();
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullRecords: StudentExamMarks[] = marksList.map((m) => ({
@@ -3051,8 +4622,25 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
 
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveBulkStudentMarks', () =>
-        Promise.all(fullRecords.map((rec) => saveStudentMarksToFirestore(activeSchool.id, rec)))
+      return await performSync(
+        'saveBulkStudentMarks',
+        () => Promise.all(fullRecords.map((rec) => saveStudentMarksToFirestore(activeSchool.id, rec))),
+        fullRecords.map((rec) => {
+          const existing = existingMap.get(rec.id);
+          return {
+            entityType: 'marks' as const,
+            action: 'upsert' as const,
+            operation: 'saveBulkStudentMarks',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/marks/${rec.id}`,
+            recordId: rec.id,
+            recordLabel: `Exam Marks · ${rec.studentName}`,
+            payload: rec,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          };
+        })
       );
     }
     return true;
@@ -3061,14 +4649,31 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const updateSchoolLogo = async (logoUrl: string): Promise<boolean> => {
     if (blockSchoolMutation('updateSchoolLogo')) return false;
     if (!canManageExams || !activeSchool.id) return false;
+    const prevSchool = activeSchool;
     const updatedSchool: School = { ...activeSchool, logoUrl };
     setActiveSchool(updatedSchool);
     setRegisteredSchools((prev) =>
       prev.map((s) => (s.id === updatedSchool.id ? updatedSchool : s))
     );
     if (!demoMode && activeSchool.id) {
-      return await performSync('updateSchoolLogo', () =>
-        saveSchoolToFirestore(updatedSchool)
+      return await performSync(
+        'updateSchoolLogo',
+        () => saveSchoolToFirestore(updatedSchool),
+        [
+          {
+            entityType: 'schoolLogo',
+            action: 'upsert',
+            operation: 'updateSchoolLogo',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}`,
+            recordId: activeSchool.id,
+            recordLabel: `School Logo · ${updatedSchool.name}`,
+            payload: { id: activeSchool.id, logoUrl },
+            baseUpdatedAt: normalizeTimestampValue((prevSchool as any)?.updatedAt),
+            baseSnapshot: prevSchool,
+          },
+        ]
       );
     }
     return true;
@@ -3113,30 +4718,87 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudents((prev) => prev.map((s) => (s.id === studentId ? updatedStudent : s)));
 
     if (!demoMode && activeSchool.id) {
+      const baseLink = {
+        id: buildParentLinkId(activeSchool.id, updatedStudent.grNumber),
+        schoolId: activeSchool.id,
+        schoolName: activeSchool.name,
+        semisCode: activeSchool.semisCode,
+        studentId: updatedStudent.id,
+        studentName: updatedStudent.fullName,
+        classId: updatedStudent.classId,
+        grade: updatedStudent.grade,
+        section: updatedStudent.section,
+        grNumber: updatedStudent.grNumber.trim().toUpperCase(),
+        inviteCode,
+      };
+
+      const linkIds = isStudentPortal
+        ? Array.from(
+            new Set([
+              buildParentLinkId(activeSchool.id, updatedStudent.grNumber),
+              buildParentLinkId(activeSchool.id, updatedStudent.id),
+            ])
+          )
+        : [baseLink.id];
+
+      const queueEntries: EnqueueOfflineMutationInput[] = [
+        {
+          entityType: 'student',
+          action: 'upsert',
+          operation: isStudentPortal ? 'generateStudentInvite' : 'generateParentInvite',
+          schoolId: activeSchool.id,
+          userId: authUserUid || undefined,
+          docPath: `schools/${activeSchool.id}/students/${updatedStudent.id}`,
+          recordId: updatedStudent.id,
+          recordLabel: `Portal Invite · ${updatedStudent.fullName} (GR ${updatedStudent.grNumber})`,
+          payload: updatedStudent,
+          baseUpdatedAt: normalizeTimestampValue((existing as any).updatedAt),
+          baseSnapshot: existing,
+        },
+        ...(isStudentPortal
+          ? linkIds.map((docId) => ({
+              entityType: 'studentLink' as const,
+              action: 'upsert' as const,
+              operation: 'generateStudentInvite:link',
+              schoolId: activeSchool.id,
+              userId: authUserUid || undefined,
+              docPath: `studentLinks/${docId}`,
+              recordId: docId,
+              recordLabel: `Student Link · ${updatedStudent.grNumber}`,
+              payload: {
+                ...baseLink,
+                id: docId,
+                studentEmail: cleanedEmail || '',
+                claimedByUid: updatedStudent.studentUid,
+                status: updatedStudent.studentUid ? 'linked' : 'available',
+              },
+            }))
+          : [
+              {
+                entityType: 'parentLink' as const,
+                action: 'upsert' as const,
+                operation: 'generateParentInvite:link',
+                schoolId: activeSchool.id,
+                userId: authUserUid || undefined,
+                docPath: `parentLinks/${baseLink.id}`,
+                recordId: baseLink.id,
+                recordLabel: `Parent Link · ${updatedStudent.grNumber}`,
+                payload: {
+                  ...baseLink,
+                  parentEmail: cleanedEmail || '',
+                  guardianPhone: updatedStudent.guardianPhone || '',
+                  claimedByUid: updatedStudent.parentUid,
+                  status: updatedStudent.parentUid ? 'linked' : 'available',
+                },
+              },
+            ]),
+      ];
+
       const ok = await performSync(
         isStudentPortal ? 'generateStudentInvite' : 'generateParentInvite',
         async () => {
           await saveStudentToFirestore(activeSchool.id, updatedStudent);
-          const baseLink = {
-            id: buildParentLinkId(activeSchool.id, updatedStudent.grNumber),
-            schoolId: activeSchool.id,
-            schoolName: activeSchool.name,
-            semisCode: activeSchool.semisCode,
-            studentId: updatedStudent.id,
-            studentName: updatedStudent.fullName,
-            classId: updatedStudent.classId,
-            grade: updatedStudent.grade,
-            section: updatedStudent.section,
-            grNumber: updatedStudent.grNumber.trim().toUpperCase(),
-            inviteCode,
-          };
           if (isStudentPortal) {
-            const linkIds = Array.from(
-              new Set([
-                buildParentLinkId(activeSchool.id, updatedStudent.grNumber),
-                buildParentLinkId(activeSchool.id, updatedStudent.id),
-              ])
-            );
             const stuLink: StudentPortalLink = {
               ...baseLink,
               id: linkIds[0],
@@ -3164,7 +4826,8 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               status: updatedStudent.parentUid ? 'linked' : 'available',
             });
           }
-        }
+        },
+        queueEntries
       );
       if (!ok) return null;
     }
@@ -3188,6 +4851,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const missing = students.filter((s) => !s.studentInviteCode && Boolean(s.grNumber));
     if (missing.length === 0) return 0;
 
+    const existingMap = new Map(missing.map((s) => [s.id, s]));
     const updatedList = missing.map((s) => ({
       ...s,
       studentInviteCode: generateStudentInviteCode(s.grNumber),
@@ -3197,14 +4861,52 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStudents((prev) => prev.map((s) => updatedMap.get(s.id) || s));
 
     if (!demoMode && activeSchool.id) {
-      await performSync('generateMissingStudentInvites', async () => {
-        await Promise.all(
-          updatedList.map(async (stu) => {
-            await saveStudentToFirestore(activeSchool.id, stu);
-            syncStudentLinkForStudent(stu);
-          })
-        );
-      });
+      const queueEntries: EnqueueOfflineMutationInput[] = [];
+      for (const stu of updatedList) {
+        const prevStu = existingMap.get(stu.id);
+        const built = buildStudentLinkPayloads(stu);
+        queueEntries.push({
+          entityType: 'student',
+          action: 'upsert',
+          operation: 'generateMissingStudentInvites',
+          schoolId: activeSchool.id,
+          userId: authUserUid || undefined,
+          docPath: `schools/${activeSchool.id}/students/${stu.id}`,
+          recordId: stu.id,
+          recordLabel: `Student Invite · ${stu.fullName} (GR ${stu.grNumber})`,
+          payload: stu,
+          baseUpdatedAt: normalizeTimestampValue((prevStu as any)?.updatedAt),
+          baseSnapshot: prevStu || null,
+        });
+        if (built) {
+          built.studentLinks.forEach((lnk) => {
+            queueEntries.push({
+              entityType: 'studentLink',
+              action: 'upsert',
+              operation: 'generateMissingStudentInvites:link',
+              schoolId: activeSchool.id,
+              userId: authUserUid || undefined,
+              docPath: `studentLinks/${lnk.id}`,
+              recordId: lnk.id,
+              recordLabel: `Student Portal Link · ${stu.grNumber}`,
+              payload: lnk,
+            });
+          });
+        }
+      }
+
+      await performSync(
+        'generateMissingStudentInvites',
+        async () => {
+          await Promise.all(
+            updatedList.map(async (stu) => {
+              await saveStudentToFirestore(activeSchool.id, stu);
+              syncStudentLinkForStudent(stu);
+            })
+          );
+        },
+        queueEntries
+      );
     }
     return updatedList.length;
   };
@@ -3443,6 +5145,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): Promise<boolean> => {
     if (blockSchoolMutation('saveTimetableEntry')) return false;
     if (!canManageTimetable) return false;
+    const existing = timetableEntries.find((t) => t.id === entry.id);
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullEntry: TimetableEntry = {
       ...entry,
@@ -3460,8 +5163,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [fullEntry, ...prev];
     });
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveTimetableEntry', () =>
-        saveTimetableEntryToFirestore(activeSchool.id, fullEntry)
+      return await performSync(
+        'saveTimetableEntry',
+        () => saveTimetableEntryToFirestore(activeSchool.id, fullEntry),
+        [
+          {
+            entityType: 'timetable',
+            action: 'upsert',
+            operation: 'saveTimetableEntry',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/timetable/${fullEntry.id}`,
+            recordId: fullEntry.id,
+            recordLabel: `Timetable · ${fullEntry.day} Period ${fullEntry.periodNumber} (${fullEntry.subject})`,
+            payload: fullEntry,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3470,10 +5189,27 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteTimetableEntry = async (entryId: string): Promise<boolean> => {
     if (blockSchoolMutation('deleteTimetableEntry')) return false;
     if (!canManageTimetable) return false;
+    const existing = timetableEntries.find((t) => t.id === entryId);
     setTimetableEntries((prev) => prev.filter((t) => t.id !== entryId));
     if (!demoMode && activeSchool.id) {
-      return await performSync('deleteTimetableEntry', () =>
-        deleteTimetableEntryFromFirestore(activeSchool.id, entryId)
+      return await performSync(
+        'deleteTimetableEntry',
+        () => deleteTimetableEntryFromFirestore(activeSchool.id, entryId),
+        [
+          {
+            entityType: 'timetable',
+            action: 'delete',
+            operation: 'deleteTimetableEntry',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/timetable/${entryId}`,
+            recordId: entryId,
+            recordLabel: `Delete Timetable · ${existing?.subject || entryId}`,
+            payload: { id: entryId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3489,6 +5225,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     ) {
       return false;
     }
+    const existing = homeworkItems.find((h) => h.id === item.id);
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullItem: HomeworkItem = {
       ...item,
@@ -3506,8 +5243,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [fullItem, ...prev];
     });
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveHomework', () =>
-        saveHomeworkToFirestore(activeSchool.id, fullItem)
+      return await performSync(
+        'saveHomework',
+        () => saveHomeworkToFirestore(activeSchool.id, fullItem),
+        [
+          {
+            entityType: 'homework',
+            action: 'upsert',
+            operation: 'saveHomework',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/homework/${fullItem.id}`,
+            recordId: fullItem.id,
+            recordLabel: `Homework · ${fullItem.subject} (${fullItem.grade})`,
+            payload: fullItem,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3527,8 +5280,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     setHomeworkItems((prev) => prev.filter((h) => h.id !== homeworkId));
     if (!demoMode && activeSchool.id) {
-      return await performSync('deleteHomework', () =>
-        deleteHomeworkFromFirestore(activeSchool.id, homeworkId)
+      return await performSync(
+        'deleteHomework',
+        () => deleteHomeworkFromFirestore(activeSchool.id, homeworkId),
+        [
+          {
+            entityType: 'homework',
+            action: 'delete',
+            operation: 'deleteHomework',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/homework/${homeworkId}`,
+            recordId: homeworkId,
+            recordLabel: `Delete Homework · ${existing?.subject || homeworkId}`,
+            payload: { id: homeworkId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3539,6 +5308,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): Promise<boolean> => {
     if (blockSchoolMutation('saveCertificate')) return false;
     if (!canManageCertificates) return false;
+    const existing = certificates.find((c) => c.id === cert.id);
     const targetSchoolId = activeSchool.id || 'default_school';
     const fullCert: StudentCertificate = {
       ...cert,
@@ -3556,8 +5326,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return [fullCert, ...prev];
     });
     if (!demoMode && activeSchool.id) {
-      return await performSync('saveCertificate', () =>
-        saveCertificateToFirestore(activeSchool.id, fullCert)
+      return await performSync(
+        'saveCertificate',
+        () => saveCertificateToFirestore(activeSchool.id, fullCert),
+        [
+          {
+            entityType: 'certificate',
+            action: 'upsert',
+            operation: 'saveCertificate',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/certificates/${fullCert.id}`,
+            recordId: fullCert.id,
+            recordLabel: `Certificate · ${fullCert.certificateNumber} (${fullCert.studentName})`,
+            payload: fullCert,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3566,10 +5352,734 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteCertificate = async (certificateId: string): Promise<boolean> => {
     if (blockSchoolMutation('deleteCertificate')) return false;
     if (!canManageCertificates) return false;
+    const existing = certificates.find((c) => c.id === certificateId);
     setCertificates((prev) => prev.filter((c) => c.id !== certificateId));
     if (!demoMode && activeSchool.id) {
-      return await performSync('deleteCertificate', () =>
-        deleteCertificateFromFirestore(activeSchool.id, certificateId)
+      return await performSync(
+        'deleteCertificate',
+        () => deleteCertificateFromFirestore(activeSchool.id, certificateId),
+        [
+          {
+            entityType: 'certificate',
+            action: 'delete',
+            operation: 'deleteCertificate',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/certificates/${certificateId}`,
+            recordId: certificateId,
+            recordLabel: `Delete Certificate · ${existing?.certificateNumber || certificateId}`,
+            payload: { id: certificateId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  // =========================================================================
+  // Salary & Payroll Management (School Admin & Super Admin + Scoped Teacher Self-Service)
+  // =========================================================================
+  const canAccessSalaryPayroll = useMemo(() => {
+    if (isImpersonating) return false;
+    if (effectiveRole === 'parent' || effectiveRole === 'student') return false;
+    if (isSuperAdmin || effectiveRole === 'super-admin') return true;
+    return effectiveRole === 'admin' || effectiveRole === 'principal';
+  }, [isImpersonating, effectiveRole, isSuperAdmin]);
+
+  const canViewOwnPayslips = useMemo(() => {
+    if (effectiveRole === 'parent' || effectiveRole === 'student') return false;
+    if (isSuperAdmin || isImpersonating) return false;
+    return Boolean(payrollSettings.teacherPayslipAccessEnabled);
+  }, [effectiveRole, isSuperAdmin, isImpersonating, payrollSettings.teacherPayslipAccessEnabled]);
+
+  const ownTeacherPayslips = useMemo(() => {
+    if (!canViewOwnPayslips) return [];
+    return payslips.filter(
+      (p) =>
+        (p.isFinalized || p.status === 'paid' || p.status === 'finalized') &&
+        (!activeSchool.id || p.schoolId === activeSchool.id) &&
+        doesPayslipBelongToUser(p, {
+          uid: currentUserProfile?.uid || authUserUid,
+          email: currentUserProfile?.email || activeTeacher?.email,
+          teacherId: activeTeacher?.id,
+        })
+    );
+  }, [
+    canViewOwnPayslips,
+    payslips,
+    activeSchool.id,
+    currentUserProfile?.uid,
+    currentUserProfile?.email,
+    authUserUid,
+    activeTeacher?.id,
+    activeTeacher?.email,
+  ]);
+
+  const blockUnauthorizedPayrollMutation = (operation: string): boolean => {
+    if (canAccessSalaryPayroll) return false;
+    setSyncError({
+      id: `rbac_payroll_${Date.now()}`,
+      message: 'Access Restricted: Only School Admins and Super Admins can modify Salary & Payroll records.',
+      reason: 'Insufficient Payroll Privileges',
+      operation,
+      retry: async () => {},
+    });
+    return true;
+  };
+
+  const saveSalaryStructure = async (
+    structure: Omit<SalaryStructure, 'schoolId'>,
+    overrideSchoolId?: string
+  ): Promise<boolean> => {
+    if (blockUnauthorizedPayrollMutation('saveSalaryStructure')) return false;
+    const targetSchoolId = overrideSchoolId || activeSchool.id || 'default_school';
+    const docId = sanitizePayrollIdSegment(structure.employeeId || structure.id);
+    const existing = salaryStructures.find(
+      (s) => s.schoolId === targetSchoolId && (s.employeeId === docId || s.id === docId)
+    );
+    const fullStructure: SalaryStructure = {
+      ...structure,
+      id: docId,
+      employeeId: docId,
+      schoolId: targetSchoolId,
+      employeeEmail: structure.employeeEmail ? structure.employeeEmail.trim().toLowerCase() : undefined,
+      updatedByUid: currentUserProfile?.uid || authUserUid || 'admin',
+      updatedByName: currentUserProfile?.fullName || (isSuperAdmin ? 'Super Admin' : 'School Admin'),
+      createdAt: structure.createdAt || existing?.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSalaryStructures((prev) => {
+      const idx = prev.findIndex(
+        (s) => s.schoolId === targetSchoolId && (s.employeeId === docId || s.id === docId)
+      );
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullStructure;
+        return copy;
+      }
+      return [fullStructure, ...prev];
+    });
+
+    if (!demoMode && targetSchoolId && targetSchoolId !== 'default_school') {
+      return await performSync(
+        'saveSalaryStructure',
+        () => saveSalaryStructureToFirestore(targetSchoolId, fullStructure),
+        [
+          {
+            entityType: 'salaryStructure',
+            action: 'upsert',
+            operation: 'saveSalaryStructure',
+            schoolId: targetSchoolId,
+            userId: authUserUid || undefined,
+            docPath: `schools/${targetSchoolId}/salaryStructures/${docId}`,
+            recordId: docId,
+            recordLabel: `Salary Structure · ${fullStructure.employeeName}`,
+            payload: fullStructure,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const deleteSalaryStructure = async (
+    employeeId: string,
+    overrideSchoolId?: string
+  ): Promise<boolean> => {
+    if (blockUnauthorizedPayrollMutation('deleteSalaryStructure')) return false;
+    const targetSchoolId = overrideSchoolId || activeSchool.id;
+    const docId = sanitizePayrollIdSegment(employeeId);
+    const existing = salaryStructures.find(
+      (s) => s.schoolId === targetSchoolId && (s.employeeId === docId || s.id === docId)
+    );
+    setSalaryStructures((prev) =>
+      prev.filter(
+        (s) => !(s.schoolId === targetSchoolId && (s.employeeId === docId || s.id === docId))
+      )
+    );
+    if (!demoMode && targetSchoolId) {
+      return await performSync(
+        'deleteSalaryStructure',
+        () => deleteSalaryStructureFromFirestore(targetSchoolId, docId),
+        [
+          {
+            entityType: 'salaryStructure',
+            action: 'delete',
+            operation: 'deleteSalaryStructure',
+            schoolId: targetSchoolId,
+            userId: authUserUid || undefined,
+            docPath: `schools/${targetSchoolId}/salaryStructures/${docId}`,
+            recordId: docId,
+            recordLabel: `Delete Salary Structure · ${existing?.employeeName || docId}`,
+            payload: { id: docId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const savePayslip = async (
+    payslipInput: Omit<EmployeePayslip, 'schoolId'>,
+    overrideSchoolId?: string
+  ): Promise<boolean> => {
+    if (blockUnauthorizedPayrollMutation('savePayslip')) return false;
+    const targetSchoolId = overrideSchoolId || activeSchool.id || 'default_school';
+    const existing = payslips.find(
+      (p) => p.id === payslipInput.id && p.schoolId === targetSchoolId
+    );
+    const nowIso = new Date().toISOString();
+    const isFinalized = Boolean(
+      payslipInput.isFinalized || payslipInput.status === 'finalized' || payslipInput.status === 'paid'
+    );
+    const fullPayslip: EmployeePayslip = {
+      ...payslipInput,
+      schoolId: targetSchoolId,
+      isFinalized,
+      finalizedAt: isFinalized ? payslipInput.finalizedAt || nowIso : undefined,
+      employeeEmail: payslipInput.employeeEmail
+        ? payslipInput.employeeEmail.trim().toLowerCase()
+        : undefined,
+      generatedByUid:
+        payslipInput.generatedByUid || currentUserProfile?.uid || authUserUid || 'admin',
+      generatedByName:
+        payslipInput.generatedByName ||
+        currentUserProfile?.fullName ||
+        (isSuperAdmin ? 'Super Admin' : 'School Admin'),
+      createdAt: payslipInput.createdAt || existing?.createdAt || nowIso,
+      updatedAt: nowIso,
+    };
+
+    setPayslips((prev) => {
+      const idx = prev.findIndex(
+        (p) => p.id === fullPayslip.id && p.schoolId === targetSchoolId
+      );
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullPayslip;
+        return copy;
+      }
+      return [fullPayslip, ...prev];
+    });
+
+    if (!demoMode && targetSchoolId && targetSchoolId !== 'default_school') {
+      return await performSync(
+        'savePayslip',
+        () => savePayslipToFirestore(targetSchoolId, fullPayslip),
+        [
+          {
+            entityType: 'payslip',
+            action: 'upsert',
+            operation: 'savePayslip',
+            schoolId: targetSchoolId,
+            userId: authUserUid || undefined,
+            docPath: `schools/${targetSchoolId}/payslips/${fullPayslip.id}`,
+            recordId: fullPayslip.id,
+            recordLabel: `Payslip · ${fullPayslip.employeeName} (${fullPayslip.monthLabel})`,
+            payload: fullPayslip,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const saveBulkPayslips = async (
+    payslipList: Array<Omit<EmployeePayslip, 'schoolId'>>,
+    overrideSchoolId?: string
+  ): Promise<boolean> => {
+    if (blockUnauthorizedPayrollMutation('saveBulkPayslips')) return false;
+    if (payslipList.length === 0) return true;
+    const targetSchoolId = overrideSchoolId || activeSchool.id || 'default_school';
+    const existingMap = new Map(
+      payslips.filter((p) => p.schoolId === targetSchoolId).map((p) => [p.id, p])
+    );
+    const nowIso = new Date().toISOString();
+
+    const fullRecords: EmployeePayslip[] = payslipList.map((p) => {
+      const existing = existingMap.get(p.id);
+      const isFinalized = Boolean(p.isFinalized || p.status === 'finalized' || p.status === 'paid');
+      return {
+        ...p,
+        schoolId: targetSchoolId,
+        isFinalized,
+        finalizedAt: isFinalized ? p.finalizedAt || nowIso : undefined,
+        employeeEmail: p.employeeEmail ? p.employeeEmail.trim().toLowerCase() : undefined,
+        generatedByUid: p.generatedByUid || currentUserProfile?.uid || authUserUid || 'admin',
+        generatedByName:
+          p.generatedByName ||
+          currentUserProfile?.fullName ||
+          (isSuperAdmin ? 'Super Admin' : 'School Admin'),
+        createdAt: p.createdAt || existing?.createdAt || nowIso,
+        updatedAt: nowIso,
+      };
+    });
+
+    setPayslips((prev) => {
+      const next = [...prev];
+      fullRecords.forEach((rec) => {
+        const idx = next.findIndex(
+          (p) => p.id === rec.id && p.schoolId === targetSchoolId
+        );
+        if (idx >= 0) {
+          next[idx] = rec;
+        } else {
+          next.unshift(rec);
+        }
+      });
+      return next;
+    });
+
+    if (!demoMode && targetSchoolId && targetSchoolId !== 'default_school') {
+      return await performSync(
+        'saveBulkPayslips',
+        () => Promise.all(fullRecords.map((rec) => savePayslipToFirestore(targetSchoolId, rec))),
+        fullRecords.map((rec) => {
+          const existing = existingMap.get(rec.id);
+          return {
+            entityType: 'payslip' as const,
+            action: 'upsert' as const,
+            operation: 'saveBulkPayslips',
+            schoolId: targetSchoolId,
+            userId: authUserUid || undefined,
+            docPath: `schools/${targetSchoolId}/payslips/${rec.id}`,
+            recordId: rec.id,
+            recordLabel: `Payroll · ${rec.employeeName} (${rec.monthLabel})`,
+            payload: rec,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          };
+        })
+      );
+    }
+    return true;
+  };
+
+  const deletePayslip = async (
+    payslipId: string,
+    overrideSchoolId?: string
+  ): Promise<boolean> => {
+    if (blockUnauthorizedPayrollMutation('deletePayslip')) return false;
+    const targetSchoolId = overrideSchoolId || activeSchool.id;
+    const existing = payslips.find(
+      (p) => p.id === payslipId && (!targetSchoolId || p.schoolId === targetSchoolId)
+    );
+    setPayslips((prev) =>
+      prev.filter((p) => !(p.id === payslipId && (!targetSchoolId || p.schoolId === targetSchoolId)))
+    );
+    if (!demoMode && targetSchoolId) {
+      return await performSync(
+        'deletePayslip',
+        () => deletePayslipFromFirestore(targetSchoolId, payslipId),
+        [
+          {
+            entityType: 'payslip',
+            action: 'delete',
+            operation: 'deletePayslip',
+            schoolId: targetSchoolId,
+            userId: authUserUid || undefined,
+            docPath: `schools/${targetSchoolId}/payslips/${payslipId}`,
+            recordId: payslipId,
+            recordLabel: `Delete Payslip · ${existing?.employeeName || payslipId}`,
+            payload: { id: payslipId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const updatePayrollSettings = async (
+    updates: Partial<PayrollSettings>,
+    overrideSchoolId?: string
+  ): Promise<boolean> => {
+    if (blockUnauthorizedPayrollMutation('savePayrollSettings')) return false;
+    const targetSchoolId = overrideSchoolId || activeSchool.id || 'default_school';
+    const nextSettings: PayrollSettings = {
+      ...payrollSettings,
+      ...updates,
+      id: 'config',
+      schoolId: targetSchoolId,
+      teacherPayslipAccessEnabled:
+        updates.teacherPayslipAccessEnabled !== undefined
+          ? Boolean(updates.teacherPayslipAccessEnabled)
+          : Boolean(payrollSettings.teacherPayslipAccessEnabled),
+      updatedByUid: currentUserProfile?.uid || authUserUid || 'admin',
+      updatedByName:
+        currentUserProfile?.fullName || (isSuperAdmin ? 'Super Admin' : 'School Admin'),
+      updatedAt: new Date().toISOString(),
+    };
+    setPayrollSettings(nextSettings);
+
+    if (!demoMode && targetSchoolId && targetSchoolId !== 'default_school') {
+      return await performSync(
+        'savePayrollSettings',
+        () => savePayrollSettingsToFirestore(targetSchoolId, nextSettings),
+        [
+          {
+            entityType: 'payrollSettings',
+            action: 'upsert',
+            operation: 'savePayrollSettings',
+            schoolId: targetSchoolId,
+            userId: authUserUid || undefined,
+            docPath: `schools/${targetSchoolId}/payrollSettings/config`,
+            recordId: 'config',
+            recordLabel: `Payroll Settings · Teacher Portal ${nextSettings.teacherPayslipAccessEnabled ? 'Enabled' : 'Disabled'}`,
+            payload: nextSettings,
+            baseUpdatedAt: normalizeTimestampValue(payrollSettings?.updatedAt),
+            baseSnapshot: payrollSettings,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const loadSchoolPayrollData = useCallback(
+    async (schoolId: string) => {
+      const defaultConfig: PayrollSettings = {
+        id: 'config',
+        schoolId,
+        teacherPayslipAccessEnabled: true,
+        defaultPaymentMethod: 'Bank Transfer',
+      };
+      if (demoMode || !schoolId || isDeviceOffline()) {
+        const scopedStructures = salaryStructures.filter((s) => s.schoolId === schoolId);
+        const scopedPayslips = payslips.filter((p) => p.schoolId === schoolId);
+        return {
+          teachers: schoolId === INITIAL_MOCK_SCHOOL.id ? INITIAL_MOCK_TEACHERS : teachers,
+          salaryStructures: scopedStructures,
+          payslips: scopedPayslips,
+          payrollSettings: payrollSettings.schoolId === schoolId ? payrollSettings : defaultConfig,
+        };
+      }
+
+      const [remoteTeachers, remoteStructures, remotePayslips, remoteSettings] =
+        await Promise.all([
+          fetchTeachersFromFirestore(schoolId).catch(() => []),
+          fetchSalaryStructuresFromFirestore(schoolId).catch(() => []),
+          fetchPayslipsFromFirestore(schoolId).catch(() => []),
+          fetchPayrollSettingsFromFirestore(schoolId).catch(() => null),
+        ]);
+
+      const mergedStructures = mergeQueueIntoCollection(
+        ['salaryStructure'],
+        schoolId,
+        remoteStructures || [],
+        offlineQueueRef.current
+      );
+      const mergedPayslips = mergeQueueIntoCollection(
+        ['payslip'],
+        schoolId,
+        remotePayslips || [],
+        offlineQueueRef.current
+      );
+      const resolvedSettings = remoteSettings || defaultConfig;
+
+      setSalaryStructures((prev) => [
+        ...mergedStructures,
+        ...prev.filter((s) => s.schoolId !== schoolId),
+      ]);
+      setPayslips((prev) => [
+        ...mergedPayslips,
+        ...prev.filter((p) => p.schoolId !== schoolId),
+      ]);
+      setPayrollSettings(resolvedSettings);
+
+      return {
+        teachers: remoteTeachers || [],
+        salaryStructures: mergedStructures,
+        payslips: mergedPayslips,
+        payrollSettings: resolvedSettings,
+      };
+    },
+    [demoMode, teachers, salaryStructures, payslips, payrollSettings, mergeQueueIntoCollection]
+  );
+
+  // =========================================================================
+  // School AI Integration: Lesson Plans & Question Papers (RBAC-enforced)
+  // =========================================================================
+  const canAccessSchoolAiContent = useMemo(() => {
+    if (isSuperAdmin || isImpersonating || effectiveRole === 'super-admin') return false;
+    return (
+      effectiveRole === 'admin' ||
+      effectiveRole === 'principal' ||
+      effectiveRole === 'teacher'
+    );
+  }, [isSuperAdmin, isImpersonating, effectiveRole]);
+
+  const assignedClassIdsForAi = useMemo(
+    () => filteredClassesForUser.map((c) => c.id),
+    [filteredClassesForUser]
+  );
+
+  const filteredLessonPlansForUser = useMemo(() => {
+    const childClassId =
+      effectiveRole === 'parent'
+        ? students.find((s) => s.id === currentUserProfile?.childStudentId)?.classId ||
+          students[0]?.classId
+        : undefined;
+    return filterLessonPlansForRole(schoolLessonPlans, {
+      role: effectiveRole,
+      isSuperAdmin,
+      isReadOnlyImpersonation,
+      assignedClassIds: assignedClassIdsForAi,
+      childClassId,
+    });
+  }, [
+    schoolLessonPlans,
+    effectiveRole,
+    isSuperAdmin,
+    isReadOnlyImpersonation,
+    assignedClassIdsForAi,
+    students,
+    currentUserProfile?.childStudentId,
+  ]);
+
+  const filteredQuestionPapersForUser = useMemo(() => {
+    return filterQuestionPapersForRole(schoolQuestionPapers, {
+      role: effectiveRole,
+      isSuperAdmin,
+      isReadOnlyImpersonation,
+      assignedClassIds: assignedClassIdsForAi,
+    });
+  }, [
+    schoolQuestionPapers,
+    effectiveRole,
+    isSuperAdmin,
+    isReadOnlyImpersonation,
+    assignedClassIdsForAi,
+  ]);
+
+  const canModifyClassAiRecord = (classId: string): boolean => {
+    if (!canAccessSchoolAiContent || !classId) return false;
+    if (effectiveRole === 'admin' || effectiveRole === 'principal') return true;
+    return assignedClassIdsForAi.includes(classId);
+  };
+
+  const saveSchoolLessonPlan = async (
+    planInput: Omit<SchoolLessonPlan, 'schoolId'>
+  ): Promise<boolean> => {
+    if (blockSchoolMutation('saveSchoolLessonPlan')) return false;
+    if (!canModifyClassAiRecord(planInput.classId)) {
+      setSyncError({
+        id: `rbac_lp_${Date.now()}`,
+        message: 'Permission Denied: Teachers can only save lesson plans for their assigned classes.',
+        reason: 'Assigned class scope required',
+        operation: 'saveSchoolLessonPlan',
+        retry: async () => {},
+      });
+      return false;
+    }
+
+    const existing = schoolLessonPlans.find((p) => p.id === planInput.id);
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullPlan: SchoolLessonPlan = {
+      ...planInput,
+      schoolId: targetSchoolId,
+      sharedWithParents: Boolean(planInput.sharedWithParents),
+      sharedAt: planInput.sharedWithParents
+        ? planInput.sharedAt || new Date().toISOString()
+        : planInput.sharedAt,
+      createdAt: planInput.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSchoolLessonPlans((prev) => {
+      const idx = prev.findIndex((p) => p.id === fullPlan.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullPlan;
+        return copy;
+      }
+      return [fullPlan, ...prev];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync(
+        'saveSchoolLessonPlan',
+        () => saveSchoolLessonPlanToFirestore(activeSchool.id, fullPlan),
+        [
+          {
+            entityType: 'schoolLessonPlan',
+            action: 'upsert',
+            operation: 'saveSchoolLessonPlan',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/lessonPlans/${fullPlan.id}`,
+            recordId: fullPlan.id,
+            recordLabel: `Lesson Plan · ${fullPlan.subject} (${fullPlan.topic})`,
+            payload: fullPlan,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const toggleShareLessonPlanWithParents = async (
+    planId: string,
+    shared: boolean
+  ): Promise<boolean> => {
+    const existing = schoolLessonPlans.find((p) => p.id === planId);
+    if (!existing) return false;
+    return saveSchoolLessonPlan({
+      ...existing,
+      sharedWithParents: shared,
+      sharedAt: shared ? new Date().toISOString() : undefined,
+    });
+  };
+
+  const deleteSchoolLessonPlan = async (planId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteSchoolLessonPlan')) return false;
+    const existing = schoolLessonPlans.find((p) => p.id === planId);
+    if (!existing || !canModifyClassAiRecord(existing.classId)) return false;
+
+    setSchoolLessonPlans((prev) => prev.filter((p) => p.id !== planId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync(
+        'deleteSchoolLessonPlan',
+        () => deleteSchoolLessonPlanFromFirestore(activeSchool.id, planId),
+        [
+          {
+            entityType: 'schoolLessonPlan',
+            action: 'delete',
+            operation: 'deleteSchoolLessonPlan',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/lessonPlans/${planId}`,
+            recordId: planId,
+            recordLabel: `Delete Lesson Plan · ${existing.topic}`,
+            payload: { id: planId },
+            baseUpdatedAt: normalizeTimestampValue(existing.updatedAt),
+            baseSnapshot: existing,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const saveSchoolQuestionPaper = async (
+    paperInput: Omit<SchoolQuestionPaper, 'schoolId'>
+  ): Promise<boolean> => {
+    if (blockSchoolMutation('saveSchoolQuestionPaper')) return false;
+    if (!canModifyClassAiRecord(paperInput.classId)) {
+      setSyncError({
+        id: `rbac_qp_${Date.now()}`,
+        message: 'Permission Denied: Teachers can only generate or attach question papers for their assigned classes.',
+        reason: 'Assigned class scope required',
+        operation: 'saveSchoolQuestionPaper',
+        retry: async () => {},
+      });
+      return false;
+    }
+
+    const existing = schoolQuestionPapers.find((qp) => qp.id === paperInput.id);
+    const targetSchoolId = activeSchool.id || 'default_school';
+    const fullPaper: SchoolQuestionPaper = {
+      ...paperInput,
+      schoolId: targetSchoolId,
+      attachedToExam: Boolean(paperInput.attachedToExam),
+      attachedAt: paperInput.attachedToExam
+        ? paperInput.attachedAt || new Date().toISOString()
+        : paperInput.attachedAt,
+      linkedLessonPlanIds: Array.isArray(paperInput.linkedLessonPlanIds)
+        ? paperInput.linkedLessonPlanIds
+        : [],
+      createdAt: paperInput.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    setSchoolQuestionPapers((prev) => {
+      const idx = prev.findIndex((qp) => qp.id === fullPaper.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = fullPaper;
+        return copy;
+      }
+      return [fullPaper, ...prev];
+    });
+
+    if (!demoMode && activeSchool.id) {
+      return await performSync(
+        'saveSchoolQuestionPaper',
+        () => saveSchoolQuestionPaperToFirestore(activeSchool.id, fullPaper),
+        [
+          {
+            entityType: 'schoolQuestionPaper',
+            action: 'upsert',
+            operation: 'saveSchoolQuestionPaper',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/questionPapers/${fullPaper.id}`,
+            recordId: fullPaper.id,
+            recordLabel: `Question Paper · ${fullPaper.subject} (${fullPaper.className})`,
+            payload: fullPaper,
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
+      );
+    }
+    return true;
+  };
+
+  const attachQuestionPaperToExam = async (
+    paperId: string,
+    examId: string,
+    attach = true
+  ): Promise<boolean> => {
+    const existing = schoolQuestionPapers.find((qp) => qp.id === paperId);
+    if (!existing) return false;
+    const targetExam = exams.find((ex) => ex.id === examId);
+    return saveSchoolQuestionPaper({
+      ...existing,
+      examId: attach ? examId : undefined,
+      examTitle: attach ? targetExam?.title || existing.examTitle : undefined,
+      attachedToExam: attach,
+      attachedAt: attach ? new Date().toISOString() : undefined,
+    });
+  };
+
+  const deleteSchoolQuestionPaper = async (paperId: string): Promise<boolean> => {
+    if (blockSchoolMutation('deleteSchoolQuestionPaper')) return false;
+    const existing = schoolQuestionPapers.find((qp) => qp.id === paperId);
+    if (!existing || !canModifyClassAiRecord(existing.classId)) return false;
+
+    setSchoolQuestionPapers((prev) => prev.filter((qp) => qp.id !== paperId));
+    if (!demoMode && activeSchool.id) {
+      return await performSync(
+        'deleteSchoolQuestionPaper',
+        () => deleteSchoolQuestionPaperFromFirestore(activeSchool.id, paperId),
+        [
+          {
+            entityType: 'schoolQuestionPaper',
+            action: 'delete',
+            operation: 'deleteSchoolQuestionPaper',
+            schoolId: activeSchool.id,
+            userId: authUserUid || undefined,
+            docPath: `schools/${activeSchool.id}/questionPapers/${paperId}`,
+            recordId: paperId,
+            recordLabel: `Delete Question Paper · ${existing.subject}`,
+            payload: { id: paperId },
+            baseUpdatedAt: normalizeTimestampValue(existing.updatedAt),
+            baseSnapshot: existing,
+          },
+        ]
       );
     }
     return true;
@@ -3613,8 +6123,22 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setGlobalNotices((prev) => [newNotice, ...prev]);
     if (!demoMode) {
-      return await performSync('publishGlobalNotice', () =>
-        saveGlobalNoticeToFirestore(newNotice)
+      return await performSync(
+        'publishGlobalNotice',
+        () => saveGlobalNoticeToFirestore(newNotice),
+        [
+          {
+            entityType: 'globalNotice',
+            action: 'upsert',
+            operation: 'publishGlobalNotice',
+            schoolId: 'global',
+            userId: authUserUid || undefined,
+            docPath: `globalNotices/${newNotice.id}`,
+            recordId: newNotice.id,
+            recordLabel: `Notice · ${newNotice.title}`,
+            payload: newNotice,
+          },
+        ]
       );
     }
     return true;
@@ -3622,10 +6146,27 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteGlobalNotice = async (noticeId: string): Promise<boolean> => {
     if (!isSuperAdmin && !demoMode) return false;
+    const existing = globalNotices.find((n) => n.id === noticeId);
     setGlobalNotices((prev) => prev.filter((n) => n.id !== noticeId));
     if (!demoMode) {
-      return await performSync('deleteGlobalNotice', () =>
-        deleteGlobalNoticeFromFirestore(noticeId)
+      return await performSync(
+        'deleteGlobalNotice',
+        () => deleteGlobalNoticeFromFirestore(noticeId),
+        [
+          {
+            entityType: 'globalNotice',
+            action: 'delete',
+            operation: 'deleteGlobalNotice',
+            schoolId: 'global',
+            userId: authUserUid || undefined,
+            docPath: `globalNotices/${noticeId}`,
+            recordId: noticeId,
+            recordLabel: `Delete Notice · ${existing?.title || noticeId}`,
+            payload: { id: noticeId },
+            baseUpdatedAt: normalizeTimestampValue(existing?.updatedAt),
+            baseSnapshot: existing || null,
+          },
+        ]
       );
     }
     return true;
@@ -3643,22 +6184,39 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     const targetNotice = globalNotices.find((n) => n.id === noticeId);
     const existingReadBySchools = targetNotice?.readBySchools || {};
+    const updatedReadBySchools = {
+      ...existingReadBySchools,
+      [activeSchool.id]: true,
+    };
     setGlobalNotices((prev) =>
       prev.map((n) =>
         n.id === noticeId
           ? {
               ...n,
-              readBySchools: {
-                ...(n.readBySchools || {}),
-                [activeSchool.id]: true,
-              },
+              readBySchools: updatedReadBySchools,
             }
           : n
       )
     );
     if (!demoMode) {
-      return await performSync('markNoticeAsRead', () =>
-        markGlobalNoticeAsReadInFirestore(noticeId, activeSchool.id, existingReadBySchools)
+      return await performSync(
+        'markNoticeAsRead',
+        () => markGlobalNoticeAsReadInFirestore(noticeId, activeSchool.id, existingReadBySchools),
+        [
+          {
+            entityType: 'noticeRead',
+            action: 'upsert',
+            operation: 'markNoticeAsRead',
+            schoolId: 'global',
+            userId: authUserUid || undefined,
+            docPath: `globalNotices/${noticeId}`,
+            recordId: noticeId,
+            recordLabel: `Notice Read Receipt · ${targetNotice?.title || noticeId}`,
+            payload: { readBySchools: updatedReadBySchools },
+            baseUpdatedAt: normalizeTimestampValue(targetNotice?.updatedAt),
+            baseSnapshot: targetNotice || null,
+          },
+        ]
       );
     }
     return true;
@@ -3671,6 +6229,18 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearSyncError,
         isPendingSync,
         isOnline,
+        offlineQueue,
+        pendingSyncCount,
+        conflictItems,
+        isSyncing,
+        lastSyncSummary,
+        lastSyncedAt,
+        isSyncCenterOpen,
+        setIsSyncCenterOpen,
+        syncNow: () => syncNow({ backgroundAuto: false }),
+        resolveSyncConflict,
+        discardOfflineItem,
+        clearLastSyncSummary,
         userRole: effectiveRole,
         setUserRole,
         demoMode,
@@ -3681,6 +6251,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isImpersonating,
         impersonateSchool,
         exitImpersonation,
+        resetSmsSessionState,
         toggleSchoolStatus,
         activeSchool,
         setActiveSchool,
@@ -3755,6 +6326,30 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canManageTimetable,
         canPostHomework,
         canManageCertificates,
+        salaryStructures,
+        payslips,
+        ownTeacherPayslips,
+        payrollSettings,
+        canAccessSalaryPayroll,
+        canViewOwnPayslips,
+        saveSalaryStructure,
+        deleteSalaryStructure,
+        savePayslip,
+        saveBulkPayslips,
+        deletePayslip,
+        updatePayrollSettings,
+        loadSchoolPayrollData,
+        schoolLessonPlans,
+        schoolQuestionPapers,
+        filteredLessonPlansForUser,
+        filteredQuestionPapersForUser,
+        canAccessSchoolAiContent,
+        saveSchoolLessonPlan,
+        toggleShareLessonPlanWithParents,
+        deleteSchoolLessonPlan,
+        saveSchoolQuestionPaper,
+        attachQuestionPaperToExam,
+        deleteSchoolQuestionPaper,
         isReadOnlyImpersonation,
         globalNotices,
         unreadNoticesCount,
@@ -3801,16 +6396,20 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         </div>
       )}
 
-      {/* Pending Sync / Offline Indicator */}
-      {isPendingSync && !syncError && (
-        <div
-          className="fixed bottom-4 right-4 z-[9999] bg-amber-600 text-white px-4 py-2 rounded-xl shadow-xl flex items-center gap-2.5 text-xs font-semibold border border-amber-500 animate-in fade-in"
-          title="You are offline. Changes are saved locally and will sync to the cloud automatically once reconnected."
-        >
-          <WifiOff className="w-4 h-4 text-amber-200 animate-pulse" />
-          <span>Pending sync (Offline queue active)</span>
-        </div>
-      )}
+      {/* Interactive Offline Sync Queue & Conflict Resolution Modal */}
+      <OfflineSyncCenterModal
+        isOpen={isSyncCenterOpen}
+        onClose={() => setIsSyncCenterOpen(false)}
+        isOnline={isOnline}
+        offlineQueue={offlineQueue}
+        isSyncing={isSyncing}
+        lastSyncSummary={lastSyncSummary}
+        lastSyncedAt={lastSyncedAt}
+        onSyncNow={() => syncNow({ backgroundAuto: false })}
+        onResolveConflict={resolveSyncConflict}
+        onDiscardItem={discardOfflineItem}
+        onClearSummary={clearLastSyncSummary}
+      />
 
       {children}
     </SmsContext.Provider>

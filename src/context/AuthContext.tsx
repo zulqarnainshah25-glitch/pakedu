@@ -53,11 +53,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(null);
       setCurrentUserProfile(null);
       setSmartRoute(null);
+      try {
+        localStorage.removeItem('sms_current_user_profile');
+        localStorage.removeItem('sms_user_role');
+        localStorage.removeItem('demo_user_session');
+        localStorage.removeItem('pakedu_seld_demo_session_v1');
+        sessionStorage.removeItem('pakedu_active_tool');
+        sessionStorage.removeItem('pakedu_signup_sms_role');
+      } catch {
+        // Ignore storage errors
+      }
       setAuthLoading(false);
       return null;
     }
 
     setCurrentUser(user);
+    setCurrentUserProfile((prev) => (prev && prev.uid === user.uid ? prev : null));
+    setSmartRoute((prev) => (prev && currentUser?.uid === user.uid ? prev : null));
     try {
       // Read Firebase token claims (superAdmin custom claim)
       const tokenResult = await user.getIdTokenResult();
@@ -232,8 +244,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setSmartRoute(null);
     try {
       localStorage.removeItem('sms_current_user_profile');
+      localStorage.removeItem('sms_user_role');
       localStorage.removeItem('demo_user_session');
+      localStorage.removeItem('pakedu_seld_demo_session_v1');
       sessionStorage.removeItem('pakedu_active_tool');
+      sessionStorage.removeItem('pakedu_signup_sms_role');
+      if (typeof window !== 'undefined' && (window.location.pathname !== '/' || window.location.search)) {
+        window.history.replaceState({}, document.title, '/');
+      }
     } catch {
       // Ignore
     }

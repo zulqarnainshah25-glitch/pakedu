@@ -21,7 +21,7 @@ import {
   assertSucceeds,
   RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, setDoc, updateDoc, where } from 'firebase/firestore';
 
 const PROJECT_ID = 'pakedu-rules-test';
 const RULES_PATH = path.resolve(process.cwd(), 'firestore.rules');
@@ -446,7 +446,267 @@ export async function runFirestoreRulesTests() {
     );
     console.log('  ✅ PASS: Verified parent can initialize child studentInviteCode only (no overwrite or cross-student mutation)');
 
-    console.log('\n🎉 ALL 9 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
+    console.log('\n--- Test 10: Salary & Payroll RBAC (Admin/SuperAdmin + Scoped Teacher Payslips) ---');
+    const adminADb = testEnv.authenticatedContext('admin_a_uid', {
+      email: 'admin.a@seld.gos.pk',
+      email_verified: true,
+    }).firestore();
+
+    // Admin A can create Salary Structure for Teacher A
+    await assertSucceeds(
+      setDoc(doc(adminADb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid'), {
+        id: 'teacher_a_uid',
+        schoolId: 'school_a',
+        employeeId: 'teacher_a_uid',
+        employeeUid: 'teacher_a_uid',
+        employeeName: 'Teacher School A',
+        employeeEmail: 'teacher.a@seld.gos.pk',
+        designation: 'JEST',
+        employeeType: 'teaching',
+        basicSalary: 50000,
+        allowances: [{ id: 'alw_1', label: 'House Rent', amount: 8000 }],
+        deductions: [{ id: 'ded_1', label: 'Tax', amount: 1000 }],
+        totalAllowances: 8000,
+        grossSalary: 58000,
+        totalDeductions: 1000,
+        netSalary: 57000,
+      })
+    );
+
+    // Super Admin can also read & write Salary Structure and Payslips across schools
+    await assertSucceeds(getDoc(doc(superAdminDb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid')));
+    await assertSucceeds(
+      setDoc(doc(superAdminDb, 'schools', 'school_a', 'payslips', '2026-11__teacher_a_uid'), {
+        id: '2026-11__teacher_a_uid',
+        payslipNumber: 'PAY-202611-A1',
+        schoolId: 'school_a',
+        month: '2026-11',
+        employeeId: 'teacher_a_uid',
+        employeeUid: 'teacher_a_uid',
+        employeeName: 'Teacher School A',
+        employeeEmail: 'teacher.a@seld.gos.pk',
+        basicSalary: 50000,
+        totalAllowances: 8000,
+        grossSalary: 58000,
+        totalDeductions: 1000,
+        adjustmentAmount: 0,
+        netSalary: 57000,
+        status: 'paid',
+        isFinalized: true,
+      })
+    );
+
+    // Seed another teacher's payslip and an unfinalized draft payslip for Teacher A
+    await assertSucceeds(
+      setDoc(doc(adminADb, 'schools', 'school_a', 'payslips', '2026-11__teacher_other'), {
+        id: '2026-11__teacher_other',
+        payslipNumber: 'PAY-202611-A2',
+        schoolId: 'school_a',
+        month: '2026-11',
+        employeeId: 'teacher_other',
+        employeeUid: 'teacher_other',
+        employeeName: 'Other Teacher',
+        employeeEmail: 'other@seld.gos.pk',
+        basicSalary: 45000,
+        netSalary: 45000,
+        status: 'paid',
+        isFinalized: true,
+      })
+    );
+    await assertSucceeds(
+      setDoc(doc(adminADb, 'schools', 'school_a', 'payslips', '2026-12__teacher_a_uid'), {
+        id: '2026-12__teacher_a_uid',
+        payslipNumber: 'PAY-202612-A1',
+        schoolId: 'school_a',
+        month: '2026-12',
+        employeeId: 'teacher_a_uid',
+        employeeUid: 'teacher_a_uid',
+        employeeName: 'Teacher School A',
+        employeeEmail: 'teacher.a@seld.gos.pk',
+        basicSalary: 50000,
+        netSalary: 57000,
+        status: 'draft',
+        isFinalized: false,
+      })
+    );
+
+    // Teacher A CANNOT read/write salaryStructures, cannot read other teachers' payslips, and cannot read unfinalized draft payslips
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid')));
+    await assertFails(getDocs(collection(teacherADb, 'schools', 'school_a', 'salaryStructures')));
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'payslips', '2026-11__teacher_other')));
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'payslips', '2026-12__teacher_a_uid')));
+    await assertFails(getDocs(collection(teacherADb, 'schools', 'school_a', 'payslips')));
+
+    // Teacher A CAN read own finalized payslip when Teacher Payslip Portal is enabled (default true)
+    await assertSucceeds(getDoc(doc(teacherADb, 'schools', 'school_a', 'payslips', '2026-11__teacher_a_uid')));
+    await assertSucceeds(
+      getDocs(
+        query(
+          collection(teacherADb, 'schools', 'school_a', 'payslips'),
+          where('isFinalized', '==', true),
+          where('employeeUid', '==', 'teacher_a_uid')
+        )
+      )
+    );
+
+    // Admin disables Teacher Payslip Portal -> Teacher A immediately denied own payslip reads!
+    await assertSucceeds(
+      setDoc(doc(adminADb, 'schools', 'school_a', 'payrollSettings', 'config'), {
+        id: 'config',
+        schoolId: 'school_a',
+        teacherPayslipAccessEnabled: false,
+      })
+    );
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'payslips', '2026-11__teacher_a_uid')));
+
+    // Parent & Student denied Salary & Payroll access
+    await assertFails(getDoc(doc(parentADb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid')));
+    await assertFails(getDoc(doc(studentADb, 'schools', 'school_a', 'payslips', '2026-11__teacher_a_uid')));
+    console.log('  ✅ PASS: Salary & Payroll RBAC strictly isolates Admin/SuperAdmin management and teacher-scoped payslips');
+
+    console.log('\n--- Test 11: AI Lesson Plans & Question Papers RBAC (Teacher Scoped, Admin All, Parent Shared-Only, Super Admin Blocked) ---');
+    const mockPaperPayload = {
+      paperTitle: 'Class 9 Science Assessment',
+      instructions: 'All compulsory',
+      sectionATitle: 'Section A',
+      mcqs: [{ question: 'Q1?', options: ['A', 'B', 'C', 'D'], correctAnswer: 'A' }],
+      sectionAMarks: 10,
+      sectionBTitle: 'Section B',
+      sectionBNote: 'Attempt any 4',
+      shortQuestions: [{ question: 'Define kinematics.', marks: 5 }],
+      sectionBMarks: 20,
+      sectionCTitle: 'Section C',
+      sectionCNote: 'Attempt any 2',
+      longQuestions: [{ question: 'Derive equation of motion.', marks: 20 }],
+      sectionCMarks: 20,
+      totalMarks: 50,
+    };
+
+    // Teacher A can create lesson plan ONLY for assigned class cls_9_a
+    await assertSucceeds(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls9_shared'), {
+        id: 'lp_cls9_shared',
+        schoolId: 'school_a',
+        classId: 'cls_9_a',
+        grade: 'Class 9',
+        teacherId: 'teacher_a_uid',
+        subject: 'Physics',
+        chapter: 'Chapter 2',
+        topic: 'Kinematics',
+        slos: 'Understand velocity and acceleration.',
+        sharedWithParents: true,
+      })
+    );
+    await assertSucceeds(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls9_private'), {
+        id: 'lp_cls9_private',
+        schoolId: 'school_a',
+        classId: 'cls_9_a',
+        grade: 'Class 9',
+        teacherId: 'teacher_a_uid',
+        subject: 'Physics',
+        chapter: 'Chapter 3',
+        topic: 'Dynamics',
+        slos: 'Understand Newton laws.',
+        sharedWithParents: false,
+      })
+    );
+    // Teacher A DENIED creating lesson plan for unassigned class cls_10_a
+    await assertFails(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls10_bad'), {
+        id: 'lp_cls10_bad',
+        schoolId: 'school_a',
+        classId: 'cls_10_a',
+        grade: 'Class 10',
+        teacherId: 'teacher_a_uid',
+        subject: 'Physics',
+        chapter: 'Chapter 1',
+        topic: 'Waves',
+        slos: 'Understand SHM.',
+        sharedWithParents: true,
+      })
+    );
+
+    // Admin A can create lesson plans & question papers for ANY class (e.g., cls_10_a) and review all
+    await assertSucceeds(
+      setDoc(doc(adminADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls10_admin'), {
+        id: 'lp_cls10_admin',
+        schoolId: 'school_a',
+        classId: 'cls_10_a',
+        grade: 'Class 10',
+        teacherId: 'admin_a_uid',
+        subject: 'Physics',
+        chapter: 'Chapter 1',
+        topic: 'Waves',
+        slos: 'Understand SHM.',
+        sharedWithParents: true,
+      })
+    );
+    await assertSucceeds(getDoc(doc(adminADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls9_private')));
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls10_admin')));
+
+    // Question Papers: Teacher A can create for cls_9_a, denied for cls_10_a; Admin can create for all
+    await assertSucceeds(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'questionPapers', 'qp_cls9_a'), {
+        id: 'qp_cls9_a',
+        schoolId: 'school_a',
+        classId: 'cls_9_a',
+        subject: 'Physics',
+        difficulty: 'Medium',
+        totalMarks: 50,
+        language: 'English',
+        syllabusCovered: 'Kinematics',
+        attachedToExam: true,
+        paper: mockPaperPayload,
+      })
+    );
+    await assertFails(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'questionPapers', 'qp_cls10_bad'), {
+        id: 'qp_cls10_bad',
+        schoolId: 'school_a',
+        classId: 'cls_10_a',
+        subject: 'Physics',
+        difficulty: 'Medium',
+        totalMarks: 50,
+        language: 'English',
+        syllabusCovered: 'Waves',
+        attachedToExam: false,
+        paper: mockPaperPayload,
+      })
+    );
+    await assertSucceeds(
+      setDoc(doc(adminADb, 'schools', 'school_a', 'questionPapers', 'qp_cls10_admin'), {
+        id: 'qp_cls10_admin',
+        schoolId: 'school_a',
+        classId: 'cls_10_a',
+        subject: 'Physics',
+        difficulty: 'Hard',
+        totalMarks: 50,
+        language: 'English',
+        syllabusCovered: 'Waves',
+        attachedToExam: true,
+        paper: mockPaperPayload,
+      })
+    );
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'questionPapers', 'qp_cls10_admin')));
+
+    // Parent A can read ONLY shared lesson plans for child's class (cls_9_a), denied private or other-class plans & ALL question papers
+    await assertSucceeds(getDoc(doc(parentADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls9_shared')));
+    await assertFails(getDoc(doc(parentADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls9_private')));
+    await assertFails(getDoc(doc(parentADb, 'schools', 'school_a', 'lessonPlans', 'lp_cls10_admin')));
+    await assertFails(getDoc(doc(parentADb, 'schools', 'school_a', 'questionPapers', 'qp_cls9_a')));
+
+    // Student A denied question papers (secrecy)
+    await assertFails(getDoc(doc(studentADb, 'schools', 'school_a', 'questionPapers', 'qp_cls9_a')));
+
+    // Super Admin has ZERO access to school-level AI lesson plans & question papers
+    await assertFails(getDoc(doc(superAdminDb, 'schools', 'school_a', 'lessonPlans', 'lp_cls9_shared')));
+    await assertFails(getDocs(collection(superAdminDb, 'schools', 'school_a', 'lessonPlans')));
+    await assertFails(getDoc(doc(superAdminDb, 'schools', 'school_a', 'questionPapers', 'qp_cls9_a')));
+    await assertFails(getDocs(collection(superAdminDb, 'schools', 'school_a', 'questionPapers')));
+    console.log('  ✅ PASS: School AI Lesson Plans & Question Papers RBAC strictly enforced');
+
+    console.log('\n🎉 ALL 11 FIRESTORE RULES TESTS PASSED SUCCESSFULLY!\n');
   } finally {
     if (testEnv) {
       await testEnv.cleanup();

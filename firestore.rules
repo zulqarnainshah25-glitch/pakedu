@@ -83,6 +83,13 @@ service cloud.firestore {
         targetClassId == get(/databases/$(database)/documents/schools/$(schoolId)/students/$(userDoc().get('studentId', ''))).data.get('classId', '');
     }
 
+    function isSchoolParentInClass(schoolId, targetClassId) {
+      return isSchoolParent(schoolId) &&
+        userDoc().get('childStudentId', '') != '' &&
+        exists(/databases/$(database)/documents/schools/$(schoolId)/students/$(userDoc().get('childStudentId', ''))) &&
+        targetClassId == get(/databases/$(database)/documents/schools/$(schoolId)/students/$(userDoc().get('childStudentId', ''))).data.get('classId', '');
+    }
+
     function parentLinkDoc(linkId) {
       return get(/databases/$(database)/documents/parentLinks/$(linkId)).data;
     }
@@ -266,6 +273,99 @@ service cloud.firestore {
         data.classId is string && isValidId(data.classId) &&
         data.studentId is string && isValidId(data.studentId) &&
         data.subjectMarks is map;
+    }
+
+    function isValidSalaryStructure(data) {
+      return data.keys().hasAll(['id', 'schoolId', 'employeeId', 'employeeName', 'basicSalary', 'allowances', 'deductions', 'netSalary']) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'employeeId', 'employeeUid', 'employeeName', 'employeeEmail',
+          'designation', 'employeeType', 'bpsGrade', 'cnic', 'phone',
+          'bankName', 'bankAccountTitle', 'accountNumber',
+          'basicSalary', 'allowances', 'deductions',
+          'totalAllowances', 'grossSalary', 'totalDeductions', 'netSalary',
+          'notes', 'updatedByUid', 'updatedByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.employeeId is string && isValidId(data.employeeId) &&
+        data.employeeName is string && data.employeeName.size() >= 1 && data.employeeName.size() <= 120 &&
+        data.basicSalary is number && data.basicSalary >= 0 &&
+        data.allowances is list &&
+        data.deductions is list &&
+        data.netSalary is number && data.netSalary >= 0;
+    }
+
+    function isValidPayslip(data) {
+      return data.keys().hasAll(['id', 'payslipNumber', 'schoolId', 'month', 'employeeId', 'employeeName', 'basicSalary', 'netSalary', 'status', 'isFinalized']) &&
+        data.keys().hasOnly([
+          'id', 'payslipNumber', 'schoolId', 'month', 'monthLabel', 'year', 'monthNumber',
+          'employeeId', 'employeeUid', 'employeeName', 'employeeEmail',
+          'designation', 'employeeType', 'bpsGrade', 'cnic', 'phone',
+          'bankName', 'bankAccountTitle', 'accountNumber',
+          'basicSalary', 'allowances', 'deductions',
+          'totalAllowances', 'grossSalary', 'totalDeductions',
+          'adjustmentAmount', 'adjustmentReason', 'netSalary',
+          'status', 'isFinalized', 'finalizedAt', 'paymentDate', 'paymentMethod', 'transactionRef',
+          'notes', 'generatedByUid', 'generatedByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.month is string && data.month.size() >= 6 && data.month.size() <= 16 &&
+        data.employeeId is string && isValidId(data.employeeId) &&
+        data.employeeName is string && data.employeeName.size() >= 1 && data.employeeName.size() <= 120 &&
+        data.basicSalary is number && data.basicSalary >= 0 &&
+        data.netSalary is number && data.netSalary >= 0 &&
+        data.isFinalized is bool &&
+        (data.status in ['draft', 'finalized', 'paid']);
+    }
+
+    function isTeacherPayslipPortalEnabled(schoolId) {
+      return !exists(/databases/$(database)/documents/schools/$(schoolId)/payrollSettings/config) ||
+        get(/databases/$(database)/documents/schools/$(schoolId)/payrollSettings/config).data.get('teacherPayslipAccessEnabled', true) == true;
+    }
+
+    function isValidSchoolLessonPlan(data) {
+      return data.keys().hasAll([
+        'id', 'schoolId', 'classId', 'grade', 'teacherId', 'subject', 'chapter', 'topic', 'slos', 'sharedWithParents'
+      ]) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'classId', 'grade', 'section', 'teacherId', 'teacherUid', 'teacherName',
+          'board', 'curriculumSection', 'subject', 'chapter', 'topic', 'duration', 'planType', 'syllabusSource',
+          'slos', 'previousKnowledge', 'teachingAids', 'introduction', 'procedure', 'teacherActivities',
+          'studentActivities', 'assessment', 'homework', 'vocabulary', 'lifeSkills', 'teacherReflection',
+          'questions', 'exercise', 'worksheetPrompt', 'bloomAssessment',
+          'sharedWithParents', 'sharedAt', 'reviewedByAdmin', 'adminReviewNote',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.classId is string && isValidId(data.classId) &&
+        data.teacherId is string && data.teacherId.size() >= 1 && data.teacherId.size() <= 128 &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 120 &&
+        data.chapter is string && data.chapter.size() >= 1 && data.chapter.size() <= 240 &&
+        data.topic is string && data.topic.size() >= 1 && data.topic.size() <= 240 &&
+        data.sharedWithParents is bool;
+    }
+
+    function isValidSchoolQuestionPaper(data) {
+      return data.keys().hasAll([
+        'id', 'schoolId', 'classId', 'subject', 'difficulty', 'totalMarks', 'language', 'syllabusCovered', 'paper', 'attachedToExam'
+      ]) &&
+        data.keys().hasOnly([
+          'id', 'schoolId', 'examId', 'examTitle', 'attachedToExam', 'attachedAt',
+          'classId', 'className', 'grade', 'section', 'subject', 'difficulty', 'totalMarks',
+          'timeAllowed', 'language', 'syllabusCovered', 'linkedLessonPlanIds', 'linkedLessonPlanTopics',
+          'generationSource', 'paper', 'createdByUid', 'createdByName', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && isValidId(data.id) &&
+        data.schoolId is string && isValidId(data.schoolId) &&
+        data.classId is string && isValidId(data.classId) &&
+        data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 120 &&
+        (data.difficulty in ['Easy', 'Medium', 'Hard']) &&
+        (data.language in ['English', 'Urdu', 'Sindhi']) &&
+        data.totalMarks is number && data.totalMarks >= 10 && data.totalMarks <= 200 &&
+        data.attachedToExam is bool &&
+        data.paper is map;
     }
 
     // =========================================================================
@@ -543,8 +643,9 @@ service cloud.firestore {
       }
 
       // --- Subcollection: Teachers (/schools/{schoolId}/teachers/{teacherId}) ---
+      // Read-only allowed for Super Admin so Salary & Payroll module can list employees without touching student PII
       match /teachers/{teacherId} {
-        allow get, list: if isSchoolMember(schoolId);
+        allow get, list: if isSchoolMember(schoolId) || isSuperAdmin();
         allow create, update, delete: if isSchoolAdmin(schoolId) && isValidId(teacherId);
       }
 
@@ -690,6 +791,144 @@ service cloud.firestore {
           request.resource.data.schoolId == schoolId &&
           (request.resource.data.type in ['transfer', 'character']);
         allow delete: if isSchoolAdmin(schoolId);
+      }
+
+      // --- Subcollection: Salary Structures (/schools/{schoolId}/salaryStructures/{employeeId}) ---
+      // Strictly School Admin & Super Admin only; teachers/parents/students cannot read or write.
+      match /salaryStructures/{employeeId} {
+        allow get, list: if isSchoolAdmin(schoolId) || isSuperAdmin();
+        allow create, update: if (isSchoolAdmin(schoolId) || isSuperAdmin()) &&
+          isValidId(employeeId) &&
+          isValidSalaryStructure(incoming()) &&
+          incoming().schoolId == schoolId &&
+          incoming().employeeId == employeeId;
+        allow delete: if isSchoolAdmin(schoolId) || isSuperAdmin();
+      }
+
+      // --- Subcollection: Payroll Settings (/schools/{schoolId}/payrollSettings/{settingId}) ---
+      match /payrollSettings/{settingId} {
+        allow get, list: if isSchoolMember(schoolId) || isSuperAdmin();
+        allow create, update: if (isSchoolAdmin(schoolId) || isSuperAdmin()) &&
+          isValidId(settingId) &&
+          incoming().keys().hasAll(['id', 'schoolId', 'teacherPayslipAccessEnabled']) &&
+          incoming().schoolId == schoolId &&
+          incoming().teacherPayslipAccessEnabled is bool;
+        allow delete: if isSchoolAdmin(schoolId) || isSuperAdmin();
+      }
+
+      // --- Subcollection: Monthly Payslips (/schools/{schoolId}/payslips/{payslipId}) ---
+      // School Admin & Super Admin can read/write all; Teachers can read ONLY their own finalized/paid payslips (if enabled).
+      match /payslips/{payslipId} {
+        allow get, list: if isSchoolAdmin(schoolId) || isSuperAdmin() || (
+          isSchoolMember(schoolId) &&
+          isTeacherPayslipPortalEnabled(schoolId) &&
+          existing().get('isFinalized', false) == true && (
+            existing().get('employeeId', '') == request.auth.uid ||
+            existing().get('employeeUid', '') == request.auth.uid ||
+            (('email' in request.auth.token) && request.auth.token.email != null && existing().get('employeeEmail', '') == request.auth.token.email.lower())
+          )
+        );
+        allow create, update: if (isSchoolAdmin(schoolId) || isSuperAdmin()) &&
+          isValidId(payslipId) &&
+          isValidPayslip(incoming()) &&
+          incoming().schoolId == schoolId;
+        allow delete: if isSchoolAdmin(schoolId) || isSuperAdmin();
+      }
+
+      // --- Subcollection: School AI Lesson Plans (/schools/{schoolId}/lessonPlans/{planId}) ---
+      // Strictly isolated from Super Admin:
+      // - Admin / Principal: full read/write/review/delete across schoolId
+      // - Teachers: ONLY create/read/update/delete for their assignedClassIds
+      // - Parents: Read-only ONLY when sharedWithParents == true AND matching child's classId
+      match /lessonPlans/{planId} {
+        allow get, list: if !isSuperAdmin() && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('role', '') == 'teacher' &&
+            ('assignedClassIds' in userDoc()) &&
+            existing().get('classId', '') in userDoc().assignedClassIds
+          ) || (
+            existing().get('sharedWithParents', false) == true &&
+            isSchoolParentInClass(schoolId, existing().get('classId', ''))
+          )
+        );
+        allow create: if !isSuperAdmin() &&
+          isValidId(planId) &&
+          isValidSchoolLessonPlan(incoming()) &&
+          incoming().schoolId == schoolId && (
+            isSchoolAdmin(schoolId) || (
+              isSchoolMember(schoolId) &&
+              userDoc().get('role', '') == 'teacher' &&
+              ('assignedClassIds' in userDoc()) &&
+              incoming().classId in userDoc().assignedClassIds
+            )
+          );
+        allow update: if !isSuperAdmin() &&
+          isValidId(planId) &&
+          isValidSchoolLessonPlan(incoming()) &&
+          incoming().schoolId == schoolId && (
+            isSchoolAdmin(schoolId) || (
+              isSchoolMember(schoolId) &&
+              userDoc().get('role', '') == 'teacher' &&
+              ('assignedClassIds' in userDoc()) &&
+              existing().get('classId', '') in userDoc().assignedClassIds &&
+              incoming().classId in userDoc().assignedClassIds
+            )
+          );
+        allow delete: if !isSuperAdmin() && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('role', '') == 'teacher' &&
+            ('assignedClassIds' in userDoc()) &&
+            existing().get('classId', '') in userDoc().assignedClassIds
+          )
+        );
+      }
+
+      // --- Subcollection: School AI Question Papers (/schools/{schoolId}/questionPapers/{paperId}) ---
+      // Strictly isolated from Super Admin, Parents, and Students:
+      // - Admin / Principal: full read/write/attach/delete across schoolId
+      // - Teachers: ONLY create/read/update/delete for their assignedClassIds
+      match /questionPapers/{paperId} {
+        allow get, list: if !isSuperAdmin() && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('role', '') == 'teacher' &&
+            ('assignedClassIds' in userDoc()) &&
+            existing().get('classId', '') in userDoc().assignedClassIds
+          )
+        );
+        allow create: if !isSuperAdmin() &&
+          isValidId(paperId) &&
+          isValidSchoolQuestionPaper(incoming()) &&
+          incoming().schoolId == schoolId && (
+            isSchoolAdmin(schoolId) || (
+              isSchoolMember(schoolId) &&
+              userDoc().get('role', '') == 'teacher' &&
+              ('assignedClassIds' in userDoc()) &&
+              incoming().classId in userDoc().assignedClassIds
+            )
+          );
+        allow update: if !isSuperAdmin() &&
+          isValidId(paperId) &&
+          isValidSchoolQuestionPaper(incoming()) &&
+          incoming().schoolId == schoolId && (
+            isSchoolAdmin(schoolId) || (
+              isSchoolMember(schoolId) &&
+              userDoc().get('role', '') == 'teacher' &&
+              ('assignedClassIds' in userDoc()) &&
+              existing().get('classId', '') in userDoc().assignedClassIds &&
+              incoming().classId in userDoc().assignedClassIds
+            )
+          );
+        allow delete: if !isSuperAdmin() && (
+          isSchoolAdmin(schoolId) || (
+            isSchoolMember(schoolId) &&
+            userDoc().get('role', '') == 'teacher' &&
+            ('assignedClassIds' in userDoc()) &&
+            existing().get('classId', '') in userDoc().assignedClassIds
+          )
+        );
       }
     }
 

@@ -14,6 +14,7 @@ export type ActiveToolId =
   | 'sms-timetable'
   | 'sms-homework'
   | 'sms-certificates'
+  | 'sms-payroll'
   | 'sms-parent'
   | 'sms-student-portal'
   | 'super-admin'

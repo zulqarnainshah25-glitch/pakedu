@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
   setDoc,
   deleteDoc,
@@ -11,6 +12,19 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
 import { sanitizeFirestoreData } from '../../../utils/firestoreSanitizer';
+import {
+  enqueueOfflineMutation,
+  recordServerBaseline,
+  recordServerBaselinesBatch,
+  removeServerBaseline,
+  detectOfflineConflict,
+  normalizeTimestampValue,
+  prepareCloneableValue,
+  type OfflineSyncItem,
+  type OfflineEntityType,
+  type ConflictResolutionChoice,
+  type EnqueueOfflineMutationInput,
+} from '../../../services/offlineSyncService';
 import {
   School,
   UserProfile,
@@ -32,12 +46,18 @@ import {
   StudentCertificate,
   GlobalNotice,
   SchoolAnalyticsSummary,
+  SalaryStructure,
+  EmployeePayslip,
+  PayrollSettings,
+  SchoolLessonPlan,
+  SchoolQuestionPaper,
 } from '../types';
+import type { SyllabusPreset } from '../../../data/syllabusPresets';
 
 /**
  * Multi-Tenant School Management Firestore Persistence Service
  * Safely handles cloud persistence with typed error diagnostics,
- * server timestamps, and offline resilience via IndexedDB persistent cache.
+ * server timestamps, and offline resilience via IndexedDB persistent cache + queue.
  */
 
 export type FirestoreServiceErrorCode =
@@ -48,6 +68,10 @@ export type FirestoreServiceErrorCode =
   | 'not-found'
   | 'invalid-argument'
   | 'unknown';
+
+export function isDeviceOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false;
+}
 
 export class FirestoreSyncError extends Error {
   readonly code: FirestoreServiceErrorCode;
@@ -72,19 +96,29 @@ export class FirestoreSyncError extends Error {
     this.isOffline =
       code === 'offline' ||
       code === 'unavailable' ||
-      (typeof navigator !== 'undefined' && !navigator.onLine);
+      isDeviceOffline();
     this.isPermissionDenied = code === 'permission-denied';
   }
 }
 
 export function classifyFirestoreError(err: unknown, operation: string, path?: string): FirestoreSyncError {
-  const isBrowserOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (err instanceof FirestoreSyncError) {
+    return err;
+  }
+  const isBrowserOffline = isDeviceOffline();
   const rawCode = (err as any)?.code || '';
   const rawMessage = (err as any)?.message || String(err);
 
   let code: FirestoreServiceErrorCode = 'unknown';
 
-  if (isBrowserOffline || rawCode === 'unavailable' || rawMessage.toLowerCase().includes('offline')) {
+  if (
+    isBrowserOffline ||
+    rawCode === 'unavailable' ||
+    rawCode === 'offline' ||
+    rawMessage.toLowerCase().includes('offline') ||
+    rawMessage.toLowerCase().includes('failed to fetch') ||
+    rawMessage.toLowerCase().includes('network')
+  ) {
     code = 'offline';
   } else if (
     rawCode === 'permission-denied' ||
@@ -110,6 +144,67 @@ export function classifyFirestoreError(err: unknown, operation: string, path?: s
   return new FirestoreSyncError(reason, code, operation, { path, originalError: err });
 }
 
+/**
+ * Prevents Firestore `persistentLocalCache` writes from hanging indefinitely when
+ * offline or on a dead Wi-Fi link; fails fast as `'offline'` so writes queue to IndexedDB.
+ */
+async function runOnlineFirestoreWrite<T>(
+  operation: string,
+  path: string,
+  writeFn: () => Promise<T>,
+  timeoutMs = 12000
+): Promise<T> {
+  if (isDeviceOffline()) {
+    throw new FirestoreSyncError(
+      'Network connection offline (queued locally)',
+      'offline',
+      operation,
+      { path }
+    );
+  }
+
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  let offlineHandler: (() => void) | undefined;
+
+  try {
+    const racePromise = new Promise<never>((_, reject) => {
+      timeoutHandle = setTimeout(() => {
+        reject(
+          new FirestoreSyncError(
+            'Cloud write timed out due to lost internet connectivity (queued locally)',
+            'offline',
+            operation,
+            { path }
+          )
+        );
+      }, timeoutMs);
+
+      if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        offlineHandler = () => {
+          reject(
+            new FirestoreSyncError(
+              'Connection went offline during write (queued locally)',
+              'offline',
+              operation,
+              { path }
+            )
+          );
+        };
+        window.addEventListener('offline', offlineHandler, { once: true });
+      }
+    });
+
+    return await Promise.race([writeFn(), racePromise]);
+  } catch (err) {
+    throw classifyFirestoreError(err, operation, path);
+  } finally {
+    if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+    if (offlineHandler && typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+      window.removeEventListener('offline', offlineHandler);
+    }
+  }
+}
+
 function normalizeTimestamps<T extends Record<string, any>>(data: T): T {
   const result: any = { ...data };
   if (result.updatedAt && typeof result.updatedAt.toDate === 'function') {
@@ -126,19 +221,23 @@ export async function saveSchoolToFirestore(school: School): Promise<boolean> {
   if (!school.id) {
     throw new FirestoreSyncError('Cannot save school without a valid ID', 'invalid-argument', 'saveSchool');
   }
+  const path = `schools/${school.id}`;
   try {
     const schoolRef = doc(db, 'schools', school.id);
-    await setDoc(
-      schoolRef,
-      sanitizeFirestoreData({
-        ...school,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveSchool', path, () =>
+      setDoc(
+        schoolRef,
+        sanitizeFirestoreData({
+          ...school,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, school, school.createdAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveSchool', `schools/${school.id}`);
+    throw classifyFirestoreError(err, 'saveSchool', path);
   }
 }
 
@@ -153,6 +252,11 @@ export async function fetchSchoolsFromFirestore(): Promise<School[]> {
         schools.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && schools.length > 0) {
+      void recordServerBaselinesBatch(
+        schools.map((s) => ({ docPath: `schools/${s.id}`, snapshot: s, updatedAt: (s as any).updatedAt }))
+      );
+    }
     return schools;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchSchools', 'schools');
@@ -164,19 +268,23 @@ export async function saveUserProfileToFirestore(profile: UserProfile): Promise<
   if (!profile.uid) {
     throw new FirestoreSyncError('Cannot save user profile without a valid UID', 'invalid-argument', 'saveUserProfile');
   }
+  const path = `users/${profile.uid}`;
   try {
     const userRef = doc(db, 'users', profile.uid);
-    await setDoc(
-      userRef,
-      sanitizeFirestoreData({
-        ...profile,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveUserProfile', path, () =>
+      setDoc(
+        userRef,
+        sanitizeFirestoreData({
+          ...profile,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, profile);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveUserProfile', `users/${profile.uid}`);
+    throw classifyFirestoreError(err, 'saveUserProfile', path);
   }
 }
 
@@ -186,7 +294,11 @@ export async function fetchUserProfileFromFirestore(uid: string): Promise<UserPr
     const userRef = doc(db, 'users', uid);
     const snap = await getDoc(userRef);
     if (snap.exists()) {
-      return normalizeTimestamps(snap.data() as UserProfile);
+      const profile = normalizeTimestamps(snap.data() as UserProfile);
+      if (!isDeviceOffline()) {
+        void recordServerBaseline(`users/${uid}`, profile, (profile as any).updatedAt);
+      }
+      return profile;
     }
     return null;
   } catch (err) {
@@ -199,19 +311,23 @@ export async function saveClassToFirestore(schoolId: string, classData: ClassSec
   if (!schoolId || !classData.id) {
     throw new FirestoreSyncError('School ID and Class ID are required', 'invalid-argument', 'saveClass');
   }
+  const path = `schools/${schoolId}/classes/${classData.id}`;
   try {
     const classRef = doc(db, 'schools', schoolId, 'classes', classData.id);
-    await setDoc(
-      classRef,
-      sanitizeFirestoreData({
-        ...classData,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveClass', path, () =>
+      setDoc(
+        classRef,
+        sanitizeFirestoreData({
+          ...classData,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, classData, (classData as any).updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveClass', `schools/${schoolId}/classes/${classData.id}`);
+    throw classifyFirestoreError(err, 'saveClass', path);
   }
 }
 
@@ -219,12 +335,14 @@ export async function deleteClassFromFirestore(schoolId: string, classId: string
   if (!schoolId || !classId) {
     throw new FirestoreSyncError('School ID and Class ID are required to delete', 'invalid-argument', 'deleteClass');
   }
+  const path = `schools/${schoolId}/classes/${classId}`;
   try {
     const classRef = doc(db, 'schools', schoolId, 'classes', classId);
-    await deleteDoc(classRef);
+    await runOnlineFirestoreWrite('deleteClass', path, () => deleteDoc(classRef));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteClass', `schools/${schoolId}/classes/${classId}`);
+    throw classifyFirestoreError(err, 'deleteClass', path);
   }
 }
 
@@ -240,6 +358,15 @@ export async function fetchClassesFromFirestore(schoolId: string): Promise<Class
         classes.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && classes.length > 0) {
+      void recordServerBaselinesBatch(
+        classes.map((c) => ({
+          docPath: `schools/${schoolId}/classes/${c.id}`,
+          snapshot: c,
+          updatedAt: (c as any).updatedAt,
+        }))
+      );
+    }
     return classes;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchClasses', `schools/${schoolId}/classes`);
@@ -251,19 +378,23 @@ export async function saveStudentToFirestore(schoolId: string, student: Student)
   if (!schoolId || !student.id) {
     throw new FirestoreSyncError('School ID and Student ID are required', 'invalid-argument', 'saveStudent');
   }
+  const path = `schools/${schoolId}/students/${student.id}`;
   try {
     const studentRef = doc(db, 'schools', schoolId, 'students', student.id);
-    await setDoc(
-      studentRef,
-      sanitizeFirestoreData({
-        ...student,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveStudent', path, () =>
+      setDoc(
+        studentRef,
+        sanitizeFirestoreData({
+          ...student,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, student, (student as any).updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveStudent', `schools/${schoolId}/students/${student.id}`);
+    throw classifyFirestoreError(err, 'saveStudent', path);
   }
 }
 
@@ -273,19 +404,22 @@ export async function saveStudentInviteCodeOnlyToFirestore(
   studentInviteCode: string
 ): Promise<boolean> {
   if (!schoolId || !studentId || !studentInviteCode.trim()) return false;
+  const path = `schools/${schoolId}/students/${studentId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'students', studentId);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        studentInviteCode: studentInviteCode.trim().toUpperCase(),
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveStudentInviteCode', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          studentInviteCode: studentInviteCode.trim().toUpperCase(),
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveStudentInviteCode', `schools/${schoolId}/students/${studentId}`);
+    throw classifyFirestoreError(err, 'saveStudentInviteCode', path);
   }
 }
 
@@ -293,12 +427,14 @@ export async function deleteStudentFromFirestore(schoolId: string, studentId: st
   if (!schoolId || !studentId) {
     throw new FirestoreSyncError('School ID and Student ID are required to delete', 'invalid-argument', 'deleteStudent');
   }
+  const path = `schools/${schoolId}/students/${studentId}`;
   try {
     const studentRef = doc(db, 'schools', schoolId, 'students', studentId);
-    await deleteDoc(studentRef);
+    await runOnlineFirestoreWrite('deleteStudent', path, () => deleteDoc(studentRef));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteStudent', `schools/${schoolId}/students/${studentId}`);
+    throw classifyFirestoreError(err, 'deleteStudent', path);
   }
 }
 
@@ -314,6 +450,15 @@ export async function fetchStudentsFromFirestore(schoolId: string): Promise<Stud
         students.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && students.length > 0) {
+      void recordServerBaselinesBatch(
+        students.map((s) => ({
+          docPath: `schools/${schoolId}/students/${s.id}`,
+          snapshot: s,
+          updatedAt: (s as any).updatedAt,
+        }))
+      );
+    }
     return students;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchStudents', `schools/${schoolId}/students`);
@@ -328,22 +473,29 @@ export async function saveAttendanceToFirestore(
   if (!schoolId || !attendance.id) {
     throw new FirestoreSyncError('School ID and Attendance ID are required', 'invalid-argument', 'saveAttendance');
   }
+  const path = `schools/${schoolId}/attendance/${attendance.id}`;
+  const normalizedAtt = {
+    ...attendance,
+    schoolId,
+    conductedBy: attendance.markedByName || 'Faculty',
+    conductedByUid: attendance.markedByUid || 'system',
+  };
   try {
     const attRef = doc(db, 'schools', schoolId, 'attendance', attendance.id);
-    await setDoc(
-      attRef,
-      sanitizeFirestoreData({
-        ...attendance,
-        schoolId,
-        conductedBy: attendance.markedByName || 'Faculty',
-        conductedByUid: attendance.markedByUid || 'system',
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveAttendance', path, () =>
+      setDoc(
+        attRef,
+        sanitizeFirestoreData({
+          ...normalizedAtt,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedAtt, (attendance as any).updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveAttendance', `schools/${schoolId}/attendance/${attendance.id}`);
+    throw classifyFirestoreError(err, 'saveAttendance', path);
   }
 }
 
@@ -363,6 +515,16 @@ export async function fetchAttendanceFromFirestore(
         registers[item.id] = item;
       }
     });
+    const list = Object.values(registers);
+    if (!isDeviceOffline() && list.length > 0) {
+      void recordServerBaselinesBatch(
+        list.map((item) => ({
+          docPath: `schools/${schoolId}/attendance/${item.id}`,
+          snapshot: item,
+          updatedAt: (item as any).updatedAt,
+        }))
+      );
+    }
     return registers;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchAttendance', `schools/${schoolId}/attendance`);
@@ -377,19 +539,23 @@ export async function saveJoinRequestToFirestore(
   if (!schoolId || !request.id) {
     throw new FirestoreSyncError('School ID and Request ID are required', 'invalid-argument', 'saveJoinRequest');
   }
+  const path = `schools/${schoolId}/joinRequests/${request.id}`;
   try {
     const reqRef = doc(db, 'schools', schoolId, 'joinRequests', request.id);
-    await setDoc(
-      reqRef,
-      sanitizeFirestoreData({
-        ...request,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveJoinRequest', path, () =>
+      setDoc(
+        reqRef,
+        sanitizeFirestoreData({
+          ...request,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, request);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveJoinRequest', `schools/${schoolId}/joinRequests/${request.id}`);
+    throw classifyFirestoreError(err, 'saveJoinRequest', path);
   }
 }
 
@@ -419,19 +585,23 @@ export async function saveSchoolRegistrationRequestToFirestore(
   if (!request.id) {
     throw new FirestoreSyncError('Request ID is required', 'invalid-argument', 'saveSchoolRegistrationRequest');
   }
+  const path = `schoolRegistrationRequests/${request.id}`;
   try {
     const reqRef = doc(db, 'schoolRegistrationRequests', request.id);
-    await setDoc(
-      reqRef,
-      sanitizeFirestoreData({
-        ...request,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveSchoolRegistrationRequest', path, () =>
+      setDoc(
+        reqRef,
+        sanitizeFirestoreData({
+          ...request,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, request);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveSchoolRegistrationRequest', `schoolRegistrationRequests/${request.id}`);
+    throw classifyFirestoreError(err, 'saveSchoolRegistrationRequest', path);
   }
 }
 
@@ -459,19 +629,23 @@ export async function saveTeacherToFirestore(
   if (!schoolId || !teacher.id) {
     throw new FirestoreSyncError('School ID and Teacher ID are required', 'invalid-argument', 'saveTeacher');
   }
+  const path = `schools/${schoolId}/teachers/${teacher.id}`;
   try {
     const teacherRef = doc(db, 'schools', schoolId, 'teachers', teacher.id);
-    await setDoc(
-      teacherRef,
-      sanitizeFirestoreData({
-        ...teacher,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveTeacher', path, () =>
+      setDoc(
+        teacherRef,
+        sanitizeFirestoreData({
+          ...teacher,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, teacher);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveTeacher', `schools/${schoolId}/teachers/${teacher.id}`);
+    throw classifyFirestoreError(err, 'saveTeacher', path);
   }
 }
 
@@ -489,6 +663,15 @@ export async function fetchTeachersFromFirestore(
         teachers.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && teachers.length > 0) {
+      void recordServerBaselinesBatch(
+        teachers.map((t) => ({
+          docPath: `schools/${schoolId}/teachers/${t.id}`,
+          snapshot: t,
+          updatedAt: (t as any).updatedAt,
+        }))
+      );
+    }
     return teachers;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchTeachers', `schools/${schoolId}/teachers`);
@@ -503,22 +686,29 @@ export async function saveFeeStructureToFirestore(
   if (!schoolId || !feeStructure.classId) {
     throw new FirestoreSyncError('School ID and Class ID are required', 'invalid-argument', 'saveFeeStructure');
   }
+  const docId = feeStructure.id || feeStructure.classId;
+  const path = `schools/${schoolId}/feeStructures/${docId}`;
+  const normalizedStruct = {
+    ...feeStructure,
+    id: docId,
+    schoolId,
+  };
   try {
-    const docId = feeStructure.id || feeStructure.classId;
     const ref = doc(db, 'schools', schoolId, 'feeStructures', docId);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...feeStructure,
-        id: docId,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveFeeStructure', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedStruct,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedStruct, feeStructure.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveFeeStructure', `schools/${schoolId}/feeStructures/${feeStructure.classId}`);
+    throw classifyFirestoreError(err, 'saveFeeStructure', path);
   }
 }
 
@@ -536,6 +726,15 @@ export async function fetchFeeStructuresFromFirestore(
         feeStructures.push(normalizeTimestamps({ ...data, id: data.id || d.id, classId: data.classId || d.id }));
       }
     });
+    if (!isDeviceOffline() && feeStructures.length > 0) {
+      void recordServerBaselinesBatch(
+        feeStructures.map((f) => ({
+          docPath: `schools/${schoolId}/feeStructures/${f.id || f.classId}`,
+          snapshot: f,
+          updatedAt: f.updatedAt,
+        }))
+      );
+    }
     return feeStructures;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchFeeStructures', `schools/${schoolId}/feeStructures`);
@@ -569,12 +768,14 @@ export async function deleteFeeStructureFromFirestore(
   if (!schoolId || !classId) {
     throw new FirestoreSyncError('School ID and Class ID are required', 'invalid-argument', 'deleteFeeStructure');
   }
+  const path = `schools/${schoolId}/feeStructures/${classId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'feeStructures', classId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteFeeStructure', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteFeeStructure', `schools/${schoolId}/feeStructures/${classId}`);
+    throw classifyFirestoreError(err, 'deleteFeeStructure', path);
   }
 }
 
@@ -586,24 +787,31 @@ export async function saveFeePaymentToFirestore(
   if (!schoolId || !payment.id) {
     throw new FirestoreSyncError('School ID and Payment ID are required', 'invalid-argument', 'saveFeePayment');
   }
+  const path = `schools/${schoolId}/feePayments/${payment.id}`;
+  const normalizedPay = {
+    ...payment,
+    schoolId,
+    receiptNumber: payment.receiptNumber || '',
+    paymentMethod: payment.paymentMethod || 'Cash',
+    notes: payment.notes || '',
+    installments: Array.isArray(payment.installments) ? payment.installments : [],
+  };
   try {
     const ref = doc(db, 'schools', schoolId, 'feePayments', payment.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...payment,
-        schoolId,
-        receiptNumber: payment.receiptNumber || '',
-        paymentMethod: payment.paymentMethod || 'Cash',
-        notes: payment.notes || '',
-        installments: Array.isArray(payment.installments) ? payment.installments : [],
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveFeePayment', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedPay,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedPay, payment.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveFeePayment', `schools/${schoolId}/feePayments/${payment.id}`);
+    throw classifyFirestoreError(err, 'saveFeePayment', path);
   }
 }
 
@@ -621,6 +829,15 @@ export async function fetchFeePaymentsFromFirestore(
         payments.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && payments.length > 0) {
+      void recordServerBaselinesBatch(
+        payments.map((p) => ({
+          docPath: `schools/${schoolId}/feePayments/${p.id}`,
+          snapshot: p,
+          updatedAt: p.updatedAt,
+        }))
+      );
+    }
     return payments;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchFeePayments', `schools/${schoolId}/feePayments`);
@@ -635,20 +852,27 @@ export async function saveFeeConcessionToFirestore(
   if (!schoolId || !rule.id) {
     throw new FirestoreSyncError('School ID and Concession ID are required', 'invalid-argument', 'saveFeeConcession');
   }
+  const path = `schools/${schoolId}/feeConcessions/${rule.id}`;
+  const normalizedRule = {
+    ...rule,
+    schoolId,
+  };
   try {
     const ref = doc(db, 'schools', schoolId, 'feeConcessions', rule.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...rule,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveFeeConcession', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedRule,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedRule, rule.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveFeeConcession', `schools/${schoolId}/feeConcessions/${rule.id}`);
+    throw classifyFirestoreError(err, 'saveFeeConcession', path);
   }
 }
 
@@ -666,6 +890,15 @@ export async function fetchFeeConcessionsFromFirestore(
         rules.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && rules.length > 0) {
+      void recordServerBaselinesBatch(
+        rules.map((r) => ({
+          docPath: `schools/${schoolId}/feeConcessions/${r.id}`,
+          snapshot: r,
+          updatedAt: r.updatedAt,
+        }))
+      );
+    }
     return rules;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchFeeConcessions', `schools/${schoolId}/feeConcessions`);
@@ -679,12 +912,14 @@ export async function deleteFeeConcessionFromFirestore(
   if (!schoolId || !concessionId) {
     throw new FirestoreSyncError('School ID and Concession ID are required', 'invalid-argument', 'deleteFeeConcession');
   }
+  const path = `schools/${schoolId}/feeConcessions/${concessionId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'feeConcessions', concessionId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteFeeConcession', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteFeeConcession', `schools/${schoolId}/feeConcessions/${concessionId}`);
+    throw classifyFirestoreError(err, 'deleteFeeConcession', path);
   }
 }
 
@@ -693,20 +928,27 @@ export async function saveExamToFirestore(schoolId: string, exam: Exam): Promise
   if (!schoolId || !exam.id) {
     throw new FirestoreSyncError('School ID and Exam ID are required', 'invalid-argument', 'saveExam');
   }
+  const path = `schools/${schoolId}/exams/${exam.id}`;
+  const normalizedExam = {
+    ...exam,
+    schoolId,
+  };
   try {
     const ref = doc(db, 'schools', schoolId, 'exams', exam.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...exam,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveExam', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedExam,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedExam, exam.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveExam', `schools/${schoolId}/exams/${exam.id}`);
+    throw classifyFirestoreError(err, 'saveExam', path);
   }
 }
 
@@ -722,6 +964,15 @@ export async function fetchExamsFromFirestore(schoolId: string): Promise<Exam[]>
         exams.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && exams.length > 0) {
+      void recordServerBaselinesBatch(
+        exams.map((e) => ({
+          docPath: `schools/${schoolId}/exams/${e.id}`,
+          snapshot: e,
+          updatedAt: e.updatedAt,
+        }))
+      );
+    }
     return exams;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchExams', `schools/${schoolId}/exams`);
@@ -732,12 +983,14 @@ export async function deleteExamFromFirestore(schoolId: string, examId: string):
   if (!schoolId || !examId) {
     throw new FirestoreSyncError('School ID and Exam ID are required', 'invalid-argument', 'deleteExam');
   }
+  const path = `schools/${schoolId}/exams/${examId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'exams', examId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteExam', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteExam', `schools/${schoolId}/exams/${examId}`);
+    throw classifyFirestoreError(err, 'deleteExam', path);
   }
 }
 
@@ -749,20 +1002,27 @@ export async function saveStudentMarksToFirestore(
   if (!schoolId || !marks.id) {
     throw new FirestoreSyncError('School ID and Marks ID are required', 'invalid-argument', 'saveStudentMarks');
   }
+  const path = `schools/${schoolId}/marks/${marks.id}`;
+  const normalizedMarks = {
+    ...marks,
+    schoolId,
+  };
   try {
     const ref = doc(db, 'schools', schoolId, 'marks', marks.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...marks,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveStudentMarks', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedMarks,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedMarks, marks.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveStudentMarks', `schools/${schoolId}/marks/${marks.id}`);
+    throw classifyFirestoreError(err, 'saveStudentMarks', path);
   }
 }
 
@@ -778,6 +1038,15 @@ export async function fetchMarksFromFirestore(schoolId: string): Promise<Student
         marks.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && marks.length > 0) {
+      void recordServerBaselinesBatch(
+        marks.map((m) => ({
+          docPath: `schools/${schoolId}/marks/${m.id}`,
+          snapshot: m,
+          updatedAt: m.updatedAt,
+        }))
+      );
+    }
     return marks;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchMarks', `schools/${schoolId}/marks`);
@@ -791,12 +1060,14 @@ export async function deleteStudentMarksFromFirestore(
   if (!schoolId || !markId) {
     throw new FirestoreSyncError('School ID and Marks ID are required', 'invalid-argument', 'deleteStudentMarks');
   }
+  const path = `schools/${schoolId}/marks/${markId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'marks', markId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteStudentMarks', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteStudentMarks', `schools/${schoolId}/marks/${markId}`);
+    throw classifyFirestoreError(err, 'deleteStudentMarks', path);
   }
 }
 
@@ -829,20 +1100,27 @@ export async function saveParentStudentLinkToFirestore(
   if (!link.id || !link.schoolId || !link.studentId) {
     throw new FirestoreSyncError('Parent link ID, School ID, and Student ID are required', 'invalid-argument', 'saveParentLink');
   }
+  const path = `parentLinks/${link.id}`;
+  const normalizedLink = {
+    ...link,
+    parentEmail: link.parentEmail ? link.parentEmail.trim().toLowerCase() : '',
+  };
   try {
     const ref = doc(db, 'parentLinks', link.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...link,
-        parentEmail: link.parentEmail ? link.parentEmail.trim().toLowerCase() : '',
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveParentLink', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedLink,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedLink, link.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveParentLink', `parentLinks/${link.id}`);
+    throw classifyFirestoreError(err, 'saveParentLink', path);
   }
 }
 
@@ -936,20 +1214,27 @@ export async function saveStudentPortalLinkToFirestore(
   if (!link.id || !link.schoolId || !link.studentId) {
     throw new FirestoreSyncError('Student link ID, School ID, and Student ID are required', 'invalid-argument', 'saveStudentLink');
   }
+  const path = `studentLinks/${link.id}`;
+  const normalizedLink = {
+    ...link,
+    studentEmail: link.studentEmail ? link.studentEmail.trim().toLowerCase() : '',
+  };
   try {
     const ref = doc(db, 'studentLinks', link.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...link,
-        studentEmail: link.studentEmail ? link.studentEmail.trim().toLowerCase() : '',
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveStudentLink', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedLink,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedLink, link.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveStudentLink', `studentLinks/${link.id}`);
+    throw classifyFirestoreError(err, 'saveStudentLink', path);
   }
 }
 
@@ -1169,20 +1454,24 @@ export async function saveTimetableEntryToFirestore(
   if (!schoolId || !entry.id) {
     throw new FirestoreSyncError('School ID and Timetable Entry ID are required', 'invalid-argument', 'saveTimetableEntry');
   }
+  const path = `schools/${schoolId}/timetable/${entry.id}`;
+  const normalizedEntry = { ...entry, schoolId };
   try {
     const ref = doc(db, 'schools', schoolId, 'timetable', entry.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...entry,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveTimetableEntry', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedEntry,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedEntry, entry.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveTimetableEntry', `schools/${schoolId}/timetable/${entry.id}`);
+    throw classifyFirestoreError(err, 'saveTimetableEntry', path);
   }
 }
 
@@ -1202,6 +1491,15 @@ export async function fetchTimetableFromFirestore(
         items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((t) => ({
+          docPath: `schools/${schoolId}/timetable/${t.id}`,
+          snapshot: t,
+          updatedAt: t.updatedAt,
+        }))
+      );
+    }
     return items;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchTimetable', `schools/${schoolId}/timetable`);
@@ -1215,12 +1513,14 @@ export async function deleteTimetableEntryFromFirestore(
   if (!schoolId || !entryId) {
     throw new FirestoreSyncError('School ID and Timetable Entry ID are required', 'invalid-argument', 'deleteTimetableEntry');
   }
+  const path = `schools/${schoolId}/timetable/${entryId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'timetable', entryId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteTimetableEntry', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteTimetableEntry', `schools/${schoolId}/timetable/${entryId}`);
+    throw classifyFirestoreError(err, 'deleteTimetableEntry', path);
   }
 }
 
@@ -1231,20 +1531,24 @@ export async function saveHomeworkToFirestore(
   if (!schoolId || !homework.id) {
     throw new FirestoreSyncError('School ID and Homework ID are required', 'invalid-argument', 'saveHomework');
   }
+  const path = `schools/${schoolId}/homework/${homework.id}`;
+  const normalizedHw = { ...homework, schoolId };
   try {
     const ref = doc(db, 'schools', schoolId, 'homework', homework.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...homework,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveHomework', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedHw,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedHw, homework.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveHomework', `schools/${schoolId}/homework/${homework.id}`);
+    throw classifyFirestoreError(err, 'saveHomework', path);
   }
 }
 
@@ -1264,6 +1568,15 @@ export async function fetchHomeworkFromFirestore(
         items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((h) => ({
+          docPath: `schools/${schoolId}/homework/${h.id}`,
+          snapshot: h,
+          updatedAt: h.updatedAt,
+        }))
+      );
+    }
     return items;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchHomework', `schools/${schoolId}/homework`);
@@ -1277,12 +1590,14 @@ export async function deleteHomeworkFromFirestore(
   if (!schoolId || !homeworkId) {
     throw new FirestoreSyncError('School ID and Homework ID are required', 'invalid-argument', 'deleteHomework');
   }
+  const path = `schools/${schoolId}/homework/${homeworkId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'homework', homeworkId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteHomework', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteHomework', `schools/${schoolId}/homework/${homeworkId}`);
+    throw classifyFirestoreError(err, 'deleteHomework', path);
   }
 }
 
@@ -1293,20 +1608,24 @@ export async function saveCertificateToFirestore(
   if (!schoolId || !cert.id) {
     throw new FirestoreSyncError('School ID and Certificate ID are required', 'invalid-argument', 'saveCertificate');
   }
+  const path = `schools/${schoolId}/certificates/${cert.id}`;
+  const normalizedCert = { ...cert, schoolId };
   try {
     const ref = doc(db, 'schools', schoolId, 'certificates', cert.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...cert,
-        schoolId,
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveCertificate', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedCert,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedCert, cert.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveCertificate', `schools/${schoolId}/certificates/${cert.id}`);
+    throw classifyFirestoreError(err, 'saveCertificate', path);
   }
 }
 
@@ -1322,6 +1641,15 @@ export async function fetchCertificatesFromFirestore(schoolId: string): Promise<
         items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((c) => ({
+          docPath: `schools/${schoolId}/certificates/${c.id}`,
+          snapshot: c,
+          updatedAt: c.updatedAt,
+        }))
+      );
+    }
     return items;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchCertificates', `schools/${schoolId}/certificates`);
@@ -1335,12 +1663,623 @@ export async function deleteCertificateFromFirestore(
   if (!schoolId || !certificateId) {
     throw new FirestoreSyncError('School ID and Certificate ID are required', 'invalid-argument', 'deleteCertificate');
   }
+  const path = `schools/${schoolId}/certificates/${certificateId}`;
   try {
     const ref = doc(db, 'schools', schoolId, 'certificates', certificateId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteCertificate', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteCertificate', `schools/${schoolId}/certificates/${certificateId}`);
+    throw classifyFirestoreError(err, 'deleteCertificate', path);
+  }
+}
+
+// =========================================================================
+// 15B. Salary & Payroll Management
+// (salaryStructures/{employeeId}, payrollSettings/config, payslips/{payslipId})
+// =========================================================================
+export async function saveSalaryStructureToFirestore(
+  schoolId: string,
+  structure: SalaryStructure
+): Promise<boolean> {
+  if (!schoolId || !structure.employeeId) {
+    throw new FirestoreSyncError('School ID and Employee ID are required', 'invalid-argument', 'saveSalaryStructure');
+  }
+  const docId = structure.id || structure.employeeId;
+  const path = `schools/${schoolId}/salaryStructures/${docId}`;
+  const normalizedStructure: SalaryStructure = {
+    ...structure,
+    id: docId,
+    employeeId: structure.employeeId || docId,
+    schoolId,
+    employeeEmail: structure.employeeEmail ? structure.employeeEmail.trim().toLowerCase() : undefined,
+  };
+  try {
+    const ref = doc(db, 'schools', schoolId, 'salaryStructures', docId);
+    await runOnlineFirestoreWrite('saveSalaryStructure', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedStructure,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
+    );
+    void recordServerBaseline(path, normalizedStructure, structure.updatedAt);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveSalaryStructure', path);
+  }
+}
+
+export async function fetchSalaryStructuresFromFirestore(
+  schoolId: string
+): Promise<SalaryStructure[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'salaryStructures');
+    const snapshot = await getDocs(col);
+    const items: SalaryStructure[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as SalaryStructure;
+        items.push(normalizeTimestamps({ ...data, id: data.id || d.id, employeeId: data.employeeId || d.id }));
+      }
+    });
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((item) => ({
+          docPath: `schools/${schoolId}/salaryStructures/${item.id}`,
+          snapshot: item,
+          updatedAt: item.updatedAt,
+        }))
+      );
+    }
+    return items;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchSalaryStructures', `schools/${schoolId}/salaryStructures`);
+  }
+}
+
+export async function deleteSalaryStructureFromFirestore(
+  schoolId: string,
+  employeeId: string
+): Promise<boolean> {
+  if (!schoolId || !employeeId) {
+    throw new FirestoreSyncError('School ID and Employee ID are required', 'invalid-argument', 'deleteSalaryStructure');
+  }
+  const path = `schools/${schoolId}/salaryStructures/${employeeId}`;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'salaryStructures', employeeId);
+    await runOnlineFirestoreWrite('deleteSalaryStructure', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteSalaryStructure', path);
+  }
+}
+
+export async function savePayslipToFirestore(
+  schoolId: string,
+  payslip: EmployeePayslip
+): Promise<boolean> {
+  if (!schoolId || !payslip.id) {
+    throw new FirestoreSyncError('School ID and Payslip ID are required', 'invalid-argument', 'savePayslip');
+  }
+  const path = `schools/${schoolId}/payslips/${payslip.id}`;
+  const normalizedPayslip: EmployeePayslip = {
+    ...payslip,
+    schoolId,
+    employeeEmail: payslip.employeeEmail ? payslip.employeeEmail.trim().toLowerCase() : undefined,
+    isFinalized: Boolean(payslip.isFinalized || payslip.status === 'finalized' || payslip.status === 'paid'),
+  };
+  try {
+    const ref = doc(db, 'schools', schoolId, 'payslips', payslip.id);
+    await runOnlineFirestoreWrite('savePayslip', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedPayslip,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
+    );
+    void recordServerBaseline(path, normalizedPayslip, payslip.updatedAt);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'savePayslip', path);
+  }
+}
+
+export async function fetchPayslipsFromFirestore(schoolId: string): Promise<EmployeePayslip[]> {
+  if (!schoolId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'payslips');
+    const snapshot = await getDocs(col);
+    const items: EmployeePayslip[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as EmployeePayslip;
+        items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((item) => ({
+          docPath: `schools/${schoolId}/payslips/${item.id}`,
+          snapshot: item,
+          updatedAt: item.updatedAt,
+        }))
+      );
+    }
+    return items.sort((a, b) => (b.month || '').localeCompare(a.month || ''));
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchPayslips', `schools/${schoolId}/payslips`);
+  }
+}
+
+/**
+ * Strictly scoped read-only payslip query for Teachers:
+ * Only queries finalized/paid payslips belonging to the teacher's UID or email.
+ */
+export async function fetchTeacherOwnPayslipsFromFirestore(
+  schoolId: string,
+  params: { uid?: string | null; email?: string | null }
+): Promise<EmployeePayslip[]> {
+  if (!schoolId) return [];
+  const uid = (params.uid || '').trim();
+  const email = (params.email || '').trim().toLowerCase();
+  if (!uid && !email) return [];
+
+  const col = collection(db, 'schools', schoolId, 'payslips');
+  const queriesToRun = [];
+  if (uid) {
+    queriesToRun.push(
+      query(col, where('isFinalized', '==', true), where('employeeUid', '==', uid)),
+      query(col, where('isFinalized', '==', true), where('employeeId', '==', uid))
+    );
+  }
+  if (email) {
+    queriesToRun.push(
+      query(col, where('isFinalized', '==', true), where('employeeEmail', '==', email))
+    );
+  }
+
+  const snapshots = await Promise.allSettled(queriesToRun.map((q) => getDocs(q)));
+  const merged = new Map<string, EmployeePayslip>();
+  let anySuccess = false;
+  let lastError: unknown = null;
+
+  snapshots.forEach((res) => {
+    if (res.status === 'fulfilled') {
+      anySuccess = true;
+      res.value.forEach((d) => {
+        if (d.exists()) {
+          const data = d.data() as EmployeePayslip;
+          merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+        }
+      });
+    } else {
+      lastError = res.reason;
+    }
+  });
+
+  if (!anySuccess && lastError) {
+    throw classifyFirestoreError(lastError, 'fetchTeacherOwnPayslips', `schools/${schoolId}/payslips`);
+  }
+
+  return Array.from(merged.values()).sort((a, b) => (b.month || '').localeCompare(a.month || ''));
+}
+
+export async function deletePayslipFromFirestore(
+  schoolId: string,
+  payslipId: string
+): Promise<boolean> {
+  if (!schoolId || !payslipId) {
+    throw new FirestoreSyncError('School ID and Payslip ID are required', 'invalid-argument', 'deletePayslip');
+  }
+  const path = `schools/${schoolId}/payslips/${payslipId}`;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'payslips', payslipId);
+    await runOnlineFirestoreWrite('deletePayslip', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deletePayslip', path);
+  }
+}
+
+export async function savePayrollSettingsToFirestore(
+  schoolId: string,
+  settings: PayrollSettings
+): Promise<boolean> {
+  if (!schoolId) {
+    throw new FirestoreSyncError('School ID is required', 'invalid-argument', 'savePayrollSettings');
+  }
+  const docId = settings.id || 'config';
+  const path = `schools/${schoolId}/payrollSettings/${docId}`;
+  const normalized: PayrollSettings = {
+    ...settings,
+    id: docId,
+    schoolId,
+    teacherPayslipAccessEnabled: Boolean(settings.teacherPayslipAccessEnabled),
+  };
+  try {
+    const ref = doc(db, 'schools', schoolId, 'payrollSettings', docId);
+    await runOnlineFirestoreWrite('savePayrollSettings', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalized,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
+    );
+    void recordServerBaseline(path, normalized, settings.updatedAt);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'savePayrollSettings', path);
+  }
+}
+
+export async function fetchPayrollSettingsFromFirestore(
+  schoolId: string
+): Promise<PayrollSettings | null> {
+  if (!schoolId) return null;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'payrollSettings', 'config');
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return null;
+    const data = snap.data() as PayrollSettings;
+    return normalizeTimestamps({
+      ...data,
+      id: data.id || snap.id,
+      schoolId: data.schoolId || schoolId,
+    });
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchPayrollSettings', `schools/${schoolId}/payrollSettings/config`);
+  }
+}
+
+// =========================================================================
+// 15B. School AI Integration: Class Lesson Plans & Question Papers
+// =========================================================================
+export async function saveSchoolLessonPlanToFirestore(
+  schoolId: string,
+  plan: SchoolLessonPlan
+): Promise<boolean> {
+  if (!schoolId || !plan.id) {
+    throw new FirestoreSyncError(
+      'School ID and Lesson Plan ID are required',
+      'invalid-argument',
+      'saveSchoolLessonPlan'
+    );
+  }
+  const path = `schools/${schoolId}/lessonPlans/${plan.id}`;
+  const normalizedPlan: SchoolLessonPlan = {
+    ...plan,
+    schoolId,
+    sharedWithParents: Boolean(plan.sharedWithParents),
+  };
+  try {
+    const ref = doc(db, 'schools', schoolId, 'lessonPlans', plan.id);
+    await runOnlineFirestoreWrite('saveSchoolLessonPlan', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedPlan,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
+    );
+    void recordServerBaseline(path, normalizedPlan, plan.updatedAt);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveSchoolLessonPlan', path);
+  }
+}
+
+export async function fetchSchoolLessonPlansFromFirestore(
+  schoolId: string,
+  assignedClassIds?: string[]
+): Promise<SchoolLessonPlan[]> {
+  if (!schoolId) return [];
+  const col = collection(db, 'schools', schoolId, 'lessonPlans');
+  try {
+    const merged = new Map<string, SchoolLessonPlan>();
+    if (Array.isArray(assignedClassIds)) {
+      const uniqueIds = Array.from(new Set(assignedClassIds.filter(Boolean)));
+      if (uniqueIds.length === 0) return [];
+      const results = await Promise.allSettled(
+        uniqueIds.map((cid) => getDocs(query(col, where('classId', '==', cid))))
+      );
+      let anySuccess = false;
+      let lastError: unknown = null;
+      results.forEach((res) => {
+        if (res.status === 'fulfilled') {
+          anySuccess = true;
+          res.value.forEach((d) => {
+            if (d.exists()) {
+              const data = d.data() as SchoolLessonPlan;
+              merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+            }
+          });
+        } else {
+          lastError = res.reason;
+        }
+      });
+      if (!anySuccess && lastError) {
+        throw lastError;
+      }
+    } else {
+      const snapshot = await getDocs(col);
+      snapshot.forEach((d) => {
+        if (d.exists()) {
+          const data = d.data() as SchoolLessonPlan;
+          merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+        }
+      });
+    }
+
+    const items = Array.from(merged.values()).sort((a, b) =>
+      String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))
+    );
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((p) => ({
+          docPath: `schools/${schoolId}/lessonPlans/${p.id}`,
+          snapshot: p,
+          updatedAt: p.updatedAt,
+        }))
+      );
+    }
+    return items;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'fetchSchoolLessonPlans', `schools/${schoolId}/lessonPlans`);
+  }
+}
+
+export async function fetchSharedLessonPlansForParentFromFirestore(
+  schoolId: string,
+  childClassId: string
+): Promise<SchoolLessonPlan[]> {
+  if (!schoolId || !childClassId) return [];
+  try {
+    const col = collection(db, 'schools', schoolId, 'lessonPlans');
+    const q = query(
+      col,
+      where('classId', '==', childClassId),
+      where('sharedWithParents', '==', true)
+    );
+    const snapshot = await getDocs(q);
+    const items: SchoolLessonPlan[] = [];
+    snapshot.forEach((d) => {
+      if (d.exists()) {
+        const data = d.data() as SchoolLessonPlan;
+        items.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
+      }
+    });
+    return items.sort((a, b) =>
+      String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))
+    );
+  } catch (err) {
+    throw classifyFirestoreError(
+      err,
+      'fetchSharedLessonPlansForParent',
+      `schools/${schoolId}/lessonPlans`
+    );
+  }
+}
+
+export async function deleteSchoolLessonPlanFromFirestore(
+  schoolId: string,
+  planId: string
+): Promise<boolean> {
+  if (!schoolId || !planId) {
+    throw new FirestoreSyncError(
+      'School ID and Lesson Plan ID are required',
+      'invalid-argument',
+      'deleteSchoolLessonPlan'
+    );
+  }
+  const path = `schools/${schoolId}/lessonPlans/${planId}`;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'lessonPlans', planId);
+    await runOnlineFirestoreWrite('deleteSchoolLessonPlan', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteSchoolLessonPlan', path);
+  }
+}
+
+export async function saveSchoolQuestionPaperToFirestore(
+  schoolId: string,
+  paperRecord: SchoolQuestionPaper
+): Promise<boolean> {
+  if (!schoolId || !paperRecord.id) {
+    throw new FirestoreSyncError(
+      'School ID and Question Paper ID are required',
+      'invalid-argument',
+      'saveSchoolQuestionPaper'
+    );
+  }
+  const path = `schools/${schoolId}/questionPapers/${paperRecord.id}`;
+  const normalizedRecord: SchoolQuestionPaper = {
+    ...paperRecord,
+    schoolId,
+    attachedToExam: Boolean(paperRecord.attachedToExam),
+    linkedLessonPlanIds: Array.isArray(paperRecord.linkedLessonPlanIds)
+      ? paperRecord.linkedLessonPlanIds
+      : [],
+  };
+  try {
+    const ref = doc(db, 'schools', schoolId, 'questionPapers', paperRecord.id);
+    await runOnlineFirestoreWrite('saveSchoolQuestionPaper', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedRecord,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
+    );
+    void recordServerBaseline(path, normalizedRecord, paperRecord.updatedAt);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'saveSchoolQuestionPaper', path);
+  }
+}
+
+export async function fetchSchoolQuestionPapersFromFirestore(
+  schoolId: string,
+  assignedClassIds?: string[]
+): Promise<SchoolQuestionPaper[]> {
+  if (!schoolId) return [];
+  const col = collection(db, 'schools', schoolId, 'questionPapers');
+  try {
+    const merged = new Map<string, SchoolQuestionPaper>();
+    if (Array.isArray(assignedClassIds)) {
+      const uniqueIds = Array.from(new Set(assignedClassIds.filter(Boolean)));
+      if (uniqueIds.length === 0) return [];
+      const results = await Promise.allSettled(
+        uniqueIds.map((cid) => getDocs(query(col, where('classId', '==', cid))))
+      );
+      let anySuccess = false;
+      let lastError: unknown = null;
+      results.forEach((res) => {
+        if (res.status === 'fulfilled') {
+          anySuccess = true;
+          res.value.forEach((d) => {
+            if (d.exists()) {
+              const data = d.data() as SchoolQuestionPaper;
+              merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+            }
+          });
+        } else {
+          lastError = res.reason;
+        }
+      });
+      if (!anySuccess && lastError) {
+        throw lastError;
+      }
+    } else {
+      const snapshot = await getDocs(col);
+      snapshot.forEach((d) => {
+        if (d.exists()) {
+          const data = d.data() as SchoolQuestionPaper;
+          merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+        }
+      });
+    }
+
+    const items = Array.from(merged.values()).sort((a, b) =>
+      String(b.updatedAt || b.createdAt || '').localeCompare(String(a.updatedAt || a.createdAt || ''))
+    );
+    if (!isDeviceOffline() && items.length > 0) {
+      void recordServerBaselinesBatch(
+        items.map((qp) => ({
+          docPath: `schools/${schoolId}/questionPapers/${qp.id}`,
+          snapshot: qp,
+          updatedAt: qp.updatedAt,
+        }))
+      );
+    }
+    return items;
+  } catch (err) {
+    throw classifyFirestoreError(
+      err,
+      'fetchSchoolQuestionPapers',
+      `schools/${schoolId}/questionPapers`
+    );
+  }
+}
+
+export async function deleteSchoolQuestionPaperFromFirestore(
+  schoolId: string,
+  paperId: string
+): Promise<boolean> {
+  if (!schoolId || !paperId) {
+    throw new FirestoreSyncError(
+      'School ID and Question Paper ID are required',
+      'invalid-argument',
+      'deleteSchoolQuestionPaper'
+    );
+  }
+  const path = `schools/${schoolId}/questionPapers/${paperId}`;
+  try {
+    const ref = doc(db, 'schools', schoolId, 'questionPapers', paperId);
+    await runOnlineFirestoreWrite('deleteSchoolQuestionPaper', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
+    return true;
+  } catch (err) {
+    throw classifyFirestoreError(err, 'deleteSchoolQuestionPaper', path);
+  }
+}
+
+export async function fetchPublicSyllabusForClassFromFirestore(
+  canonicalClassName: string
+): Promise<SyllabusPreset[]> {
+  if (isDeviceOffline()) return [];
+  try {
+    const col = collection(db, 'syllabus_data');
+    let snapshot;
+    try {
+      snapshot = await getDocs(
+        query(col, where('visibility', '==', 'public'), where('className', '==', canonicalClassName))
+      );
+    } catch {
+      snapshot = await getDocs(query(col, where('visibility', '==', 'public')));
+    }
+    const items: SyllabusPreset[] = [];
+    snapshot.forEach((d) => {
+      if (!d.exists()) return;
+      const data = d.data() as Record<string, unknown>;
+      const rowClass = String(data.className || '');
+      if (canonicalClassName && rowClass.toLowerCase() !== canonicalClassName.toLowerCase()) {
+        return;
+      }
+      items.push({
+        id: d.id,
+        board: data.board === 'Punjab PTB' ? 'Punjab PTB' : 'Sindh STBB',
+        section:
+          data.section === 'Middle' ||
+          data.section === 'Secondary' ||
+          data.section === 'Higher Secondary'
+            ? data.section
+            : 'Primary',
+        className: rowClass || canonicalClassName,
+        subject: String(data.subject || ''),
+        chapter: String(data.chapter || ''),
+        topic: String(data.topic || ''),
+        duration: String(data.duration || '40 Minutes'),
+        planType: data.planType === 'Weekly' ? 'Weekly' : 'Daily',
+        slos: String(data.slos || ''),
+        previousKnowledge: String(data.previousKnowledge || ''),
+        teachingAids: String(data.teachingAids || ''),
+        introduction: String(data.introduction || ''),
+        procedure: String(data.procedure || ''),
+        teacherActivities: String(data.teacherActivities || ''),
+        studentActivities: String(data.studentActivities || ''),
+        assessment: String(data.assessment || ''),
+        homework: String(data.homework || ''),
+        vocabulary: String(data.vocabulary || ''),
+        lifeSkills: String(data.lifeSkills || ''),
+        teacherReflection: String(data.teacherReflection || ''),
+        questions: String(data.questions || ''),
+        exercise: String(data.exercise || ''),
+        worksheetPrompt: String(data.worksheetPrompt || ''),
+        bloomAssessment: String(data.bloomAssessment || ''),
+      });
+    });
+    return items;
+  } catch {
+    return [];
   }
 }
 
@@ -1351,19 +2290,21 @@ export async function saveSchoolAnalyticsToFirestore(
   schoolId: string,
   analytics: SchoolAnalyticsSummary
 ): Promise<boolean> {
-  if (!schoolId) return false;
+  if (!schoolId || isDeviceOffline()) return false;
   try {
     const ref = doc(db, 'schools', schoolId);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        analytics: {
-          ...analytics,
-          updatedAt: new Date().toISOString(),
-        },
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveSchoolAnalytics', `schools/${schoolId}`, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          analytics: {
+            ...analytics,
+            updatedAt: new Date().toISOString(),
+          },
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
     return true;
   } catch {
@@ -1375,21 +2316,28 @@ export async function saveGlobalNoticeToFirestore(notice: GlobalNotice): Promise
   if (!notice.id) {
     throw new FirestoreSyncError('Notice ID is required', 'invalid-argument', 'saveGlobalNotice');
   }
+  const path = `globalNotices/${notice.id}`;
+  const normalizedNotice = {
+    ...notice,
+    targetSchoolIds: notice.targetType === 'all' ? [] : notice.targetSchoolIds || [],
+    readBySchools: notice.readBySchools || {},
+  };
   try {
     const ref = doc(db, 'globalNotices', notice.id);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        ...notice,
-        targetSchoolIds: notice.targetType === 'all' ? [] : notice.targetSchoolIds || [],
-        readBySchools: notice.readBySchools || {},
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('saveGlobalNotice', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          ...normalizedNotice,
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
+    void recordServerBaseline(path, normalizedNotice, notice.updatedAt);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'saveGlobalNotice', `globalNotices/${notice.id}`);
+    throw classifyFirestoreError(err, 'saveGlobalNotice', path);
   }
 }
 
@@ -1404,6 +2352,15 @@ export async function fetchAllGlobalNoticesFromFirestore(): Promise<GlobalNotice
         notices.push(normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
+    if (!isDeviceOffline() && notices.length > 0) {
+      void recordServerBaselinesBatch(
+        notices.map((n) => ({
+          docPath: `globalNotices/${n.id}`,
+          snapshot: n,
+          updatedAt: n.updatedAt,
+        }))
+      );
+    }
     return notices.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchAllGlobalNotices', 'globalNotices');
@@ -1438,9 +2395,19 @@ export async function fetchNoticesForSchoolFromFirestore(
         merged.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
       }
     });
-    return Array.from(merged.values()).sort((a, b) =>
+    const list = Array.from(merged.values()).sort((a, b) =>
       (b.date || '').localeCompare(a.date || '')
     );
+    if (!isDeviceOffline() && list.length > 0) {
+      void recordServerBaselinesBatch(
+        list.map((n) => ({
+          docPath: `globalNotices/${n.id}`,
+          snapshot: n,
+          updatedAt: n.updatedAt,
+        }))
+      );
+    }
+    return list;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchNoticesForSchool', 'globalNotices');
   }
@@ -1452,32 +2419,349 @@ export async function markGlobalNoticeAsReadInFirestore(
   existingReadBySchools: Record<string, boolean>
 ): Promise<boolean> {
   if (!noticeId || !schoolId) return false;
+  const path = `globalNotices/${noticeId}`;
   try {
     const ref = doc(db, 'globalNotices', noticeId);
-    await setDoc(
-      ref,
-      sanitizeFirestoreData({
-        readBySchools: {
-          ...existingReadBySchools,
-          [schoolId]: true,
-        },
-        updatedAt: serverTimestamp(),
-      }),
-      { merge: true }
+    await runOnlineFirestoreWrite('markNoticeAsRead', path, () =>
+      setDoc(
+        ref,
+        sanitizeFirestoreData({
+          readBySchools: {
+            ...existingReadBySchools,
+            [schoolId]: true,
+          },
+          updatedAt: serverTimestamp(),
+        }),
+        { merge: true }
+      )
     );
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'markNoticeAsRead', `globalNotices/${noticeId}`);
+    throw classifyFirestoreError(err, 'markNoticeAsRead', path);
   }
 }
 
 export async function deleteGlobalNoticeFromFirestore(noticeId: string): Promise<boolean> {
   if (!noticeId) return false;
+  const path = `globalNotices/${noticeId}`;
   try {
     const ref = doc(db, 'globalNotices', noticeId);
-    await deleteDoc(ref);
+    await runOnlineFirestoreWrite('deleteGlobalNotice', path, () => deleteDoc(ref));
+    void removeServerBaseline(path);
     return true;
   } catch (err) {
-    throw classifyFirestoreError(err, 'deleteGlobalNotice', `globalNotices/${noticeId}`);
+    throw classifyFirestoreError(err, 'deleteGlobalNotice', path);
+  }
+}
+
+// =========================================================================
+// 17. IndexedDB Offline Queue Execution & Conflict Detection Engine
+// =========================================================================
+
+export interface ExecuteOrQueueResult {
+  synced: boolean;
+  queued: boolean;
+  queueItem?: OfflineSyncItem;
+}
+
+export async function executeWithOfflineQueue<T extends Record<string, any>>(
+  queueInput: EnqueueOfflineMutationInput<T>,
+  onlineWriteFn: () => Promise<any>
+): Promise<ExecuteOrQueueResult> {
+  if (isDeviceOffline()) {
+    const queueItem = await enqueueOfflineMutation(queueInput);
+    return { synced: false, queued: true, queueItem };
+  }
+
+  try {
+    await onlineWriteFn();
+    if (queueInput.action === 'delete') {
+      await removeServerBaseline(queueInput.docPath);
+    } else {
+      await recordServerBaseline(
+        queueInput.docPath,
+        queueInput.payload as Record<string, any>,
+        (queueInput.payload as any)?.updatedAt
+      );
+    }
+    return { synced: true, queued: false };
+  } catch (err) {
+    const classified = classifyFirestoreError(err, queueInput.operation, queueInput.docPath);
+    if (classified.isOffline) {
+      const queueItem = await enqueueOfflineMutation(queueInput);
+      return { synced: false, queued: true, queueItem };
+    }
+    throw classified;
+  }
+}
+
+function buildDocRefFromPath(docPath: string) {
+  const segments = docPath.split('/').filter(Boolean);
+  if (segments.length < 2 || segments.length % 2 !== 0) {
+    throw new FirestoreSyncError(
+      `Invalid Firestore document path "${docPath}"`,
+      'invalid-argument',
+      'buildDocRef'
+    );
+  }
+  return doc(db, segments[0], ...segments.slice(1));
+}
+
+function normalizeQueuePayloadForFirestore(
+  entityType: OfflineEntityType,
+  schoolId: string,
+  rawPayload: Record<string, any>,
+  options?: { isExistingLessonPlan?: boolean; remoteCreatedAt?: unknown }
+): Record<string, any> {
+  const cleaned = prepareCloneableValue(rawPayload) || {};
+  delete cleaned.updatedAt;
+
+  switch (entityType) {
+    case 'attendance':
+      return {
+        ...cleaned,
+        schoolId: cleaned.schoolId || schoolId,
+        conductedBy: cleaned.conductedBy || cleaned.markedByName || 'Faculty',
+        conductedByUid: cleaned.conductedByUid || cleaned.markedByUid || 'system',
+        updatedAt: serverTimestamp(),
+      };
+    case 'feePayment':
+      return {
+        ...cleaned,
+        schoolId: cleaned.schoolId || schoolId,
+        receiptNumber: cleaned.receiptNumber || '',
+        paymentMethod: cleaned.paymentMethod || 'Cash',
+        notes: cleaned.notes || '',
+        installments: Array.isArray(cleaned.installments) ? cleaned.installments : [],
+        updatedAt: serverTimestamp(),
+      };
+    case 'schoolLogo':
+      return {
+        logoUrl: cleaned.logoUrl || '',
+        updatedAt: serverTimestamp(),
+      };
+    case 'lessonPlan':
+      return {
+        ...cleaned,
+        createdAt: options?.isExistingLessonPlan && options?.remoteCreatedAt
+          ? options.remoteCreatedAt
+          : serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+    default:
+      return {
+        ...cleaned,
+        ...(schoolId && schoolId !== 'global' && cleaned.schoolId !== undefined
+          ? { schoolId: cleaned.schoolId || schoolId }
+          : {}),
+        updatedAt: serverTimestamp(),
+      };
+  }
+}
+
+export type SyncExecutionOutcome =
+  | {
+      status: 'synced';
+      resolvedDocPath?: string;
+      resolvedRecordId?: string;
+    }
+  | {
+      status: 'resolved-remote';
+      remoteData: Record<string, any> | null;
+      remoteUpdatedAt?: string;
+    }
+  | {
+      status: 'conflict';
+      conflictReason: string;
+      remoteSnapshot: Record<string, any> | null;
+      remoteUpdatedAt?: string;
+    }
+  | {
+      status: 'failed';
+      errorMessage: string;
+      retryable: boolean;
+    };
+
+/**
+ * Inspects remote state from Firestore server (`getDocFromServer`), checks for online
+ * conflicts while offline, and pushes/deletes/resolves a single queued IndexedDB record.
+ */
+export async function syncOfflineQueueItemToFirestore(
+  item: OfflineSyncItem,
+  resolutionChoice?: ConflictResolutionChoice
+): Promise<SyncExecutionOutcome> {
+  if (isDeviceOffline()) {
+    return {
+      status: 'failed',
+      errorMessage: 'You are still offline. Waiting for internet connection.',
+      retryable: true,
+    };
+  }
+
+  try {
+    let targetPath = item.docPath;
+    let targetRef = buildDocRefFromPath(targetPath);
+
+    // Always inspect live server state before pushing or accepting remote
+    const remoteSnap = await runOnlineFirestoreWrite(
+      `inspectServer:${item.operation}`,
+      targetPath,
+      () => getDocFromServer(targetRef),
+      10000
+    );
+
+    const rawRemoteData = remoteSnap.exists() ? (remoteSnap.data() as Record<string, any>) : null;
+    const remoteData = rawRemoteData
+      ? normalizeTimestamps<Record<string, any>>({
+          ...rawRemoteData,
+          id: rawRemoteData.id || remoteSnap.id,
+        })
+      : null;
+    const remoteUpdatedAt = normalizeTimestampValue(remoteData?.updatedAt);
+
+    if (resolutionChoice === 'keep-remote') {
+      if (remoteData) {
+        await recordServerBaseline(targetPath, remoteData, remoteUpdatedAt);
+      } else {
+        await removeServerBaseline(targetPath);
+      }
+      return {
+        status: 'resolved-remote',
+        remoteData,
+        remoteUpdatedAt,
+      };
+    }
+
+    if (!resolutionChoice) {
+      let effectiveRemoteData = remoteData;
+      let effectiveRemoteUpdatedAt = remoteUpdatedAt;
+      let logicalConflictReason: string | undefined;
+
+      // Secondary logical-key conflict check for new FeePayment created offline (same student + month)
+      if (
+        !effectiveRemoteData &&
+        !item.baseUpdatedAt &&
+        item.entityType === 'feePayment' &&
+        item.action === 'upsert' &&
+        item.schoolId &&
+        item.payload?.studentId &&
+        item.payload?.month
+      ) {
+        const feeQ = query(
+          collection(db, 'schools', item.schoolId, 'feePayments'),
+          where('studentId', '==', item.payload.studentId),
+          where('month', '==', item.payload.month)
+        );
+        const dupSnap = await runOnlineFirestoreWrite(
+          'checkDuplicateMonthPayment',
+          `schools/${item.schoolId}/feePayments`,
+          () => getDocs(feeQ),
+          10000
+        );
+        const existingOnline = dupSnap.docs.find((d) => d.id !== item.recordId);
+        if (existingOnline) {
+          const dupData = normalizeTimestamps<Record<string, any>>({
+            ...(existingOnline.data() as Record<string, any>),
+            id: existingOnline.id,
+          });
+          effectiveRemoteData = dupData;
+          effectiveRemoteUpdatedAt = normalizeTimestampValue(dupData.updatedAt);
+          logicalConflictReason =
+            'Another fee payment for this student and month was recorded online while you were offline.';
+        }
+      }
+
+      const conflictCheck = detectOfflineConflict({
+        action: item.action,
+        baseUpdatedAt: item.baseUpdatedAt,
+        baseSnapshot: item.baseSnapshot,
+        localPayload: (item.payload || {}) as Record<string, any>,
+        remoteExists: Boolean(effectiveRemoteData),
+        remoteData: effectiveRemoteData,
+        remoteUpdatedAt: effectiveRemoteUpdatedAt,
+      });
+
+      if (conflictCheck.hasConflict || logicalConflictReason) {
+        return {
+          status: 'conflict',
+          conflictReason:
+            logicalConflictReason ||
+            conflictCheck.reason ||
+            'The same record was modified online while you were offline.',
+          remoteSnapshot: effectiveRemoteData,
+          remoteUpdatedAt: effectiveRemoteUpdatedAt,
+        };
+      }
+    } else if (
+      resolutionChoice === 'keep-local' &&
+      item.entityType === 'feePayment' &&
+      item.remoteSnapshot?.id &&
+      item.remoteSnapshot.id !== item.recordId &&
+      item.schoolId
+    ) {
+      // Update existing online fee payment record cleanly instead of leaving duplicate monthly records
+      targetPath = `schools/${item.schoolId}/feePayments/${item.remoteSnapshot.id}`;
+      targetRef = buildDocRefFromPath(targetPath);
+    }
+
+    if (item.action === 'delete') {
+      await runOnlineFirestoreWrite(item.operation, targetPath, () => deleteDoc(targetRef), 12000);
+      await removeServerBaseline(targetPath);
+      return { status: 'synced', resolvedDocPath: targetPath };
+    }
+
+    const writePayload = normalizeQueuePayloadForFirestore(
+      item.entityType,
+      item.schoolId,
+      {
+        ...(item.payload || {}),
+        ...(targetPath !== item.docPath && item.remoteSnapshot?.id
+          ? { id: item.remoteSnapshot.id }
+          : {}),
+      },
+      {
+        isExistingLessonPlan: item.entityType === 'lessonPlan' && remoteSnap.exists(),
+        remoteCreatedAt: rawRemoteData?.createdAt,
+      }
+    );
+
+    await runOnlineFirestoreWrite(
+      item.operation,
+      targetPath,
+      () =>
+        setDoc(
+          targetRef,
+          sanitizeFirestoreData(writePayload),
+          { merge: item.entityType !== 'lessonPlan' || remoteSnap.exists() }
+        ),
+      12000
+    );
+
+    const resolvedRecordId =
+      targetPath !== item.docPath && item.remoteSnapshot?.id
+        ? String(item.remoteSnapshot.id)
+        : item.recordId;
+
+    await recordServerBaseline(
+      targetPath,
+      {
+        ...(item.payload || {}),
+        id: resolvedRecordId,
+      },
+      new Date().toISOString()
+    );
+
+    return {
+      status: 'synced',
+      resolvedDocPath: targetPath,
+      resolvedRecordId,
+    };
+  } catch (err) {
+    const classified = classifyFirestoreError(err, item.operation, item.docPath);
+    return {
+      status: 'failed',
+      errorMessage: classified.message,
+      retryable: classified.isOffline,
+    };
   }
 }

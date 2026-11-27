@@ -222,6 +222,7 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     userRole,
     isSuperAdmin,
     demoMode,
+    isOnline,
   } = useSms();
 
   const canAccessReports = isSuperAdmin || canManageFeeStructure || canAdmitStudents;
@@ -747,19 +748,25 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
             advanceBalance: (Number(selectedStudent.advanceBalance) || 0) + excessOverMonthNet,
           });
           setCollectionFeedback(
-            `Recorded Rs. ${numericReceivedNow.toLocaleString()}: ${currentMonthLabel} marked Paid, and Rs. ${excessOverMonthNet.toLocaleString()} allocated to ${nextMonthLabel} as Advance.`
+            `Recorded Rs. ${numericReceivedNow.toLocaleString()}: ${currentMonthLabel} marked Paid, and Rs. ${excessOverMonthNet.toLocaleString()} allocated to ${nextMonthLabel} as Advance.${
+              !isOnline ? ' (Saved locally in offline queue — will sync when online)' : ''
+            }`
           );
         } else {
           updateStudent(selectedStudent.id, {
             advanceBalance: (Number(selectedStudent.advanceBalance) || 0) + excessOverMonthNet,
           });
           setCollectionFeedback(
-            `Recorded Rs. ${numericReceivedNow.toLocaleString()}: ${currentMonthLabel} marked Paid, and Rs. ${excessOverMonthNet.toLocaleString()} added to Student's Advance Balance.`
+            `Recorded Rs. ${numericReceivedNow.toLocaleString()}: ${currentMonthLabel} marked Paid, and Rs. ${excessOverMonthNet.toLocaleString()} added to Student's Advance Balance.${
+              !isOnline ? ' (Saved locally in offline queue — will sync when online)' : ''
+            }`
           );
         }
       } else if (nextStatus === 'partial') {
         setCollectionFeedback(
-          `Partial payment of Rs. ${numericReceivedNow.toLocaleString()} recorded. Remaining Pending Balance for ${currentMonthLabel}: Rs. ${pendingAfterPayment.toLocaleString()}.`
+          `Partial payment of Rs. ${numericReceivedNow.toLocaleString()} recorded. Remaining Pending Balance for ${currentMonthLabel}: Rs. ${pendingAfterPayment.toLocaleString()}.${
+            !isOnline ? ' (Saved locally in offline queue — will sync when online)' : ''
+          }`
         );
       } else {
         if ((existingPaymentForStudent?.advanceUsed || 0) > 0 && (selectedStudent.advanceBalance || 0) > 0) {
@@ -769,7 +776,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
           });
         }
         setCollectionFeedback(
-          `Full fee payment cleared for ${selectedStudent.fullName} (${currentMonthLabel}).`
+          `Full fee payment cleared for ${selectedStudent.fullName} (${currentMonthLabel}).${
+            !isOnline ? ' (Saved locally in offline queue — will sync when online)' : ''
+          }`
         );
       }
 
@@ -976,7 +985,9 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
     try {
       await recordBulkFeePayments(unpaidOnly);
       setBulkSaveNotice(
-        `Saved ${unpaidOnly.length} generated voucher(s) for ${bulkMonthLabel} to cloud register.`
+        isOnline
+          ? `Saved ${unpaidOnly.length} generated voucher(s) for ${bulkMonthLabel} to cloud register.`
+          : `Offline mode: Saved ${unpaidOnly.length} voucher(s) for ${bulkMonthLabel} locally (queued to sync when online).`
       );
       setTimeout(() => setBulkSaveNotice(null), 4000);
     } finally {
@@ -4294,8 +4305,8 @@ export const FeeManagement: React.FC<FeeManagementProps> = ({
       {/* MODAL: ADD CUSTOM FEE CHARGE */}
       {/* =================================================================== */}
       {customChargeModalClassId && (
-        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in">
-          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+        <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-6 w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] pb-3">
               <h3 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5] flex items-center gap-2">
                 <Plus className="w-5 h-5 text-emerald-600" />

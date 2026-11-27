@@ -40,6 +40,7 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
     attendanceRegisters,
     saveAttendance,
     getAttendance,
+    isOnline,
   } = useSms();
 
   const isAdmin = userRole === 'admin' || userRole === 'principal';
@@ -251,9 +252,11 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
     saveAttendance(attendanceDoc);
     setHasUnsavedChanges(false);
     setSaveToast(
-      `Attendance for ${currentClass.grade} - ${currentClass.section} on ${selectedDate} saved successfully.`
+      isOnline
+        ? `Attendance for ${currentClass.grade} - ${currentClass.section} on ${selectedDate} saved successfully.`
+        : `Offline mode: Attendance for ${currentClass.grade} - ${currentClass.section} on ${selectedDate} saved locally to queue (will sync when online).`
     );
-    setTimeout(() => setSaveToast(null), 4000);
+    setTimeout(() => setSaveToast(null), 4500);
   };
 
   return (

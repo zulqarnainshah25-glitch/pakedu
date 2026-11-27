@@ -64,6 +64,18 @@ import {
   parseModelJsonText,
 } from './apiResponse';
 import {
+  normalizeSmsGradeToSyllabusClassName,
+  filterSyllabusPresetsForClass,
+  extractSyllabusStructureForClass,
+  buildSmartSyllabusContextFromLessonPlans,
+  buildSmsOfflineFallbackLessonPlan,
+  buildSmsOfflineFallbackQuestionPaper,
+  filterLessonPlansForRole,
+  filterQuestionPapersForRole,
+  getAttachedQuestionPapersForExam,
+} from '../features/sms/utils/aiIntegrationHelpers';
+import { SchoolLessonPlan, SchoolQuestionPaper } from '../features/sms/types';
+import {
   isPlaceholderApiKey,
   parseServerEnv,
 } from './envConfig';
@@ -1815,6 +1827,702 @@ async function runAllUnitTests() {
     }
 
     console.log('✅ PASS: Warm Ivory, Terracotta & Deep Burgundy Editorial Theme & Print Isolation Tests');
+  }
+
+  // Test 26: Sidebar badge alignment/overflow guard & stale Super Admin session reset guard
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const root = process.cwd();
+    const appSrc = fs.readFileSync(path.resolve(root, 'src/App.tsx'), 'utf-8');
+    const authCtxSrc = fs.readFileSync(path.resolve(root, 'src/context/AuthContext.tsx'), 'utf-8');
+    const smsCtxSrc = fs.readFileSync(path.resolve(root, 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+
+    // 1. Sidebar width, inner horizontal padding, flex-1 min-w-0 pr-2 wrapper, and flush shrink-0 ml-auto badges
+    assert.equal(appSrc.includes('w-[272px] lg:w-72'), true);
+    assert.equal(appSrc.includes('px-3 py-3 space-y-1 overflow-x-hidden'), true);
+    assert.equal(appSrc.includes('flex items-center gap-2.5 flex-1 min-w-0 pr-2'), true);
+    assert.equal(
+      appSrc.includes('shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider'),
+      true
+    );
+    assert.equal(appSrc.includes('ENTERPRISE'), true);
+
+    // 2. Logout & role-switch state reset across AuthContext, SmsContext, and App shell
+    assert.equal(authCtxSrc.includes("'pakedu_active_tool'"), true);
+    assert.equal(authCtxSrc.includes('window.history.replaceState'), true);
+
+    assert.equal(smsCtxSrc.includes('resetSmsSessionState'), true);
+    assert.equal(smsCtxSrc.includes('!authCtx.authLoading && !authCtx.currentUser'), true);
+    assert.equal(smsCtxSrc.includes("setUserRoleState('teacher')"), true);
+    assert.equal(smsCtxSrc.includes('if (demoMode)'), true);
+
+    assert.equal(appSrc.includes('resetSmsSessionState()'), true);
+    assert.equal(appSrc.includes('shellIdentityKey'), true);
+    assert.equal(appSrc.includes('guardedTool'), true);
+    assert.equal(appSrc.includes("guardedTool === 'super-admin'"), true);
+    assert.equal(appSrc.includes("currentUserProfile?.role === 'super-admin'"), true);
+
+    console.log('✅ PASS: Sidebar Badge Alignment & Stale Super Admin Logout/Role-Switch Reset Tests');
+  }
+
+  // Test 27: Offline Data Sync (idb IndexedDB Queue, Background Auto-Sync, Manual Sync & Conflict Handling)
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const offlineSync = await import('../services/offlineSyncService');
+    const root = process.cwd();
+
+    // 1. Package dependency and source integration checks
+    const pkgJson = JSON.parse(fs.readFileSync(path.resolve(root, 'package.json'), 'utf-8'));
+    assert.equal(Boolean(pkgJson.dependencies?.idb), true, 'idb package must be installed in dependencies');
+
+    const offlineSyncSrc = fs.readFileSync(path.resolve(root, 'src/services/offlineSyncService.ts'), 'utf-8');
+    const smsServiceSrc = fs.readFileSync(path.resolve(root, 'src/features/sms/services/smsFirestoreService.ts'), 'utf-8');
+    const smsCtxSrc = fs.readFileSync(path.resolve(root, 'src/features/sms/context/SmsContext.tsx'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(root, 'src/App.tsx'), 'utf-8');
+    const syncModalSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/OfflineSyncCenterModal.tsx'),
+      'utf-8'
+    );
+
+    assert.equal(offlineSyncSrc.includes("from 'idb'"), true);
+    assert.equal(offlineSyncSrc.includes('openDB'), true);
+    assert.equal(smsServiceSrc.includes('syncOfflineQueueItemToFirestore'), true);
+    assert.equal(smsServiceSrc.includes('getDocFromServer'), true);
+    assert.equal(smsServiceSrc.includes('recordServerBaselinesBatch'), true);
+    assert.equal(smsCtxSrc.includes('syncNow'), true);
+    assert.equal(smsCtxSrc.includes('resolveSyncConflict'), true);
+    assert.equal(smsCtxSrc.includes("window.addEventListener('online'"), true);
+    assert.equal(smsCtxSrc.includes('OfflineSyncCenterModal'), true);
+    assert.equal(
+      appSrc.includes('You are offline. Data is saved locally and will sync when online.'),
+      true
+    );
+    assert.equal(appSrc.includes('Sync Now'), true);
+    assert.equal(syncModalSrc.includes('Keep Local Version'), true);
+    assert.equal(syncModalSrc.includes('Keep Online Version'), true);
+
+    // 2. IndexedDB queue behavior, FIFO order, coalescing, and create-then-delete cleanup
+    offlineSync.resetInMemoryOfflineStoreForTests();
+
+    const baseAtt = {
+      id: '2026-11-27_cls_9a',
+      date: '2026-11-27',
+      classId: 'cls_9a',
+      grade: 'Class 9',
+      section: 'A',
+      markedByUid: 't_1',
+      markedByName: 'Ali',
+      markedAt: '2026-11-27T08:00:00.000Z',
+      records: { std_1: { status: 'present' } },
+      summary: { total: 1, present: 1, absent: 0, leave: 0, late: 0, percentage: 100 },
+      updatedAt: '2026-11-27T08:00:00.000Z',
+    };
+    await offlineSync.recordServerBaseline(
+      'schools/sch_1/attendance/2026-11-27_cls_9a',
+      baseAtt,
+      baseAtt.updatedAt
+    );
+
+    await offlineSync.enqueueOfflineMutation({
+      entityType: 'attendance',
+      action: 'upsert',
+      operation: 'saveAttendance',
+      schoolId: 'sch_1',
+      docPath: 'schools/sch_1/attendance/2026-11-27_cls_9a',
+      recordId: '2026-11-27_cls_9a',
+      recordLabel: 'Attendance · Class 9 - A (2026-11-27)',
+      payload: {
+        ...baseAtt,
+        records: { std_1: { status: 'absent' } },
+        summary: { total: 1, present: 0, absent: 1, leave: 0, late: 0, percentage: 0 },
+      },
+      baseUpdatedAt: baseAtt.updatedAt,
+      baseSnapshot: baseAtt,
+    });
+
+    // Second offline edit to same attendance coalesces while preserving initial baseline
+    await offlineSync.enqueueOfflineMutation({
+      entityType: 'attendance',
+      action: 'upsert',
+      operation: 'saveAttendance',
+      schoolId: 'sch_1',
+      docPath: 'schools/sch_1/attendance/2026-11-27_cls_9a',
+      recordId: '2026-11-27_cls_9a',
+      recordLabel: 'Attendance · Class 9 - A (2026-11-27)',
+      payload: {
+        ...baseAtt,
+        records: { std_1: { status: 'late' } },
+        summary: { total: 1, present: 0, absent: 0, leave: 0, late: 1, percentage: 100 },
+      },
+    });
+
+    await offlineSync.enqueueOfflineMutation({
+      entityType: 'feePayment',
+      action: 'upsert',
+      operation: 'saveFeePayment',
+      schoolId: 'sch_1',
+      docPath: 'schools/sch_1/feePayments/pay_1',
+      recordId: 'pay_1',
+      recordLabel: 'Fee Payment · Student 1',
+      payload: {
+        id: 'pay_1',
+        studentId: 'std_1',
+        studentName: 'Student 1',
+        month: '2026-11',
+        paidAmount: 1500,
+        pendingBalance: 0,
+        status: 'paid',
+      },
+    });
+
+    const tempStu = await offlineSync.enqueueOfflineMutation({
+      entityType: 'student',
+      action: 'upsert',
+      operation: 'addStudent',
+      schoolId: 'sch_1',
+      docPath: 'schools/sch_1/students/std_temp_offline',
+      recordId: 'std_temp_offline',
+      recordLabel: 'Student Admission · Temp',
+      payload: { id: 'std_temp_offline', fullName: 'Temp Student' },
+    });
+    assert.equal(Boolean(tempStu.id), true);
+
+    // Deleting a student created while offline cancels its own pending upsert
+    await offlineSync.enqueueOfflineMutation({
+      entityType: 'student',
+      action: 'delete',
+      operation: 'deleteStudent',
+      schoolId: 'sch_1',
+      docPath: 'schools/sch_1/students/std_temp_offline',
+      recordId: 'std_temp_offline',
+      recordLabel: 'Delete Student · Temp',
+      payload: { id: 'std_temp_offline' },
+    });
+
+    const queue = await offlineSync.getOfflineQueue();
+    assert.equal(queue.length, 2);
+    assert.equal(queue[0].recordId, '2026-11-27_cls_9a');
+    assert.equal(queue[0].baseUpdatedAt, '2026-11-27T08:00:00.000Z');
+    assert.equal(queue[0].payload.records.std_1.status, 'late');
+    assert.equal(queue[1].recordId, 'pay_1');
+
+    // 3. Conflict Detection Matrix
+    const noConflictSameServer = offlineSync.detectOfflineConflict({
+      action: 'upsert',
+      baseUpdatedAt: baseAtt.updatedAt,
+      baseSnapshot: baseAtt,
+      localPayload: queue[0].payload,
+      remoteExists: true,
+      remoteData: { ...baseAtt, updatedAt: '2026-11-27T08:00:05.000Z' },
+      remoteUpdatedAt: '2026-11-27T08:00:05.000Z',
+    });
+    assert.equal(noConflictSameServer.hasConflict, false);
+
+    const serverModifiedOnline = offlineSync.detectOfflineConflict({
+      action: 'upsert',
+      baseUpdatedAt: baseAtt.updatedAt,
+      baseSnapshot: baseAtt,
+      localPayload: queue[0].payload,
+      remoteExists: true,
+      remoteData: {
+        ...baseAtt,
+        records: { std_1: { status: 'absent' } },
+        summary: { total: 1, present: 0, absent: 1, leave: 0, late: 0, percentage: 0 },
+        markedByName: 'Principal',
+      },
+      remoteUpdatedAt: '2026-11-27T09:15:00.000Z',
+    });
+    assert.equal(serverModifiedOnline.hasConflict, true);
+
+    const concurrentCreateOffline = offlineSync.detectOfflineConflict({
+      action: 'upsert',
+      localPayload: { ...baseAtt, records: { std_1: { status: 'late' } } },
+      remoteExists: true,
+      remoteData: baseAtt,
+      remoteUpdatedAt: '2026-11-27T09:00:00.000Z',
+    });
+    assert.equal(concurrentCreateOffline.hasConflict, true);
+
+    const idempotentRetry = offlineSync.detectOfflineConflict({
+      action: 'upsert',
+      localPayload: baseAtt,
+      remoteExists: true,
+      remoteData: { ...baseAtt, updatedAt: '2026-11-27T09:05:00.000Z' },
+      remoteUpdatedAt: '2026-11-27T09:05:00.000Z',
+    });
+    assert.equal(idempotentRetry.hasConflict, false);
+
+    const deletedOnlineConflict = offlineSync.detectOfflineConflict({
+      action: 'upsert',
+      baseUpdatedAt: baseAtt.updatedAt,
+      baseSnapshot: baseAtt,
+      localPayload: queue[0].payload,
+      remoteExists: false,
+      remoteData: null,
+    });
+    assert.equal(deletedOnlineConflict.hasConflict, true);
+
+    const diffRows = offlineSync.buildConflictComparisonFields({
+      ...queue[0],
+      status: 'conflict',
+      remoteSnapshot: { ...baseAtt, markedByName: 'Principal' },
+      remoteUpdatedAt: '2026-11-27T09:15:00.000Z',
+    });
+    assert.equal(diffRows.some((r) => r.label === 'Marked By' && r.changed), true);
+
+    offlineSync.resetInMemoryOfflineStoreForTests();
+    console.log('✅ PASS: Offline Data Sync (IndexedDB Queue, Coalescing & Conflict Detection) Tests');
+  }
+
+  // Test 28: Android APK & Mobile Responsive UI (Sidebar Scroll, Mobile Bottom Nav & Safe Viewport Guards)
+  {
+    const fs = await import('fs');
+    const path = await import('path');
+    const root = process.cwd();
+    const indexHtmlSrc = fs.readFileSync(path.resolve(root, 'index.html'), 'utf-8');
+    const indexCssSrc = fs.readFileSync(path.resolve(root, 'src/index.css'), 'utf-8');
+    const appSrc = fs.readFileSync(path.resolve(root, 'src/App.tsx'), 'utf-8');
+    const classesSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/ClassesManagement.tsx'),
+      'utf-8'
+    );
+    const teacherMgmtSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/TeacherManagement.tsx'),
+      'utf-8'
+    );
+    const studentDirSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/StudentDirectory.tsx'),
+      'utf-8'
+    );
+
+    // 1. Viewport safe-area cover & mobile sidebar scroll rules
+    assert.equal(indexHtmlSrc.includes('viewport-fit=cover'), true);
+    assert.equal(indexCssSrc.includes('.app-sidebar'), true);
+    assert.equal(indexCssSrc.includes('overflow-y: auto;'), true);
+    assert.equal(indexCssSrc.includes('max-height: 100dvh;'), true);
+    assert.equal(indexCssSrc.includes('.app-bottom-nav'), true);
+    assert.equal(indexCssSrc.includes('body.printing-mode .app-bottom-nav'), true);
+
+    // 2. Sidebar drawer & inner scroll container fixes in App.tsx
+    assert.equal(appSrc.includes('h-[100dvh] max-h-[100dvh] overflow-y-auto overscroll-contain'), true);
+    assert.equal(appSrc.includes('flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden'), true);
+    assert.equal(appSrc.includes('pb-24 lg:py-6'), true);
+
+    // 3. Mobile-only Bottom Navigation Bar with 5 core items (Home, Profile, Sync, Notices, More)
+    assert.equal(appSrc.includes('aria-label="Mobile Bottom Navigation"'), true);
+    assert.equal(appSrc.includes('app-bottom-nav no-print lg:hidden fixed bottom-0'), true);
+    assert.equal(appSrc.includes('>Home<'), true);
+    assert.equal(appSrc.includes('>Profile<'), true);
+    assert.equal(appSrc.includes('>Sync<'), true);
+    assert.equal(appSrc.includes('>Notices<'), true);
+    assert.equal(appSrc.includes('>More<'), true);
+
+    // 4. Responsive scrollable modals across core SMS components (safe at 375px / 414px)
+    assert.equal(classesSrc.includes('max-h-[90dvh] overflow-y-auto'), true);
+    assert.equal(teacherMgmtSrc.includes('max-h-[90dvh] overflow-y-auto'), true);
+    assert.equal(studentDirSrc.includes('max-h-[90dvh] overflow-y-auto'), true);
+
+    console.log('✅ PASS: Android APK & Mobile Responsive Sidebar Scroll, Bottom Nav & Modal Viewport Tests');
+  }
+
+  // Test 29: Salary & Payroll Module (Calculations, History Tracker, RBAC, Firestore Rules & PDF Export)
+  {
+    const root = process.cwd();
+    const {
+      buildPayrollMonthKey,
+      buildPayslipDocId,
+      buildPayslipFromStructure,
+      calculateSalaryTotals,
+      buildEmployeeYearlyPayrollTracker,
+      doesPayslipBelongToUser,
+      numberToRupeesWords,
+    } = await import('../features/sms/utils/payrollCalculations');
+
+    // 1. Net Salary = (Basic + Allowances) - Deductions + Adjustments
+    const baseTotals = calculateSalaryTotals({
+      basicSalary: 60000,
+      allowances: [
+        { id: 'hra', label: 'House Rent', amount: 12000 },
+        { id: 'med', label: 'Medical', amount: 5000 },
+        { id: 'trp', label: 'Transport', amount: 4000 },
+      ],
+      deductions: [
+        { id: 'tax', label: 'Income Tax', amount: 1500 },
+        { id: 'gpf', label: 'Provident Fund', amount: 3500 },
+        { id: 'loan', label: 'Loan', amount: 2000 },
+      ],
+    });
+    assert.equal(baseTotals.totalAllowances, 21000);
+    assert.equal(baseTotals.grossSalary, 81000);
+    assert.equal(baseTotals.totalDeductions, 7000);
+    assert.equal(baseTotals.netSalary, 74000);
+
+    // Pre-finalization individual salary bonus/deduction adjustment & floor-at-zero guard
+    const bonusTotals = calculateSalaryTotals({
+      basicSalary: 60000,
+      allowances: [{ id: 'hra', label: 'House Rent', amount: 12000 }],
+      deductions: [{ id: 'tax', label: 'Tax', amount: 2000 }],
+      adjustmentAmount: 5000,
+    });
+    assert.equal(bonusTotals.netSalary, 75000);
+
+    const floorTotals = calculateSalaryTotals({
+      basicSalary: 10000,
+      allowances: [],
+      deductions: [{ id: 'loan', label: 'Loan', amount: 15000 }],
+      adjustmentAmount: -1000,
+    });
+    assert.equal(floorTotals.netSalary, 0, 'Net salary should clamp cleanly at 0');
+
+    // 2. Monthly Payslip Builder & 12-Month Tracker
+    const sampleStructure: any = {
+      id: 'emp_01',
+      schoolId: 'sch_1',
+      employeeId: 'emp_01',
+      employeeUid: 'uid_teacher_1',
+      employeeName: 'Ms. Hina',
+      employeeEmail: 'hina@seld.gos.pk',
+      designation: 'HST Science',
+      employeeType: 'teaching',
+      basicSalary: 50000,
+      allowances: [{ id: 'a1', label: 'House Rent', amount: 8000 }],
+      deductions: [{ id: 'd1', label: 'Provident Fund', amount: 3000 }],
+      totalAllowances: 8000,
+      grossSalary: 58000,
+      totalDeductions: 3000,
+      netSalary: 55000,
+    };
+    const novKey = buildPayrollMonthKey(2026, 11);
+    assert.equal(novKey, '2026-11');
+    assert.equal(buildPayslipDocId(novKey, 'emp_01'), '2026-11__emp_01');
+
+    const draftSlip = buildPayslipFromStructure(sampleStructure, {
+      schoolId: 'sch_1',
+      month: novKey,
+    });
+    assert.equal(draftSlip.netSalary, 55000);
+    assert.equal(draftSlip.status, 'draft');
+    assert.equal(draftSlip.isFinalized, false);
+
+    const octPaidSlip = {
+      ...draftSlip,
+      id: '2026-10__emp_01',
+      month: '2026-10',
+      monthNumber: 10,
+      status: 'paid' as const,
+      isFinalized: true,
+    };
+    const decFinalizedSlip = {
+      ...draftSlip,
+      id: '2026-12__emp_01',
+      month: '2026-12',
+      monthNumber: 12,
+      status: 'finalized' as const,
+      isFinalized: true,
+    };
+    const tracker = buildEmployeeYearlyPayrollTracker('emp_01', 2026, [octPaidSlip, decFinalizedSlip]);
+    assert.equal(tracker.length, 12);
+    assert.equal(tracker[9].trackerState, 'paid'); // Oct
+    assert.equal(tracker[10].trackerState, 'unpaid'); // Nov
+    assert.equal(tracker[11].trackerState, 'pending'); // Dec
+
+    // 3. Teacher payslip ownership check & words formatter
+    assert.equal(
+      doesPayslipBelongToUser(draftSlip, { uid: 'uid_teacher_1', email: 'other@seld.gos.pk' }),
+      true
+    );
+    assert.equal(
+      doesPayslipBelongToUser(draftSlip, { uid: 'someone_else', email: 'HINA@seld.gos.pk' }),
+      true
+    );
+    assert.equal(
+      doesPayslipBelongToUser(draftSlip, { uid: 'someone_else', email: 'other@seld.gos.pk' }),
+      false
+    );
+    assert.equal(numberToRupeesWords(55000), 'Rupees Fifty-Five Thousand Only');
+
+    // 4. Firestore rules, Service layer, UI & RBAC checks
+    const rulesSrc = fs.readFileSync(path.resolve(root, 'firestore.rules'), 'utf-8');
+    const serviceSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/services/smsFirestoreService.ts'),
+      'utf-8'
+    );
+    const smsCtxSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/context/SmsContext.tsx'),
+      'utf-8'
+    );
+    const appSrc = fs.readFileSync(path.resolve(root, 'src/App.tsx'), 'utf-8');
+    const payrollSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/SalaryPayroll.tsx'),
+      'utf-8'
+    );
+    const payslipModalSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/PayslipPreviewModal.tsx'),
+      'utf-8'
+    );
+    const teacherProfileSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/TeacherProfile.tsx'),
+      'utf-8'
+    );
+
+    assert.equal(rulesSrc.includes('match /salaryStructures/{employeeId}'), true);
+    assert.equal(rulesSrc.includes('match /payrollSettings/{settingId}'), true);
+    assert.equal(rulesSrc.includes('match /payslips/{payslipId}'), true);
+    assert.equal(rulesSrc.includes('function isTeacherPayslipPortalEnabled(schoolId)'), true);
+    assert.equal(serviceSrc.includes('saveSalaryStructureToFirestore'), true);
+    assert.equal(serviceSrc.includes('savePayslipToFirestore'), true);
+    assert.equal(serviceSrc.includes('fetchTeacherOwnPayslipsFromFirestore'), true);
+    assert.equal(smsCtxSrc.includes('canAccessSalaryPayroll'), true);
+    assert.equal(smsCtxSrc.includes('canViewOwnPayslips'), true);
+    assert.equal(smsCtxSrc.includes('ownTeacherPayslips'), true);
+    assert.equal(appSrc.includes("activeTool === 'sms-payroll'"), true);
+    assert.equal(appSrc.includes("guardedTool === 'sms-payroll' && canAccessSalaryPayroll"), true);
+    assert.equal(payrollSrc.includes('Salary Structure'), true);
+    assert.equal(payrollSrc.includes('Generate'), true);
+    assert.equal(payrollSrc.includes('Salary History'), true);
+    assert.equal(payslipModalSrc.includes('exportA4ElementAsPdf'), true);
+    assert.equal(payslipModalSrc.includes('triggerPrintDocument'), true);
+    assert.equal(teacherProfileSrc.includes('ownTeacherPayslips'), true);
+    assert.equal(teacherProfileSrc.includes('PayslipPreviewModal'), true);
+
+    console.log('✅ PASS: Salary & Payroll Calculations, Monthly Tracker, RBAC, Firestore Rules & PDF Tests');
+  }
+
+  // Test 30: Deep SMS AI Integration (Lesson Plans, Question Papers, Smart Context Linking & Strict RBAC)
+  {
+    console.log('\n--- Test 30: AI Lesson Planner & Question Paper SMS Integration ---');
+
+    // 1. Smart Grade Normalization & Syllabus Auto-Population
+    assert.equal(normalizeSmsGradeToSyllabusClassName('Grade 9'), 'Class 9');
+    assert.equal(normalizeSmsGradeToSyllabusClassName('IX'), 'Class 9');
+    assert.equal(normalizeSmsGradeToSyllabusClassName('ECE / Prep'), 'KG');
+    assert.equal(normalizeSmsGradeToSyllabusClassName('Class 10'), 'Class 10');
+
+    const baseOfflinePlan = buildSmsOfflineFallbackLessonPlan({
+      board: 'Sindh STBB',
+      section: 'Secondary',
+      className: 'Class 9',
+      subject: 'Physics',
+      chapter: 'Chapter 2: Kinematics',
+      topic: 'Uniform Acceleration',
+      duration: '40 Minutes',
+      planType: 'Daily',
+    });
+
+    const mockPresets = [
+      {
+        id: 'p1',
+        board: 'Sindh STBB' as const,
+        section: 'Secondary' as const,
+        className: 'Class 9',
+        subject: 'Physics',
+        chapter: 'Chapter 2: Kinematics',
+        topic: 'Uniform Acceleration',
+        duration: '40 Minutes',
+        planType: 'Daily' as const,
+        ...baseOfflinePlan,
+      },
+      {
+        id: 'p2',
+        board: 'Sindh STBB' as const,
+        section: 'Middle' as const,
+        className: 'Class 6',
+        subject: 'Science',
+        chapter: 'Chapter 1: Cells',
+        topic: 'Animal Cell',
+        duration: '40 Minutes',
+        planType: 'Daily' as const,
+        ...baseOfflinePlan,
+      },
+    ];
+
+    const class9Filtered = filterSyllabusPresetsForClass(mockPresets, 'Grade 9', 'Sindh STBB');
+    assert.equal(class9Filtered.length, 1);
+    assert.equal(class9Filtered[0].subject, 'Physics');
+
+    const extracted = extractSyllabusStructureForClass(mockPresets, 'IX', 'Sindh STBB', 'Physics');
+    assert.deepEqual(extracted.subjects, ['Physics']);
+    assert.deepEqual(extracted.chapters, ['Chapter 2: Kinematics']);
+    assert.equal(extracted.topics.length, 1);
+
+    // 2. Smart Context Injection from Lesson Plans -> Question Paper Generation
+    const lpAssignedShared: SchoolLessonPlan = {
+      id: 'lp_9a_1',
+      schoolId: 'sch_1',
+      classId: 'cls_9a',
+      grade: 'Class 9',
+      section: 'A',
+      teacherId: 't_1',
+      teacherName: 'Sir Ahmed',
+      board: 'Sindh STBB',
+      curriculumSection: 'Secondary',
+      subject: 'Physics',
+      chapter: 'Chapter 2: Kinematics',
+      topic: 'Equations of Motion',
+      duration: '40 Minutes',
+      planType: 'Daily',
+      ...baseOfflinePlan,
+      sharedWithParents: true,
+    };
+    const lpAssignedPrivate: SchoolLessonPlan = {
+      ...lpAssignedShared,
+      id: 'lp_9a_2',
+      topic: 'Scalars vs Vectors',
+      sharedWithParents: false,
+    };
+    const lpOtherClassShared: SchoolLessonPlan = {
+      ...lpAssignedShared,
+      id: 'lp_10a_1',
+      classId: 'cls_10a',
+      grade: 'Class 10',
+      topic: 'Simple Harmonic Motion',
+      sharedWithParents: true,
+    };
+
+    const injectedContext = buildSmartSyllabusContextFromLessonPlans({
+      plans: [lpAssignedShared, lpAssignedPrivate],
+      manualNotes: 'Focus on graphical proofs',
+    });
+    assert.equal(injectedContext.includes('Equations of Motion'), true);
+    assert.equal(injectedContext.includes('Scalars vs Vectors'), true);
+    assert.equal(injectedContext.includes('Focus on graphical proofs'), true);
+    assert.equal(injectedContext.length <= 2400, true);
+
+    const offlinePaper = buildSmsOfflineFallbackQuestionPaper({
+      className: 'Class 9 (A)',
+      subject: 'Physics',
+      difficulty: 'Medium',
+      totalMarks: 50,
+      timeAllowed: '2 Hours',
+      language: 'English',
+      syllabusCovered: injectedContext,
+    });
+    assert.equal(offlinePaper.totalMarks, 50);
+    assert.equal(
+      offlinePaper.sectionAMarks + offlinePaper.sectionBMarks + offlinePaper.sectionCMarks,
+      50
+    );
+
+    const allPlans = [lpAssignedShared, lpAssignedPrivate, lpOtherClassShared];
+    const qpAssigned: SchoolQuestionPaper = {
+      id: 'qp_9a_1',
+      schoolId: 'sch_1',
+      examId: 'exam_1',
+      examTitle: 'Mid Term 2026',
+      attachedToExam: true,
+      classId: 'cls_9a',
+      className: 'Class 9 - A',
+      grade: 'Class 9',
+      subject: 'Physics',
+      difficulty: 'Medium',
+      totalMarks: 50,
+      timeAllowed: '2 Hours',
+      language: 'English',
+      syllabusCovered: injectedContext,
+      linkedLessonPlanIds: ['lp_9a_1'],
+      paper: offlinePaper,
+      createdByUid: 't_1',
+      createdByName: 'Sir Ahmed',
+    };
+    const qpOtherClass: SchoolQuestionPaper = {
+      ...qpAssigned,
+      id: 'qp_10a_1',
+      classId: 'cls_10a',
+      className: 'Class 10 - A',
+      grade: 'Class 10',
+      attachedToExam: false,
+    };
+    const allPapers = [qpAssigned, qpOtherClass];
+
+    // 3. Strict RBAC Matrix Verification
+    // Teachers: assigned classes only
+    assert.deepEqual(
+      filterLessonPlansForRole(allPlans, { role: 'teacher', assignedClassIds: ['cls_9a'] }).map((p) => p.id),
+      ['lp_9a_1', 'lp_9a_2']
+    );
+    assert.deepEqual(
+      filterQuestionPapersForRole(allPapers, { role: 'teacher', assignedClassIds: ['cls_9a'] }).map((p) => p.id),
+      ['qp_9a_1']
+    );
+    // Admins: all school plans & papers
+    assert.equal(filterLessonPlansForRole(allPlans, { role: 'admin' }).length, 3);
+    assert.equal(filterQuestionPapersForRole(allPapers, { role: 'admin' }).length, 2);
+    // Parents: ONLY shared plans for child's class; ZERO question papers
+    assert.deepEqual(
+      filterLessonPlansForRole(allPlans, { role: 'parent', childClassId: 'cls_9a' }).map((p) => p.id),
+      ['lp_9a_1']
+    );
+    assert.equal(filterQuestionPapersForRole(allPapers, { role: 'parent' }).length, 0);
+    // Super Admin & Read-Only Impersonation: ZERO access to school-level AI content
+    assert.equal(filterLessonPlansForRole(allPlans, { role: 'super-admin', isSuperAdmin: true }).length, 0);
+    assert.equal(filterQuestionPapersForRole(allPapers, { role: 'super-admin', isSuperAdmin: true }).length, 0);
+    assert.equal(
+      filterLessonPlansForRole(allPlans, { role: 'admin', isReadOnlyImpersonation: true }).length,
+      0
+    );
+    assert.equal(
+      filterQuestionPapersForRole(allPapers, { role: 'admin', isReadOnlyImpersonation: true }).length,
+      0
+    );
+    // Exam Attachment lookup
+    assert.deepEqual(
+      getAttachedQuestionPapersForExam(allPapers, 'exam_1').map((p) => p.id),
+      ['qp_9a_1']
+    );
+
+    // 4. Wiring, Firestore Rules, Sanitization & Print/PDF Checks
+    const root = process.cwd();
+    const rulesSrc = fs.readFileSync(path.resolve(root, 'firestore.rules'), 'utf-8');
+    const serviceSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/services/smsFirestoreService.ts'),
+      'utf-8'
+    );
+    const smsCtxSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/context/SmsContext.tsx'),
+      'utf-8'
+    );
+    const dashboardSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/SmsDashboard.tsx'),
+      'utf-8'
+    );
+    const parentDashSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/ParentDashboard.tsx'),
+      'utf-8'
+    );
+    const examsSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/ExamsResults.tsx'),
+      'utf-8'
+    );
+    const lpCompSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/SmsLessonPlansSection.tsx'),
+      'utf-8'
+    );
+    const qpCompSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/ExamQuestionPapersSection.tsx'),
+      'utf-8'
+    );
+
+    assert.equal(rulesSrc.includes('match /lessonPlans/{planId}'), true);
+    assert.equal(rulesSrc.includes('match /questionPapers/{paperId}'), true);
+    assert.equal(rulesSrc.includes('isSchoolParentInClass(schoolId, existing().get(\'classId\', \'\'))'), true);
+    assert.equal(serviceSrc.includes('saveSchoolLessonPlanToFirestore'), true);
+    assert.equal(serviceSrc.includes('saveSchoolQuestionPaperToFirestore'), true);
+    assert.equal(serviceSrc.includes('fetchSharedLessonPlansForParentFromFirestore'), true);
+    assert.equal(serviceSrc.includes('fetchPublicSyllabusForClassFromFirestore'), true);
+    assert.equal(smsCtxSrc.includes('saveSchoolLessonPlan'), true);
+    assert.equal(smsCtxSrc.includes('saveSchoolQuestionPaper'), true);
+    assert.equal(smsCtxSrc.includes('attachQuestionPaperToExam'), true);
+    assert.equal(dashboardSrc.includes('SmsLessonPlansSection'), true);
+    assert.equal(parentDashSrc.includes('Class Syllabus &amp; Shared Lesson Overview'), true);
+    assert.equal(examsSrc.includes('Generate Question Paper with AI'), true);
+    assert.equal(examsSrc.includes('ExamQuestionPapersSection'), true);
+    assert.equal(lpCompSrc.includes('My Lesson Plans (AI Integrated)'), true);
+    assert.equal(qpCompSrc.includes('Print Question Paper'), true);
+    assert.equal(qpCompSrc.includes('exportA4ElementAsPdf'), true);
+
+    console.log('✅ PASS: AI Lesson Planner & Question Paper SMS Integration, Smart Linking & RBAC Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

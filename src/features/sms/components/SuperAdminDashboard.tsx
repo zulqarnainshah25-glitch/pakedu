@@ -36,6 +36,7 @@ export type SuperAdminTab = 'analytics' | 'directory' | 'pending_requests' | 'no
 interface SuperAdminDashboardProps {
   onNavigateToSchool: (schoolId: string) => void;
   onOpenRegisterSchool: () => void;
+  onOpenPayroll?: () => void;
   activeTab?: SuperAdminTab;
   onTabChange?: (tab: SuperAdminTab) => void;
 }
@@ -43,6 +44,7 @@ interface SuperAdminDashboardProps {
 export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
   onNavigateToSchool,
   onOpenRegisterSchool,
+  onOpenPayroll,
   activeTab: controlledTab,
   onTabChange,
 }) => {
@@ -325,6 +327,16 @@ export const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({
               <Megaphone className="w-4 h-4" />
               <span>Compose Notice</span>
             </button>
+            {onOpenPayroll && (
+              <button
+                type="button"
+                onClick={onOpenPayroll}
+                className="min-h-[44px] inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#7F1D1D] hover:bg-[#651414] text-[#FFFDF9] border border-[#FED7AA]/30 text-xs font-bold shadow-md transition cursor-pointer"
+              >
+                <Banknote className="w-4 h-4 text-[#FED7AA]" />
+                <span>Salary &amp; Payroll</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={onOpenRegisterSchool}

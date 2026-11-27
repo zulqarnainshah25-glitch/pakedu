@@ -39,8 +39,10 @@ import {
 } from '../utils/examCalculations';
 import { triggerPrintDocument } from '../../../utils/printDocument';
 import { validateSchoolLogoFile } from '../../../utils/questionPaperLogic';
+import { ExamQuestionPapersSection } from './ExamQuestionPapersSection';
+import { getAttachedQuestionPapersForExam } from '../utils/aiIntegrationHelpers';
 
-export type ExamTabId = 'setup' | 'marks' | 'reports';
+export type ExamTabId = 'setup' | 'marks' | 'reports' | 'papers';
 
 interface ExamsResultsProps {
   onBack?: () => void;
@@ -173,7 +175,13 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
     currentUserProfile,
     loadingClasses,
     refreshActiveSchoolClasses,
+    filteredQuestionPapersForUser,
+    canAccessSchoolAiContent,
+    isReadOnlyImpersonation,
   } = useSms();
+
+  const [isPaperModalOpen, setIsPaperModalOpen] = useState(false);
+  const [paperGeneratorExamId, setPaperGeneratorExamId] = useState<string | undefined>(undefined);
 
   const defaultTab: ExamTabId =
     initialTab && (initialTab !== 'setup' || canManageExams)
@@ -697,7 +705,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
   return (
     <div className="w-full space-y-6 animate-in fade-in duration-200">
       {/* Main Screen Content (hidden cleanly on print when modal is open) */}
-      <div className={reportStudentsForPrint ? 'no-print space-y-6' : 'space-y-6'}>
+      <div className={reportStudentsForPrint || isPaperModalOpen ? 'no-print space-y-6' : 'space-y-6'}>
         {/* Header Banner */}
         <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-xs">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -726,15 +734,30 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               </div>
             </div>
 
-            {onBack && (
-              <button
-                type="button"
-                onClick={onBack}
-                className="px-3.5 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-semibold transition cursor-pointer"
-              >
-                ← Back to Command Center
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {canAccessSchoolAiContent && !isSuperAdmin && !isReadOnlyImpersonation && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaperGeneratorExamId(selectedExamId || exams[0]?.id);
+                    setActiveTab('papers');
+                  }}
+                  className="px-4 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-white rounded-xl text-xs font-bold shadow-xs transition inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Generate Question Paper with AI</span>
+                </button>
+              )}
+              {onBack && (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  className="px-3.5 py-2 bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] text-[#44403C] dark:text-[#FAF8F5] rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  ← Back to Command Center
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Super Admin School Switcher */}
@@ -831,6 +854,22 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               <FileText className="w-4 h-4" />
               <span>{canManageExams ? '3. Report Cards & Positions' : '2. Report Cards & Results'}</span>
             </button>
+            {canAccessSchoolAiContent && !isSuperAdmin && !isReadOnlyImpersonation && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('papers')}
+                className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition cursor-pointer ${
+                  activeTab === 'papers'
+                    ? 'bg-[#7F1D1D] text-white shadow-sm'
+                    : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#E7E0D4] hover:bg-[#E7E0D4] dark:hover:bg-[#4A1C20]'
+                }`}
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>
+                  {canManageExams ? '4. AI Question Papers' : '3. AI Question Papers'} ({filteredQuestionPapersForUser.length})
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1253,7 +1292,7 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               ))}
                             </div>
 
-                            <div className="flex items-center gap-2 pt-1">
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1274,6 +1313,21 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                               >
                                 Report Cards →
                               </button>
+                              {canAccessSchoolAiContent && !isSuperAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPaperGeneratorExamId(ex.id);
+                                    setActiveTab('papers');
+                                  }}
+                                  className="w-full py-1.5 px-3 bg-[#FFF7ED] hover:bg-[#FFEDD5] dark:bg-[#7C2D12]/50 dark:hover:bg-[#9A3412]/50 text-[#C2410C] dark:text-[#FDBA74] text-xs font-bold rounded-xl transition inline-flex items-center justify-center gap-1.5 cursor-pointer"
+                                >
+                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <span>
+                                    AI Papers ({getAttachedQuestionPapersForExam(filteredQuestionPapersForUser, ex.id).length} Attached)
+                                  </span>
+                                </button>
+                              )}
                             </div>
                           </div>
                         );
@@ -1540,6 +1594,17 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               </div>
             )}
           </div>
+        )}
+
+        {/* ================================================================= */}
+        {/* TAB 4: AI QUESTION PAPERS & SMART LESSON CONTEXT */}
+        {/* ================================================================= */}
+        {activeTab === 'papers' && (
+          <ExamQuestionPapersSection
+            exams={exams}
+            initialExamId={paperGeneratorExamId || selectedExamId}
+            onPaperPreviewModalChange={setIsPaperModalOpen}
+          />
         )}
 
         {/* ================================================================= */}

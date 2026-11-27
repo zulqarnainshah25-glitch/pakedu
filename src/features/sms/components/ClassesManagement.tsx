@@ -489,8 +489,8 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
 
       {/* Add / Edit Class Modal (Admin Only) */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-[#2C1215]/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
+        <div className="fixed inset-0 z-50 bg-[#2C1215]/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto shadow-2xl animate-scaleIn">
             <div className="px-5 py-4 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between bg-[#FAF8F5] dark:bg-[#2C1215]/50">
               <div className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5 text-[#7F1D1D] dark:text-[#FCA5A5]" />
@@ -507,7 +507,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
               </button>
             </div>
 
-            <form onSubmit={handleSaveClass} className="p-5 space-y-4">
+            <form onSubmit={handleSaveClass} className="p-4 sm:p-5 space-y-4">
               {formError && (
                 <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-xl p-3 text-xs text-rose-800 dark:text-rose-200 flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 shrink-0" />
@@ -515,7 +515,7 @@ export const ClassesManagement: React.FC<ClassesManagementProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
                     Grade Level

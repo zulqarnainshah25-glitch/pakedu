@@ -15,9 +15,14 @@ import {
   Award,
   Key,
   FileText,
+  Banknote,
+  Download,
+  Lock,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 import { AppointmentLetterModal } from './AppointmentLetterModal';
+import { PayslipPreviewModal } from './PayslipPreviewModal';
+import { EmployeePayslip } from '../types';
 
 interface TeacherProfileProps {
   onBack: () => void;
@@ -39,9 +44,13 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
     currentUserProfile,
     canAdmitStudents,
     demoMode,
+    canViewOwnPayslips,
+    ownTeacherPayslips,
+    payrollSettings,
   } = useSms();
 
   const [appointmentLetterOpen, setAppointmentLetterOpen] = useState(false);
+  const [selectedOwnPayslip, setSelectedOwnPayslip] = useState<EmployeePayslip | null>(null);
 
   const isAdmin = userRole === 'admin' || userRole === 'principal';
   const isApprovedFaculty =
@@ -318,6 +327,110 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
         )}
       </div>
 
+      {/* Self-Service Monthly Salary Payslips (Strict Teacher Own-Records Only, If Enabled by Admin) */}
+      <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Banknote className="w-5 h-5 text-[#7F1D1D] dark:text-[#FCA5A5]" />
+            <div>
+              <h2 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                My Monthly Salary Payslips (میری تنخواہ سلپس)
+              </h2>
+              <p className="text-xs text-[#57534E] dark:text-[#D6CCC2]">
+                View and download PDF copies of your own finalized monthly salary vouchers
+              </p>
+            </div>
+          </div>
+          <span
+            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border shrink-0 self-start sm:self-auto ${
+              canViewOwnPayslips
+                ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
+                : 'bg-[#F3EFEA] dark:bg-[#2C1215] text-[#57534E] dark:text-[#D6CCC2] border-[#E7E0D4]'
+            }`}
+          >
+            {canViewOwnPayslips ? 'Own Payslips Enabled' : 'Disabled by Admin'}
+          </span>
+        </div>
+
+        {!payrollSettings.teacherPayslipAccessEnabled || !canViewOwnPayslips ? (
+          <div className="p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/50 border border-dashed border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center gap-3 text-xs text-[#57534E] dark:text-[#D6CCC2]">
+            <Lock className="w-4 h-4 text-[#78716C] shrink-0" />
+            <span>
+              Self-service payslip access is currently disabled by your School Administration.
+            </span>
+          </div>
+        ) : ownTeacherPayslips.length === 0 ? (
+          <div className="py-8 px-4 text-center bg-[#FAF8F5] dark:bg-[#2C1215]/40 rounded-xl border border-dashed border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] space-y-1">
+            <Banknote className="w-7 h-7 text-[#78716C] mx-auto opacity-50" />
+            <p className="text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4]">
+              No Finalized Payslips Available Yet
+            </p>
+            <p className="text-[11px] text-[#78716C] max-w-md mx-auto">
+              Once School Administration finalizes your monthly payroll under Salary &amp; Payroll, your downloadable PDF payslips will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {ownTeacherPayslips.map((slip) => (
+              <div
+                key={slip.id}
+                className="p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex flex-col justify-between gap-3"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                      {slip.monthLabel}
+                    </div>
+                    <div className="text-[11px] font-mono text-[#78716C]">
+                      {slip.payslipNumber}
+                    </div>
+                  </div>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                      slip.status === 'paid'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                        : 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                    }`}
+                  >
+                    {slip.status === 'paid' ? 'Paid' : 'Finalized'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 text-[11px] pt-2 border-t border-[#E7E0D4]/60 dark:border-[rgba(255,253,249,0.12)]">
+                  <div>
+                    <span className="text-[#78716C] block">Basic + Allow.</span>
+                    <strong className="font-mono text-[#1C1917] dark:text-[#FAF8F5]">
+                      Rs. {(slip.grossSalary || 0).toLocaleString()}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[#78716C] block">Deductions</span>
+                    <strong className="font-mono text-rose-700 dark:text-rose-400">
+                      - Rs. {(slip.totalDeductions || 0).toLocaleString()}
+                    </strong>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[#78716C] block">Net Salary</span>
+                    <strong className="font-mono text-[#7F1D1D] dark:text-[#FCA5A5]">
+                      Rs. {(slip.netSalary || 0).toLocaleString()}
+                    </strong>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedOwnPayslip(slip)}
+                  className="min-h-[40px] w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-semibold rounded-xl transition cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>View / Download PDF Payslip</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <AppointmentLetterModal
         isOpen={appointmentLetterOpen}
         onClose={() => setAppointmentLetterOpen(false)}
@@ -330,6 +443,13 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
         joiningDate={joiningDate}
         assignedClassesLabel={assignedClassesSummary}
         school={activeSchool}
+      />
+
+      <PayslipPreviewModal
+        isOpen={Boolean(selectedOwnPayslip)}
+        onClose={() => setSelectedOwnPayslip(null)}
+        school={activeSchool}
+        payslip={selectedOwnPayslip}
       />
     </div>
   );

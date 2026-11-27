@@ -66,6 +66,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     generateParentInviteForStudent,
     studentPortalLinks,
     generateStudentInviteForStudent,
+    isOnline,
   } = useSms();
 
   const isAdmin = userRole === 'admin' || userRole === 'principal' || userRole === 'super-admin';
@@ -438,13 +439,19 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
     if (editingStudent) {
       updateStudent(editingStudent.id, payload);
-      setSuccessToast(`Student record for ${fullName} updated successfully.`);
+      setSuccessToast(
+        isOnline
+          ? `Student record for ${fullName} updated successfully.`
+          : `Offline mode: Updated student ${fullName} locally (queued to sync when online).`
+      );
     } else {
       const created = addStudent(payload);
       setSuccessToast(
-        created?.studentInviteCode
-          ? `Student ${fullName} (${payload.grNumber}) admitted! Student Invite Code: ${created.studentInviteCode}`
-          : `Student ${fullName} (${payload.grNumber}) admitted successfully.`
+        isOnline
+          ? created?.studentInviteCode
+            ? `Student ${fullName} (${payload.grNumber}) admitted! Student Invite Code: ${created.studentInviteCode}`
+            : `Student ${fullName} (${payload.grNumber}) admitted successfully.`
+          : `Offline mode: Student ${fullName} (${payload.grNumber}) admitted locally and queued to sync when online.`
       );
     }
 
@@ -455,7 +462,11 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   const handleDelete = (student: Student) => {
     deleteStudent(student.id);
     setDeleteConfirmId(null);
-    setSuccessToast(`Student record for ${student.fullName} has been removed.`);
+    setSuccessToast(
+      isOnline
+        ? `Student record for ${student.fullName} has been removed.`
+        : `Offline mode: Removal of ${student.fullName} queued to sync when online.`
+    );
     setTimeout(() => setSuccessToast(null), 4000);
   };
 
@@ -972,8 +983,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
       {/* Delete Confirmation Modal */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs">
-          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#2C1215]/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-6 max-w-sm w-full max-h-[90dvh] overflow-y-auto shadow-xl space-y-4">
             <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
               <AlertCircle className="w-6 h-6" />
             </div>
@@ -1584,8 +1595,8 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
       {/* Add / Edit Student Modal */}
       {isFormModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2C1215]/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 max-w-xl w-full shadow-2xl space-y-4 my-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-[#2C1215]/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-6 max-w-xl w-full max-h-[90dvh] overflow-y-auto shadow-2xl space-y-4 my-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center">

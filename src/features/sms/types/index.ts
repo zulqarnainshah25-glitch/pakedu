@@ -1,3 +1,5 @@
+import type { GeneratedQuestionPaper } from '../../../utils/questionPaperLogic';
+
 export type UserRole = 'admin' | 'principal' | 'teacher' | 'parent' | 'student' | 'super-admin';
 export type MembershipStatus = 'none' | 'pending' | 'active' | 'rejected';
 export type SchoolStatus = 'active' | 'suspended' | 'pending_approval';
@@ -463,4 +465,181 @@ export interface StudentCertificate {
   createdAt?: string;
   updatedAt?: any;
 }
+
+// =============================================================================
+// Salary & Payroll Management (Admin & Super Admin + Optional Teacher Payslip)
+// =============================================================================
+export type SalaryEmployeeType = 'teaching' | 'non_teaching';
+export type PayslipStatus = 'draft' | 'finalized' | 'paid';
+export type PayslipPaymentMethod = 'Bank Transfer' | 'Cash' | 'Cheque' | 'EasyPaisa' | 'JazzCash';
+
+export interface SalaryLineItem {
+  id: string;
+  label: string;              // e.g., 'House Rent', 'Medical', 'Transport', 'Income Tax', 'Provident Fund', 'Loan'
+  amount: number;
+}
+
+export interface SalaryStructure {
+  id: string;                 // Matches employeeId (stored at schools/{schoolId}/salaryStructures/{employeeId})
+  schoolId: string;
+  employeeId: string;
+  employeeUid?: string;       // Optional Auth UID for Teacher self-service matching
+  employeeName: string;
+  employeeEmail?: string;     // Lowercased email for secondary teacher lookup
+  designation: string;
+  employeeType: SalaryEmployeeType;
+  bpsGrade?: number;
+  cnic?: string;
+  phone?: string;
+  bankName?: string;
+  bankAccountTitle?: string;
+  accountNumber?: string;
+  basicSalary: number;
+  allowances: SalaryLineItem[];
+  deductions: SalaryLineItem[];
+  totalAllowances: number;
+  grossSalary: number;
+  totalDeductions: number;
+  netSalary: number;
+  notes?: string;
+  updatedByUid?: string;
+  updatedByName?: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
+export interface EmployeePayslip {
+  id: string;                 // Deterministic: "${month}__${sanitizedEmployeeId}"
+  payslipNumber: string;      // e.g., "PAY-202611-001"
+  schoolId: string;
+  month: string;              // "YYYY-MM", e.g., "2026-11"
+  monthLabel: string;         // e.g., "November 2026"
+  year: number;
+  monthNumber: number;        // 1..12
+  employeeId: string;
+  employeeUid?: string;
+  employeeName: string;
+  employeeEmail?: string;
+  designation: string;
+  employeeType: SalaryEmployeeType;
+  bpsGrade?: number;
+  cnic?: string;
+  phone?: string;
+  bankName?: string;
+  bankAccountTitle?: string;
+  accountNumber?: string;
+  basicSalary: number;
+  allowances: SalaryLineItem[];
+  deductions: SalaryLineItem[];
+  totalAllowances: number;
+  grossSalary: number;
+  totalDeductions: number;
+  adjustmentAmount: number;   // + Bonus / Overtime or - Extra Cut before finalizing
+  adjustmentReason?: string;
+  netSalary: number;          // max(0, (basicSalary + totalAllowances) - totalDeductions + adjustmentAmount)
+  status: PayslipStatus;
+  isFinalized: boolean;
+  finalizedAt?: string;
+  paymentDate?: string;
+  paymentMethod?: PayslipPaymentMethod;
+  transactionRef?: string;
+  notes?: string;
+  generatedByUid?: string;
+  generatedByName?: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
+export interface PayrollSettings {
+  id: string;                 // 'config'
+  schoolId: string;
+  teacherPayslipAccessEnabled: boolean;
+  defaultPaymentMethod?: PayslipPaymentMethod;
+  updatedByUid?: string;
+  updatedByName?: string;
+  updatedAt?: any;
+}
+
+// =============================================================================
+// School AI Integration: Class Lesson Plans & Exam Question Papers
+// Stored at schools/{schoolId}/lessonPlans/{planId} and questionPapers/{paperId}
+// =============================================================================
+export type SchoolLessonSyllabusSource =
+  | 'firestore'
+  | 'google-sheet'
+  | 'gemini-ai'
+  | 'offline-template'
+  | 'manual';
+
+export interface SchoolLessonPlan {
+  id: string;
+  schoolId: string;
+  classId: string;
+  grade: string;
+  section?: string;
+  teacherId: string;
+  teacherUid?: string;
+  teacherName: string;
+  board: 'Sindh STBB' | 'Punjab PTB';
+  curriculumSection: 'Primary' | 'Middle' | 'Secondary' | 'Higher Secondary';
+  subject: string;
+  chapter: string;
+  topic: string;
+  duration: string;
+  planType: 'Daily' | 'Weekly';
+  syllabusSource?: SchoolLessonSyllabusSource;
+  slos: string;
+  previousKnowledge: string;
+  teachingAids: string;
+  introduction: string;
+  procedure: string;
+  teacherActivities: string;
+  studentActivities: string;
+  assessment: string;
+  homework: string;
+  vocabulary: string;
+  lifeSkills: string;
+  teacherReflection: string;
+  questions?: string;
+  exercise?: string;
+  worksheetPrompt?: string;
+  bloomAssessment?: string;
+  sharedWithParents: boolean;
+  sharedAt?: string;
+  reviewedByAdmin?: boolean;
+  adminReviewNote?: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
+export type SchoolQuestionPaperDifficulty = 'Easy' | 'Medium' | 'Hard';
+export type SchoolQuestionPaperLanguage = 'English' | 'Urdu' | 'Sindhi';
+
+export interface SchoolQuestionPaper {
+  id: string;
+  schoolId: string;
+  examId?: string;
+  examTitle?: string;
+  attachedToExam: boolean;
+  attachedAt?: string;
+  classId: string;
+  className: string;
+  grade: string;
+  section?: string;
+  subject: string;
+  difficulty: SchoolQuestionPaperDifficulty;
+  totalMarks: number;
+  timeAllowed: string;
+  language: SchoolQuestionPaperLanguage;
+  syllabusCovered: string;
+  linkedLessonPlanIds: string[];
+  linkedLessonPlanTopics?: string[];
+  generationSource?: 'gemini-ai' | 'offline-template';
+  paper: GeneratedQuestionPaper;
+  createdByUid: string;
+  createdByName: string;
+  createdAt?: string;
+  updatedAt?: any;
+}
+
 
