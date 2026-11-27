@@ -2707,7 +2707,15 @@ async function runAllUnitTests() {
     const fs = await import('fs');
     const path = await import('path');
     const { getRoutePathForTool, navigateBySmartRoute } = await import('./smartRouting');
-    const { evaluateRouteAccess } = await import('../components/ProtectedRoute');
+    const {
+      evaluateRouteAccess,
+      sanitizePostLoginRedirectPath,
+      savePostLoginRedirectPath,
+      consumePostLoginRedirectPath,
+      getPostLoginRedirectPath,
+      clearPostLoginRedirectPath,
+      POST_LOGIN_REDIRECT_STORAGE_KEY,
+    } = await import('../components/ProtectedRoute');
 
     // 1. Canonical route path resolution & navigateBySmartRoute helper
     assert.equal(getRoutePathForTool('dashboard'), '/dashboard');
@@ -2876,6 +2884,59 @@ async function runAllUnitTests() {
     assert.equal(examsSrc.includes('initialExamId'), true);
     assert.equal(examsSrc.includes('initialReportStudentId'), true);
     assert.equal(examsSrc.includes('onOpenReportCardRoute'), true);
+
+    // 4. Redirect-After-Login sanitization, sessionStorage round-trip, and open-redirect prevention
+    assert.equal(sanitizePostLoginRedirectPath('/sms/attendance'), '/sms/attendance');
+    assert.equal(sanitizePostLoginRedirectPath('/sms/students/GR-1001?tab=fees'), '/sms/students/GR-1001?tab=fees');
+    assert.equal(sanitizePostLoginRedirectPath('/'), null);
+    assert.equal(sanitizePostLoginRedirectPath('/dist/index.html'), null);
+    assert.equal(sanitizePostLoginRedirectPath('//evil.example/phish'), null);
+    assert.equal(sanitizePostLoginRedirectPath('https://evil.example/phish'), null);
+    assert.equal(sanitizePostLoginRedirectPath('/sms\\bad'), null);
+
+    const gObj = globalThis as unknown as {
+      window?: Record<string, unknown>;
+    };
+    const hadWin = Object.prototype.hasOwnProperty.call(globalThis, 'window');
+    const prevWin = gObj.window;
+    const mockSessionMap = new Map<string, string>();
+    gObj.window = {
+      sessionStorage: {
+        getItem: (k: string) => (mockSessionMap.has(k) ? mockSessionMap.get(k)! : null),
+        setItem: (k: string, v: string) => {
+          mockSessionMap.set(k, String(v));
+        },
+        removeItem: (k: string) => {
+          mockSessionMap.delete(k);
+        },
+      },
+    };
+    try {
+      clearPostLoginRedirectPath();
+      assert.equal(savePostLoginRedirectPath('/sms/attendance'), '/sms/attendance');
+      assert.equal(mockSessionMap.get(POST_LOGIN_REDIRECT_STORAGE_KEY), '/sms/attendance');
+      assert.equal(getPostLoginRedirectPath(), '/sms/attendance');
+      assert.equal(consumePostLoginRedirectPath(), '/sms/attendance');
+      assert.equal(getPostLoginRedirectPath(), null);
+      assert.equal(consumePostLoginRedirectPath(), null);
+    } finally {
+      if (hadWin) {
+        gObj.window = prevWin;
+      } else {
+        delete gObj.window;
+      }
+    }
+
+    const protectedRouteSrc = fs.readFileSync(
+      path.resolve(root, 'src/components/ProtectedRoute.tsx'),
+      'utf-8'
+    );
+    const authCtxSrc = fs.readFileSync(path.resolve(root, 'src/context/AuthContext.tsx'), 'utf-8');
+    assert.equal(protectedRouteSrc.includes('savePostLoginRedirectPath'), true);
+    assert.equal(authCtxSrc.includes('consumePostLoginRedirect'), true);
+    assert.equal(authCtxSrc.includes('postLoginRedirectPath'), true);
+    assert.equal(appSrc.includes('consumePostLoginRedirect'), true);
+    assert.equal(appSrc.includes('clearPostLoginRedirectPath'), true);
 
     console.log('✅ PASS: React Router v7, ProtectedRoute RBAC, Dynamic URL Params & Smart Routing Tests');
   }

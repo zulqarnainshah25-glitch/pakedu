@@ -13,6 +13,11 @@ import {
   SmartRouteResult,
   ActiveToolId,
 } from '../utils/smartRouting';
+import {
+  getPostLoginRedirectPath,
+  consumePostLoginRedirectPath,
+  clearPostLoginRedirectPath,
+} from '../components/ProtectedRoute';
 
 export { determineSmartRoute, hasAdminCapabilities };
 export type { SmartRouteResult, ActiveToolId };
@@ -22,6 +27,8 @@ export interface AuthContextType {
   currentUserProfile: UserProfile | null;
   authLoading: boolean;
   smartRoute: SmartRouteResult | null;
+  postLoginRedirectPath: string | null;
+  consumePostLoginRedirect: () => string | null;
   determineSmartRoute: typeof determineSmartRoute;
   refreshUserProfile: () => Promise<UserProfile | null>;
   setCurrentUserProfile: React.Dispatch<React.SetStateAction<UserProfile | null>>;
@@ -47,6 +54,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   });
   const [authLoading, setAuthLoading] = useState(true);
   const [smartRoute, setSmartRoute] = useState<SmartRouteResult | null>(null);
+  const [postLoginRedirectPath, setPostLoginRedirectPath] = useState<string | null>(() =>
+    getPostLoginRedirectPath()
+  );
+
+  const consumePostLoginRedirect = useCallback(() => {
+    const saved = consumePostLoginRedirectPath();
+    setPostLoginRedirectPath(null);
+    return saved;
+  }, []);
 
   const fetchProfileAndCalculateRoute = useCallback(async (user: User | null): Promise<UserProfile | null> => {
     if (!user) {
@@ -183,11 +199,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
 
-      // 3. Calculate smart route based on Firestore profile + verified claims
+      // 3. Calculate smart route based on Firestore profile + verified claims, preserving any saved post-login redirect
       const route = determineSmartRoute(user, profile, schools, tokenResult.claims);
+      const pendingRedirect = getPostLoginRedirectPath();
 
       setCurrentUserProfile(profile);
       setSmartRoute(route);
+      setPostLoginRedirectPath(pendingRedirect);
 
       try {
         localStorage.setItem('sms_current_user_profile', JSON.stringify(profile));
@@ -213,6 +231,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const fallbackRoute = determineSmartRoute(user, fallbackProfile, []);
       setCurrentUserProfile(fallbackProfile);
       setSmartRoute(fallbackRoute);
+      setPostLoginRedirectPath(getPostLoginRedirectPath());
       return fallbackProfile;
     } finally {
       setAuthLoading(false);
@@ -242,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
     setCurrentUserProfile(null);
     setSmartRoute(null);
+    setPostLoginRedirectPath(null);
     try {
       localStorage.removeItem('sms_current_user_profile');
       localStorage.removeItem('sms_user_role');
@@ -249,6 +269,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('pakedu_seld_demo_session_v1');
       sessionStorage.removeItem('pakedu_active_tool');
       sessionStorage.removeItem('pakedu_signup_sms_role');
+      clearPostLoginRedirectPath();
       if (
         typeof window !== 'undefined' &&
         window.location.protocol !== 'file:' &&
@@ -268,6 +289,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         currentUserProfile,
         authLoading,
         smartRoute,
+        postLoginRedirectPath,
+        consumePostLoginRedirect,
         determineSmartRoute,
         refreshUserProfile,
         setCurrentUserProfile,

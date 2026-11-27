@@ -54,7 +54,13 @@ import {
   Cloud,
   Banknote,
 } from 'lucide-react';
-import { ProtectedRoute, PortalAccessRole, RouteAccessContext } from './components/ProtectedRoute';
+import {
+  ProtectedRoute,
+  PortalAccessRole,
+  RouteAccessContext,
+  sanitizePostLoginRedirectPath,
+  clearPostLoginRedirectPath,
+} from './components/ProtectedRoute';
 import { LessonPlanTool } from './components/LessonPlanTool';
 import { SalaryCalculatorTool } from './components/SalaryCalculatorTool';
 import { LeaveApplicationTool } from './components/LeaveApplicationTool';
@@ -558,13 +564,14 @@ function AppContent() {
     currentUserProfile,
     authLoading,
     smartRoute,
+    consumePostLoginRedirect,
     signOutUser,
   } = useAuth();
 
   const navigate = useNavigate();
   const location = useLocation();
   const routeLocationState =
-    (location.state as { routeError?: string; attemptedPath?: string } | null) || null;
+    (location.state as { routeError?: string; attemptedPath?: string; from?: string } | null) || null;
   const routeError = routeLocationState?.routeError || null;
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -773,6 +780,7 @@ function AppContent() {
     setUserRole('teacher');
     exitImpersonation();
     resetSmsSessionState();
+    clearPostLoginRedirectPath();
     try {
       localStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
       localStorage.removeItem('sms_current_user_profile');
@@ -870,7 +878,15 @@ function AppContent() {
         location.pathname === '' ||
         location.pathname.endsWith('/index.html');
 
-      if (isAtLandingEntry || previousSignature !== null) {
+      const savedRedirect =
+        consumePostLoginRedirect() ||
+        sanitizePostLoginRedirectPath(
+          routeLocationState?.from || routeLocationState?.attemptedPath
+        );
+
+      if (savedRedirect) {
+        navigate(savedRedirect, { replace: true });
+      } else if (isAtLandingEntry || previousSignature !== null) {
         navigateBySmartRoute(navigate, resolvedRoute, { replace: true });
       }
     } else if (!currentUser) {
@@ -881,6 +897,9 @@ function AppContent() {
     currentUser,
     currentUserProfile,
     smartRoute,
+    consumePostLoginRedirect,
+    routeLocationState?.from,
+    routeLocationState?.attemptedPath,
     isImpersonating,
     isAdminUser,
     setUserRole,
@@ -900,8 +919,13 @@ function AppContent() {
     } catch {
       // Ignore storage errors
     }
+    const savedRedirect =
+      consumePostLoginRedirect() ||
+      sanitizePostLoginRedirectPath(
+        routeLocationState?.from || routeLocationState?.attemptedPath
+      );
     setUserRole('teacher');
-    navigate('/dashboard', { replace: true });
+    navigate(savedRedirect || '/dashboard', { replace: true });
   };
 
   const toggleDarkMode = () => {
@@ -935,6 +959,7 @@ function AppContent() {
     intent: 'general' | 'sms' | 'parent' | 'student',
     smsRole?: 'admin' | 'teacher'
   ) => {
+    clearPostLoginRedirectPath();
     if (intent === 'parent') {
       setUserRole('parent');
       navigate('/parent/dashboard', { replace: true });
@@ -1020,6 +1045,11 @@ function AppContent() {
   }
 
   if (portalAccess.mustShowLoginGate) {
+    const loginRedirectHint =
+      logoutNotice ||
+      (routeLocationState?.from
+        ? `Please sign in to continue to ${routeLocationState.from}.`
+        : routeError);
     return (
       <Routes>
         <Route
@@ -1028,7 +1058,7 @@ function AppContent() {
             <AuthModal
               isOpen={true}
               isMandatoryGate={true}
-              logoutNotice={logoutNotice}
+              logoutNotice={loginRedirectHint}
               onClose={() => {}}
               onDemoSessionSuccess={handleDemoSessionSuccess}
               onSignupSuccess={handleSignupSuccess}
@@ -1039,19 +1069,15 @@ function AppContent() {
         <Route
           path="*"
           element={
-            <Navigate
-              to="/"
-              replace
-              state={
-                location.pathname !== '/' &&
-                !location.pathname.endsWith('/index.html')
-                  ? {
-                      routeError: 'Please sign in to access this page.',
-                      attemptedPath: location.pathname,
-                    }
-                  : null
-              }
-            />
+            <ProtectedRoute
+              access={{
+                isAuthenticated: false,
+                isInitializing: false,
+                effectiveRole: 'general',
+              }}
+            >
+              <></>
+            </ProtectedRoute>
           }
         />
       </Routes>

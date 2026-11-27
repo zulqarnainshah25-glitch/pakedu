@@ -1,5 +1,74 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+
+export const POST_LOGIN_REDIRECT_STORAGE_KEY = 'pakedu_post_login_redirect';
+
+/**
+ * Validates and normalizes an internal app path for post-login redirect.
+ * Rejects protocol-relative URLs (`//evil.com`), external schemes, control chars,
+ * and landing/root entries (`/`, `/index.html`) to prevent open redirects or loops.
+ */
+export function sanitizePostLoginRedirectPath(rawPath?: string | null): string | null {
+  if (typeof rawPath !== 'string') return null;
+  const trimmed = rawPath.trim();
+  if (!trimmed || !trimmed.startsWith('/') || trimmed.startsWith('//')) {
+    return null;
+  }
+  if (/[\u0000-\u001f\u007f\\]/.test(trimmed)) {
+    return null;
+  }
+  const pathnameOnly = trimmed.split('?')[0].split('#')[0];
+  if (
+    pathnameOnly === '/' ||
+    pathnameOnly === '' ||
+    pathnameOnly.endsWith('/index.html')
+  ) {
+    return null;
+  }
+  return trimmed;
+}
+
+export function savePostLoginRedirectPath(rawPath?: string | null): string | null {
+  const safePath = sanitizePostLoginRedirectPath(rawPath);
+  if (!safePath) return null;
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.setItem(POST_LOGIN_REDIRECT_STORAGE_KEY, safePath);
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+  return safePath;
+}
+
+export function getPostLoginRedirectPath(): string | null {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return sanitizePostLoginRedirectPath(
+        window.sessionStorage.getItem(POST_LOGIN_REDIRECT_STORAGE_KEY)
+      );
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+  return null;
+}
+
+export function clearPostLoginRedirectPath(): void {
+  try {
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      window.sessionStorage.removeItem(POST_LOGIN_REDIRECT_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage access errors
+  }
+}
+
+export function consumePostLoginRedirectPath(): string | null {
+  const saved = getPostLoginRedirectPath();
+  clearPostLoginRedirectPath();
+  return saved;
+}
 
 export type PortalAccessRole =
   | 'super-admin'
@@ -134,10 +203,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   children,
 }) => {
   const location = useLocation();
-
-  if (access.isInitializing) {
-    return null;
-  }
+  const requestedFullPath = `${location.pathname}${location.search || ''}${location.hash || ''}`;
 
   const decision = evaluateRouteAccess(access, {
     allowedRoles,
@@ -148,14 +214,31 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     unauthorizedMessage,
   });
 
+  const targetRedirect = redirectTo || decision.redirectTo || '/dashboard';
+  const shouldSavePostLoginRedirect =
+    !access.isInitializing && !decision.allowed && targetRedirect === '/';
+
+  useEffect(() => {
+    if (shouldSavePostLoginRedirect) {
+      savePostLoginRedirectPath(requestedFullPath);
+    }
+  }, [shouldSavePostLoginRedirect, requestedFullPath]);
+
+  if (access.isInitializing) {
+    return null;
+  }
+
   if (!decision.allowed) {
+    const safeFrom =
+      targetRedirect === '/' ? savePostLoginRedirectPath(requestedFullPath) : null;
     return (
       <Navigate
-        to={redirectTo || decision.redirectTo || '/dashboard'}
+        to={targetRedirect}
         replace
         state={{
           routeError: decision.reason,
           attemptedPath: location.pathname,
+          ...(safeFrom ? { from: safeFrom } : {}),
         }}
       />
     );
