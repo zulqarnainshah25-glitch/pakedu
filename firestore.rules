@@ -283,7 +283,8 @@ service cloud.firestore {
           'bankName', 'bankAccountTitle', 'accountNumber',
           'basicSalary', 'allowances', 'deductions',
           'totalAllowances', 'grossSalary', 'totalDeductions', 'netSalary',
-          'notes', 'updatedByUid', 'updatedByName', 'createdAt', 'updatedAt'
+          'notes', 'createdByUid', 'createdByName', 'updatedByUid', 'updatedByName',
+          'lastAction', 'auditTrail', 'createdAt', 'updatedAt'
         ]) &&
         data.id is string && isValidId(data.id) &&
         data.schoolId is string && isValidId(data.schoolId) &&
@@ -426,11 +427,12 @@ service cloud.firestore {
     // 1. Users Collection (/users/{uid})
     // =========================================================================
     match /users/{uid} {
-      // User can read their own profile; Super Admin can read all; School Admin can read staff of their school
+      // User can read their own profile; Super Admin can read all; School Admin can read/list staff of their school
       allow get: if isSuperAdmin() ||
         (isSignedIn() && request.auth.uid == uid) ||
         (resource != null && existing().get('schoolId', '') != '' && isSchoolAdmin(existing().get('schoolId', '')));
-      allow list: if isSuperAdmin();
+      allow list: if isSuperAdmin() ||
+        (existing().get('schoolId', '') != '' && isSchoolAdmin(existing().get('schoolId', '')));
 
       // Newly authenticated user can create own profile during signup immediately:
       // - 'teacher' or 'admin' with status 'none' or 'pending' (no schoolId required yet!)
@@ -794,9 +796,16 @@ service cloud.firestore {
       }
 
       // --- Subcollection: Salary Structures (/schools/{schoolId}/salaryStructures/{employeeId}) ---
-      // Strictly School Admin & Super Admin only; teachers/parents/students cannot read or write.
+      // School Admin & Super Admin can read/write all; active School Members can read ONLY their own salary structure for self-service notifications.
       match /salaryStructures/{employeeId} {
-        allow get, list: if isSchoolAdmin(schoolId) || isSuperAdmin();
+        allow get, list: if isSchoolAdmin(schoolId) || isSuperAdmin() || (
+          isSchoolMember(schoolId) && (
+            employeeId == request.auth.uid ||
+            existing().get('employeeUid', '') == request.auth.uid ||
+            existing().get('employeeId', '') == request.auth.uid ||
+            (('email' in request.auth.token) && request.auth.token.email != null && existing().get('employeeEmail', '') == request.auth.token.email.lower())
+          )
+        );
         allow create, update: if (isSchoolAdmin(schoolId) || isSuperAdmin()) &&
           isValidId(employeeId) &&
           isValidSalaryStructure(incoming()) &&

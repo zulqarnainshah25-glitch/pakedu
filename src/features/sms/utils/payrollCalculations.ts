@@ -1,9 +1,12 @@
 import {
   EmployeePayslip,
   PayslipPaymentMethod,
+  SalaryEmployeeType,
   SalaryLineItem,
   SalaryStructure,
+  SalaryStructureAuditEntry,
   TeacherInfo,
+  UserProfile,
 } from '../types';
 import { formatMonthLabel } from './feeCalculations';
 
@@ -335,4 +338,207 @@ export function numberToRupeesWords(amount: number): string {
   if (hundreds > 0) parts.push(threeDigitsToWords(hundreds));
 
   return `Rupees ${parts.join(' ')} Only`;
+}
+
+export interface ApprovedSchoolEmployee {
+  employeeId: string;
+  employeeUid?: string;
+  employeeName: string;
+  employeeEmail?: string;
+  designation: string;
+  employeeType: SalaryEmployeeType;
+  cnic?: string;
+  phone?: string;
+  roleLabel: string;
+  source: 'teachers' | 'users' | 'both';
+}
+
+export const EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR =
+  'Employee not found in school records. Please add them to Faculty first.';
+
+/**
+ * Builds the canonical list of strictly verified, active employees (teachers + active school staff users)
+ * for a specific schoolId. Unverified, pending, rejected, parent, student, or external accounts are excluded.
+ */
+export function buildApprovedSchoolEmployees(params: {
+  schoolId?: string;
+  teachers: TeacherInfo[];
+  staffUsers?: UserProfile[];
+}): ApprovedSchoolEmployee[] {
+  const { schoolId, teachers, staffUsers = [] } = params;
+  const byKey = new Map<string, ApprovedSchoolEmployee>();
+  const emailToKey = new Map<string, string>();
+  const uidToKey = new Map<string, string>();
+
+  const registerEmployee = (emp: ApprovedSchoolEmployee) => {
+    const cleanUid = (emp.employeeUid || '').trim();
+    const cleanEmail = (emp.employeeEmail || '').trim().toLowerCase();
+    const existingKey =
+      (cleanUid && uidToKey.get(cleanUid)) ||
+      (cleanEmail && emailToKey.get(cleanEmail)) ||
+      (byKey.has(emp.employeeId) ? emp.employeeId : undefined);
+
+    if (existingKey && byKey.has(existingKey)) {
+      const prev = byKey.get(existingKey)!;
+      const merged: ApprovedSchoolEmployee = {
+        ...prev,
+        employeeUid: prev.employeeUid || emp.employeeUid,
+        employeeEmail: prev.employeeEmail || emp.employeeEmail,
+        cnic: prev.cnic || emp.cnic,
+        phone: prev.phone || emp.phone,
+        designation: prev.designation || emp.designation,
+        source: prev.source !== emp.source ? 'both' : prev.source,
+      };
+      byKey.set(existingKey, merged);
+      if (merged.employeeUid) uidToKey.set(merged.employeeUid, existingKey);
+      if (merged.employeeEmail) emailToKey.set(merged.employeeEmail, existingKey);
+      return;
+    }
+
+    byKey.set(emp.employeeId, emp);
+    if (cleanUid) uidToKey.set(cleanUid, emp.employeeId);
+    if (cleanEmail) emailToKey.set(cleanEmail, emp.employeeId);
+  };
+
+  (teachers || []).forEach((t) => {
+    if (!t || !t.id || !t.name?.trim()) return;
+    if (t.status && t.status !== 'active') return;
+    const cleanEmail = t.email ? t.email.trim().toLowerCase() : undefined;
+    registerEmployee({
+      employeeId: sanitizePayrollIdSegment(t.id),
+      employeeUid: t.id,
+      employeeName: t.name.trim(),
+      employeeEmail: cleanEmail,
+      designation: t.designation?.trim() || 'Faculty Teacher',
+      employeeType: 'teaching',
+      cnic: t.cnic,
+      phone: t.phone,
+      roleLabel: 'Approved Faculty',
+      source: 'teachers',
+    });
+  });
+
+  (staffUsers || []).forEach((u) => {
+    if (!u || !u.uid || !u.fullName?.trim()) return;
+    if (u.status !== 'active') return;
+    if (schoolId && u.schoolId && u.schoolId !== schoolId) return;
+    if (u.role !== 'teacher' && u.role !== 'admin' && u.role !== 'principal') return;
+
+    const cleanEmail = u.email ? u.email.trim().toLowerCase() : undefined;
+    const isLeadership = u.role === 'admin' || u.role === 'principal';
+    registerEmployee({
+      employeeId: sanitizePayrollIdSegment(u.uid),
+      employeeUid: u.uid,
+      employeeName: u.fullName.trim(),
+      employeeEmail: cleanEmail,
+      designation: u.designation?.trim() || (isLeadership ? 'School Admin / Principal' : 'Faculty Teacher'),
+      employeeType: isLeadership ? 'teaching' : 'teaching',
+      cnic: u.cnic,
+      phone: u.phone,
+      roleLabel: isLeadership ? 'School Admin' : 'Active Staff',
+      source: 'users',
+    });
+  });
+
+  return Array.from(byKey.values()).sort((a, b) =>
+    a.employeeName.localeCompare(b.employeeName)
+  );
+}
+
+/**
+ * Verifies that an incoming SalaryStructure target belongs to a real, active school employee
+ * rather than a manually typed or nonexistent person.
+ */
+export function validateApprovedSalaryEmployee(params: {
+  employeeId?: string;
+  employeeUid?: string;
+  employeeEmail?: string;
+  approvedEmployees: ApprovedSchoolEmployee[];
+}): { valid: boolean; matchedEmployee?: ApprovedSchoolEmployee; error?: string } {
+  const cleanId = params.employeeId ? sanitizePayrollIdSegment(params.employeeId) : '';
+  const cleanUid = (params.employeeUid || '').trim();
+  const cleanEmail = (params.employeeEmail || '').trim().toLowerCase();
+
+  const matched = params.approvedEmployees.find(
+    (emp) =>
+      (cleanId && sanitizePayrollIdSegment(emp.employeeId) === cleanId) ||
+      (cleanUid && (emp.employeeUid === cleanUid || emp.employeeId === cleanUid)) ||
+      (cleanEmail && emp.employeeEmail?.toLowerCase() === cleanEmail)
+  );
+
+  if (!matched) {
+    return {
+      valid: false,
+      error: EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR,
+    };
+  }
+
+  return { valid: true, matchedEmployee: matched };
+}
+
+export interface FlattenedSalaryAuditLogRow extends SalaryStructureAuditEntry {
+  employeeId: string;
+  employeeName: string;
+  designation: string;
+}
+
+/**
+ * Extracts chronological add/edit audit history entries across all configured SalaryStructures.
+ */
+export function buildSalaryStructureAuditFeed(
+  structures: SalaryStructure[]
+): FlattenedSalaryAuditLogRow[] {
+  const rows: FlattenedSalaryAuditLogRow[] = [];
+
+  (structures || []).forEach((s) => {
+    if (!s) return;
+    if (Array.isArray(s.auditTrail) && s.auditTrail.length > 0) {
+      s.auditTrail.forEach((entry) => {
+        rows.push({
+          ...entry,
+          employeeId: s.employeeId,
+          employeeName: s.employeeName,
+          designation: s.designation,
+        });
+      });
+      return;
+    }
+
+    // Legacy fallback if record predates auditTrail array
+    const createdTs = typeof s.createdAt === 'string' && s.createdAt ? s.createdAt : '';
+    const updatedTs = typeof s.updatedAt === 'string' && s.updatedAt ? s.updatedAt : createdTs;
+    const actor = s.updatedByName || s.createdByName || 'School Admin';
+    if (createdTs) {
+      rows.push({
+        id: `audit_${s.employeeId}_created`,
+        action: 'created',
+        actorUid: s.createdByUid || s.updatedByUid || 'admin',
+        actorName: s.createdByName || actor,
+        timestamp: createdTs,
+        basicSalary: s.basicSalary,
+        netSalary: s.netSalary,
+        note: 'Salary structure configured',
+        employeeId: s.employeeId,
+        employeeName: s.employeeName,
+        designation: s.designation,
+      });
+    }
+    if (updatedTs && updatedTs !== createdTs) {
+      rows.push({
+        id: `audit_${s.employeeId}_updated`,
+        action: 'updated',
+        actorUid: s.updatedByUid || 'admin',
+        actorName: actor,
+        timestamp: updatedTs,
+        basicSalary: s.basicSalary,
+        netSalary: s.netSalary,
+        note: 'Salary structure updated',
+        employeeId: s.employeeId,
+        employeeName: s.employeeName,
+        designation: s.designation,
+      });
+    }
+  });
+
+  return rows.sort((a, b) => String(b.timestamp || '').localeCompare(String(a.timestamp || '')));
 }

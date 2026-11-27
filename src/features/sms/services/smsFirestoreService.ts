@@ -8,6 +8,7 @@ import {
   deleteDoc,
   query,
   where,
+  onSnapshot,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../../../firebase';
@@ -675,6 +676,42 @@ export async function fetchTeachersFromFirestore(
     return teachers;
   } catch (err) {
     throw classifyFirestoreError(err, 'fetchTeachers', `schools/${schoolId}/teachers`);
+  }
+}
+
+/**
+ * Fetches verified, active school staff members from the global `/users` collection
+ * scoped strictly by `schoolId`. Filters in-memory for `status === 'active'` and
+ * faculty/admin roles to avoid requiring extra composite indexes.
+ */
+export async function fetchApprovedSchoolStaffUsersFromFirestore(
+  schoolId: string
+): Promise<UserProfile[]> {
+  if (!schoolId || isDeviceOffline()) return [];
+  try {
+    const usersCol = collection(db, 'users');
+    const q = query(usersCol, where('schoolId', '==', schoolId));
+    const snapshot = await getDocs(q);
+    const staff: UserProfile[] = [];
+    snapshot.forEach((d) => {
+      if (!d.exists()) return;
+      const data = normalizeTimestamps(d.data() as UserProfile);
+      const role = data.role;
+      if (
+        data.status === 'active' &&
+        (role === 'teacher' || role === 'admin' || role === 'principal')
+      ) {
+        staff.push({
+          ...data,
+          uid: data.uid || d.id,
+          email: data.email ? data.email.trim().toLowerCase() : '',
+        });
+      }
+    });
+    return staff;
+  } catch (err) {
+    console.warn('[Firestore] Approved staff users fetch notice:', err);
+    return [];
   }
 }
 
@@ -1821,17 +1858,83 @@ export async function fetchPayslipsFromFirestore(schoolId: string): Promise<Empl
 }
 
 /**
+ * Strictly scoped read-only salary structure query for Teachers/Staff:
+ * Fetches ONLY the logged-in user's own configured SalaryStructure for update notifications.
+ */
+export async function fetchTeacherOwnSalaryStructureFromFirestore(
+  schoolId: string,
+  params: { uid?: string | null; email?: string | null; teacherId?: string | null }
+): Promise<SalaryStructure | null> {
+  if (!schoolId) return null;
+  const uid = (params.uid || '').trim();
+  const teacherId = (params.teacherId || '').trim();
+  const email = (params.email || '').trim().toLowerCase();
+  if (!uid && !email && !teacherId) return null;
+
+  const col = collection(db, 'schools', schoolId, 'salaryStructures');
+  const checks: Array<Promise<SalaryStructure | null>> = [];
+
+  if (uid) {
+    checks.push(
+      getDoc(doc(db, 'schools', schoolId, 'salaryStructures', uid)).then((snap) =>
+        snap.exists()
+          ? normalizeTimestamps({ ...(snap.data() as SalaryStructure), id: snap.id })
+          : null
+      ),
+      getDocs(query(col, where('employeeUid', '==', uid))).then((snap) => {
+        const d = snap.docs[0];
+        return d ? normalizeTimestamps({ ...(d.data() as SalaryStructure), id: d.id }) : null;
+      }),
+      getDocs(query(col, where('employeeId', '==', uid))).then((snap) => {
+        const d = snap.docs[0];
+        return d ? normalizeTimestamps({ ...(d.data() as SalaryStructure), id: d.id }) : null;
+      })
+    );
+  }
+  if (teacherId && teacherId !== uid) {
+    checks.push(
+      getDoc(doc(db, 'schools', schoolId, 'salaryStructures', teacherId)).then((snap) =>
+        snap.exists()
+          ? normalizeTimestamps({ ...(snap.data() as SalaryStructure), id: snap.id })
+          : null
+      ),
+      getDocs(query(col, where('employeeId', '==', teacherId))).then((snap) => {
+        const d = snap.docs[0];
+        return d ? normalizeTimestamps({ ...(d.data() as SalaryStructure), id: d.id }) : null;
+      })
+    );
+  }
+  if (email) {
+    checks.push(
+      getDocs(query(col, where('employeeEmail', '==', email))).then((snap) => {
+        const d = snap.docs[0];
+        return d ? normalizeTimestamps({ ...(d.data() as SalaryStructure), id: d.id }) : null;
+      })
+    );
+  }
+
+  const settled = await Promise.allSettled(checks);
+  for (const res of settled) {
+    if (res.status === 'fulfilled' && res.value) {
+      return res.value;
+    }
+  }
+  return null;
+}
+
+/**
  * Strictly scoped read-only payslip query for Teachers:
- * Only queries finalized/paid payslips belonging to the teacher's UID or email.
+ * Only queries finalized/paid payslips belonging to the teacher's UID, teacherId, or email.
  */
 export async function fetchTeacherOwnPayslipsFromFirestore(
   schoolId: string,
-  params: { uid?: string | null; email?: string | null }
+  params: { uid?: string | null; email?: string | null; teacherId?: string | null }
 ): Promise<EmployeePayslip[]> {
   if (!schoolId) return [];
   const uid = (params.uid || '').trim();
+  const teacherId = (params.teacherId || '').trim();
   const email = (params.email || '').trim().toLowerCase();
-  if (!uid && !email) return [];
+  if (!uid && !email && !teacherId) return [];
 
   const col = collection(db, 'schools', schoolId, 'payslips');
   const queriesToRun = [];
@@ -1839,6 +1942,12 @@ export async function fetchTeacherOwnPayslipsFromFirestore(
     queriesToRun.push(
       query(col, where('isFinalized', '==', true), where('employeeUid', '==', uid)),
       query(col, where('isFinalized', '==', true), where('employeeId', '==', uid))
+    );
+  }
+  if (teacherId && teacherId !== uid) {
+    queriesToRun.push(
+      query(col, where('isFinalized', '==', true), where('employeeId', '==', teacherId)),
+      query(col, where('isFinalized', '==', true), where('employeeUid', '==', teacherId))
     );
   }
   if (email) {
@@ -1871,6 +1980,115 @@ export async function fetchTeacherOwnPayslipsFromFirestore(
   }
 
   return Array.from(merged.values()).sort((a, b) => (b.month || '').localeCompare(a.month || ''));
+}
+
+/**
+ * Real-time auto-sync listener for a logged-in Teacher's own salary structure updates
+ * and finalized/paid monthly payslips.
+ */
+export function subscribeTeacherOwnPayrollFromFirestore(
+  schoolId: string,
+  params: { uid?: string | null; email?: string | null; teacherId?: string | null },
+  callbacks: {
+    onSalaryStructureChange: (structure: SalaryStructure | null) => void;
+    onPayslipsChange: (payslips: EmployeePayslip[]) => void;
+  }
+): () => void {
+  if (!schoolId || isDeviceOffline()) return () => {};
+  const uid = (params.uid || '').trim();
+  const teacherId = (params.teacherId || '').trim();
+  const email = (params.email || '').trim().toLowerCase();
+  if (!uid && !email && !teacherId) return () => {};
+
+  const unsubscribers: Array<() => void> = [];
+  const structCol = collection(db, 'schools', schoolId, 'salaryStructures');
+  const slipCol = collection(db, 'schools', schoolId, 'payslips');
+  const slipsById = new Map<string, EmployeePayslip>();
+  const structsById = new Map<string, SalaryStructure>();
+
+  const emitSlips = () => {
+    callbacks.onPayslipsChange(
+      Array.from(slipsById.values()).sort((a, b) => (b.month || '').localeCompare(a.month || ''))
+    );
+  };
+  const emitStruct = () => {
+    const list = Array.from(structsById.values()).sort((a, b) =>
+      String(b.updatedAt || '').localeCompare(String(a.updatedAt || ''))
+    );
+    callbacks.onSalaryStructureChange(list[0] || null);
+  };
+
+  const structQueries = [];
+  const slipQueries = [];
+
+  if (uid) {
+    structQueries.push(query(structCol, where('employeeUid', '==', uid)));
+    structQueries.push(query(structCol, where('employeeId', '==', uid)));
+    slipQueries.push(query(slipCol, where('isFinalized', '==', true), where('employeeUid', '==', uid)));
+    slipQueries.push(query(slipCol, where('isFinalized', '==', true), where('employeeId', '==', uid)));
+  }
+  if (teacherId && teacherId !== uid) {
+    structQueries.push(query(structCol, where('employeeId', '==', teacherId)));
+    slipQueries.push(query(slipCol, where('isFinalized', '==', true), where('employeeId', '==', teacherId)));
+  }
+  if (email) {
+    structQueries.push(query(structCol, where('employeeEmail', '==', email)));
+    slipQueries.push(query(slipCol, where('isFinalized', '==', true), where('employeeEmail', '==', email)));
+  }
+
+  structQueries.forEach((q) => {
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        snap.docs.forEach((d) => {
+          if (d.exists()) {
+            const data = d.data() as SalaryStructure;
+            structsById.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+          }
+        });
+        snap.docChanges().forEach((chg) => {
+          if (chg.type === 'removed') {
+            structsById.delete(chg.doc.id);
+          }
+        });
+        emitStruct();
+      },
+      () => {}
+    );
+    unsubscribers.push(unsub);
+  });
+
+  slipQueries.forEach((q) => {
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        snap.docs.forEach((d) => {
+          if (d.exists()) {
+            const data = d.data() as EmployeePayslip;
+            slipsById.set(d.id, normalizeTimestamps({ ...data, id: data.id || d.id }));
+          }
+        });
+        snap.docChanges().forEach((chg) => {
+          if (chg.type === 'removed') {
+            slipsById.delete(chg.doc.id);
+          }
+        });
+        emitSlips();
+      },
+      () => {}
+    );
+    unsubscribers.push(unsub);
+  });
+
+  return () => {
+    unsubscribers.forEach((u) => {
+      try {
+        u();
+      } catch {
+        // Ignore cleanup errors
+      }
+    });
+  };
 }
 
 export async function deletePayslipFromFirestore(

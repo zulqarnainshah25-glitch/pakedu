@@ -479,11 +479,22 @@ export interface SalaryLineItem {
   amount: number;
 }
 
+export interface SalaryStructureAuditEntry {
+  id: string;
+  action: 'created' | 'updated';
+  actorUid: string;
+  actorName: string;
+  timestamp: string;
+  basicSalary: number;
+  netSalary: number;
+  note?: string;
+}
+
 export interface SalaryStructure {
   id: string;                 // Matches employeeId (stored at schools/{schoolId}/salaryStructures/{employeeId})
   schoolId: string;
   employeeId: string;
-  employeeUid?: string;       // Optional Auth UID for Teacher self-service matching
+  employeeUid?: string;       // Canonical Firebase Auth UID for Teacher self-service matching
   employeeName: string;
   employeeEmail?: string;     // Lowercased email for secondary teacher lookup
   designation: string;
@@ -502,8 +513,12 @@ export interface SalaryStructure {
   totalDeductions: number;
   netSalary: number;
   notes?: string;
+  createdByUid?: string;
+  createdByName?: string;
   updatedByUid?: string;
   updatedByName?: string;
+  lastAction?: 'created' | 'updated';
+  auditTrail?: SalaryStructureAuditEntry[];
   createdAt?: string;
   updatedAt?: any;
 }

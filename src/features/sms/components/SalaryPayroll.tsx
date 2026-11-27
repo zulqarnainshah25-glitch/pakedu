@@ -41,14 +41,20 @@ import {
   SalaryStructure,
   School,
   TeacherInfo,
+  UserProfile,
 } from '../types';
 import {
+  ApprovedSchoolEmployee,
+  EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR,
+  buildApprovedSchoolEmployees,
   buildEmployeeYearlyPayrollTracker,
   buildPayrollMonthKey,
   buildPayslipFromStructure,
+  buildSalaryStructureAuditFeed,
   calculateSalaryTotals,
   createDefaultSalaryStructure,
   sanitizePayrollIdSegment,
+  validateApprovedSalaryEmployee,
 } from '../utils/payrollCalculations';
 import { calculateSindhSalary2026 } from '../../../data/salaryScale2026';
 import { formatMonthLabel } from '../utils/feeCalculations';
@@ -66,6 +72,8 @@ interface UnifiedEmployeeRow {
   employeeType: SalaryEmployeeType;
   cnic?: string;
   phone?: string;
+  roleLabel: string;
+  isVerifiedFaculty: boolean;
   structure: SalaryStructure | null;
 }
 
@@ -105,12 +113,12 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
     activeSchool,
     registeredSchools,
     teachers,
+    approvedSchoolStaffUsers,
     salaryStructures,
     payslips,
     payrollSettings,
     canAccessSalaryPayroll,
     isSuperAdmin,
-    demoMode,
     currentUserProfile,
     saveSalaryStructure,
     deleteSalaryStructure,
@@ -130,6 +138,7 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
     return registeredSchools[0]?.id || '';
   });
   const [superAdminTeachers, setSuperAdminTeachers] = useState<TeacherInfo[]>([]);
+  const [superAdminStaffUsers, setSuperAdminStaffUsers] = useState<UserProfile[]>([]);
   const [loadingSchoolPayroll, setLoadingSchoolPayroll] = useState(false);
 
   useEffect(() => {
@@ -163,6 +172,7 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
       .then((res) => {
         if (!cancelled) {
           setSuperAdminTeachers(res.teachers || []);
+          setSuperAdminStaffUsers(res.staffUsers || []);
         }
       })
       .catch((err) => {
@@ -180,6 +190,32 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
     if (isSuperAdmin) return superAdminTeachers;
     return teachers;
   }, [isSuperAdmin, superAdminTeachers, teachers]);
+
+  const scopedStaffUsers = useMemo(() => {
+    if (isSuperAdmin) return superAdminStaffUsers;
+    const list = [...approvedSchoolStaffUsers];
+    if (
+      currentUserProfile &&
+      currentUserProfile.status === 'active' &&
+      (!targetSchoolId || !currentUserProfile.schoolId || currentUserProfile.schoolId === targetSchoolId) &&
+      (currentUserProfile.role === 'teacher' ||
+        currentUserProfile.role === 'admin' ||
+        currentUserProfile.role === 'principal')
+    ) {
+      list.push(currentUserProfile);
+    }
+    return list;
+  }, [isSuperAdmin, superAdminStaffUsers, approvedSchoolStaffUsers, currentUserProfile, targetSchoolId]);
+
+  const approvedEmployees = useMemo<ApprovedSchoolEmployee[]>(
+    () =>
+      buildApprovedSchoolEmployees({
+        schoolId: targetSchoolId,
+        teachers: scopedTeachers,
+        staffUsers: scopedStaffUsers,
+      }),
+    [targetSchoolId, scopedTeachers, scopedStaffUsers]
+  );
 
   const scopedStructures = useMemo(
     () => salaryStructures.filter((s) => !targetSchoolId || s.schoolId === targetSchoolId),
@@ -200,29 +236,31 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
     };
   }, [payrollSettings, targetSchoolId]);
 
-  // Unified Employees Roster (Teachers + any non-teaching staff in salaryStructures)
+  // Unified Employees Roster (Strictly Verified Active Faculty/Staff + Legacy Unlinked Notice if any)
   const unifiedEmployees = useMemo<UnifiedEmployeeRow[]>(() => {
     const byId = new Map<string, UnifiedEmployeeRow>();
 
-    scopedTeachers.forEach((t) => {
-      const cleanId = sanitizePayrollIdSegment(t.id);
+    approvedEmployees.forEach((emp) => {
+      const cleanId = sanitizePayrollIdSegment(emp.employeeId);
       const matchedStruct =
         scopedStructures.find(
           (s) =>
             sanitizePayrollIdSegment(s.employeeId) === cleanId ||
-            s.employeeId === t.id ||
-            (t.email && s.employeeEmail?.toLowerCase() === t.email.trim().toLowerCase())
+            (emp.employeeUid && (s.employeeUid === emp.employeeUid || s.employeeId === emp.employeeUid)) ||
+            (emp.employeeEmail && s.employeeEmail?.toLowerCase() === emp.employeeEmail.trim().toLowerCase())
         ) || null;
 
       byId.set(cleanId, {
         employeeId: matchedStruct?.employeeId || cleanId,
-        employeeUid: matchedStruct?.employeeUid || t.id,
-        employeeName: matchedStruct?.employeeName || t.name,
-        employeeEmail: matchedStruct?.employeeEmail || t.email,
-        designation: matchedStruct?.designation || t.designation || 'Teacher',
-        employeeType: matchedStruct?.employeeType || 'teaching',
-        cnic: matchedStruct?.cnic || t.cnic,
-        phone: matchedStruct?.phone || t.phone,
+        employeeUid: emp.employeeUid || matchedStruct?.employeeUid,
+        employeeName: emp.employeeName,
+        employeeEmail: emp.employeeEmail || matchedStruct?.employeeEmail,
+        designation: matchedStruct?.designation || emp.designation,
+        employeeType: matchedStruct?.employeeType || emp.employeeType,
+        cnic: matchedStruct?.cnic || emp.cnic,
+        phone: matchedStruct?.phone || emp.phone,
+        roleLabel: emp.roleLabel,
+        isVerifiedFaculty: true,
         structure: matchedStruct,
       });
     });
@@ -230,24 +268,34 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
     scopedStructures.forEach((s) => {
       const cleanId = sanitizePayrollIdSegment(s.employeeId || s.id);
       if (!byId.has(cleanId)) {
-        byId.set(cleanId, {
-          employeeId: cleanId,
+        const validation = validateApprovedSalaryEmployee({
+          employeeId: s.employeeId,
           employeeUid: s.employeeUid,
-          employeeName: s.employeeName,
           employeeEmail: s.employeeEmail,
-          designation: s.designation || 'School Staff',
-          employeeType: s.employeeType || 'non_teaching',
-          cnic: s.cnic,
-          phone: s.phone,
-          structure: s,
+          approvedEmployees,
         });
+        if (!validation.valid) {
+          byId.set(cleanId, {
+            employeeId: cleanId,
+            employeeUid: s.employeeUid,
+            employeeName: s.employeeName,
+            employeeEmail: s.employeeEmail,
+            designation: s.designation || 'Unlinked Record',
+            employeeType: s.employeeType || 'non_teaching',
+            cnic: s.cnic,
+            phone: s.phone,
+            roleLabel: 'Not in Active Faculty',
+            isVerifiedFaculty: false,
+            structure: s,
+          });
+        }
       }
     });
 
     return Array.from(byId.values()).sort((a, b) =>
       a.employeeName.localeCompare(b.employeeName)
     );
-  }, [scopedTeachers, scopedStructures]);
+  }, [approvedEmployees, scopedStructures]);
 
   const showToast = (text: string, type: 'success' | 'error' = 'success') => {
     setToast({ text, type });
@@ -261,6 +309,9 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
   const [structTypeFilter, setStructTypeFilter] = useState<'all' | SalaryEmployeeType>('all');
   const [editingStructure, setEditingStructure] = useState<SalaryStructure | null>(null);
   const [isNewStaffMode, setIsNewStaffMode] = useState(false);
+  const [selectedPickerEmployeeId, setSelectedPickerEmployeeId] = useState<string>('');
+  const [employeePickerSearch, setEmployeePickerSearch] = useState<string>('');
+  const [structureModalError, setStructureModalError] = useState<string | null>(null);
   const [bpsAutofillGrade, setBpsAutofillGrade] = useState<number>(14);
   const [bpsAutofillStage, setBpsAutofillStage] = useState<number>(0);
   const [savingStructure, setSavingStructure] = useState(false);
@@ -282,9 +333,14 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
 
   const openEditStructureModal = (emp: UnifiedEmployeeRow) => {
     setIsNewStaffMode(false);
+    setStructureModalError(null);
+    setSelectedPickerEmployeeId(emp.employeeId);
+    setEmployeePickerSearch('');
     if (emp.structure) {
       setEditingStructure({
         ...emp.structure,
+        employeeUid: emp.employeeUid || emp.structure.employeeUid,
+        employeeEmail: emp.employeeEmail || emp.structure.employeeEmail,
         allowances: (emp.structure.allowances || []).map((a) => ({ ...a })),
         deductions: (emp.structure.deductions || []).map((d) => ({ ...d })),
       });
@@ -297,24 +353,134 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
         phone: emp.phone,
         cnic: emp.cnic,
       });
-      starter.employeeUid = emp.employeeUid;
+      starter.employeeUid = emp.employeeUid || emp.employeeId;
       setEditingStructure(starter);
     }
   };
 
+  const applySelectedApprovedEmployeeToDraft = (empId: string) => {
+    setStructureModalError(null);
+    setSelectedPickerEmployeeId(empId);
+    const chosen = approvedEmployees.find(
+      (e) => sanitizePayrollIdSegment(e.employeeId) === sanitizePayrollIdSegment(empId)
+    );
+    if (!chosen) return;
+
+    const existingStruct = scopedStructures.find(
+      (s) =>
+        sanitizePayrollIdSegment(s.employeeId) === sanitizePayrollIdSegment(chosen.employeeId) ||
+        (chosen.employeeUid && (s.employeeUid === chosen.employeeUid || s.employeeId === chosen.employeeUid)) ||
+        (chosen.employeeEmail && s.employeeEmail?.toLowerCase() === chosen.employeeEmail.toLowerCase())
+    );
+
+    if (existingStruct) {
+      setEditingStructure({
+        ...existingStruct,
+        employeeId: sanitizePayrollIdSegment(chosen.employeeId),
+        employeeUid: chosen.employeeUid || existingStruct.employeeUid || chosen.employeeId,
+        employeeName: chosen.employeeName,
+        employeeEmail: chosen.employeeEmail || existingStruct.employeeEmail,
+        allowances: (existingStruct.allowances || []).map((a) => ({ ...a })),
+        deductions: (existingStruct.deductions || []).map((d) => ({ ...d })),
+      });
+      return;
+    }
+
+    const starter = createDefaultSalaryStructure(targetSchoolId, {
+      id: chosen.employeeId,
+      name: chosen.employeeName,
+      designation: chosen.designation,
+      email: chosen.employeeEmail || '',
+      phone: chosen.phone,
+      cnic: chosen.cnic,
+    });
+    starter.employeeUid = chosen.employeeUid || chosen.employeeId;
+    starter.employeeType = chosen.employeeType;
+    setEditingStructure((prev) =>
+      prev
+        ? {
+            ...starter,
+            basicSalary: prev.basicSalary,
+            allowances: prev.allowances,
+            deductions: prev.deductions,
+            totalAllowances: prev.totalAllowances,
+            grossSalary: prev.grossSalary,
+            totalDeductions: prev.totalDeductions,
+            netSalary: prev.netSalary,
+          }
+        : starter
+    );
+  };
+
   const openNewStaffStructureModal = () => {
     setIsNewStaffMode(true);
-    const staffId = `staff_${Date.now().toString(36)}`;
-    const starter = createDefaultSalaryStructure(targetSchoolId, {
-      id: staffId,
-      name: '',
-      designation: 'Office Clerk / Support Staff',
-      email: '',
-    });
-    starter.employeeUid = undefined;
-    starter.employeeType = 'non_teaching';
-    setEditingStructure(starter);
+    setStructureModalError(null);
+    setEmployeePickerSearch('');
+
+    // Pre-select first approved employee who does not yet have a salary structure (or first approved employee)
+    const firstUnconfigured = approvedEmployees.find(
+      (emp) =>
+        !scopedStructures.some(
+          (s) =>
+            sanitizePayrollIdSegment(s.employeeId) === sanitizePayrollIdSegment(emp.employeeId) ||
+            (emp.employeeEmail && s.employeeEmail?.toLowerCase() === emp.employeeEmail.toLowerCase())
+        )
+    );
+    const initialEmp = firstUnconfigured || approvedEmployees[0] || null;
+    if (initialEmp) {
+      setSelectedPickerEmployeeId(initialEmp.employeeId);
+      const existingStruct = scopedStructures.find(
+        (s) =>
+          sanitizePayrollIdSegment(s.employeeId) === sanitizePayrollIdSegment(initialEmp.employeeId) ||
+          (initialEmp.employeeEmail && s.employeeEmail?.toLowerCase() === initialEmp.employeeEmail.toLowerCase())
+      );
+      if (existingStruct) {
+        setEditingStructure({
+          ...existingStruct,
+          employeeUid: initialEmp.employeeUid || existingStruct.employeeUid,
+          employeeName: initialEmp.employeeName,
+          employeeEmail: initialEmp.employeeEmail || existingStruct.employeeEmail,
+          allowances: (existingStruct.allowances || []).map((a) => ({ ...a })),
+          deductions: (existingStruct.deductions || []).map((d) => ({ ...d })),
+        });
+      } else {
+        const starter = createDefaultSalaryStructure(targetSchoolId, {
+          id: initialEmp.employeeId,
+          name: initialEmp.employeeName,
+          designation: initialEmp.designation,
+          email: initialEmp.employeeEmail || '',
+          phone: initialEmp.phone,
+          cnic: initialEmp.cnic,
+        });
+        starter.employeeUid = initialEmp.employeeUid || initialEmp.employeeId;
+        starter.employeeType = initialEmp.employeeType;
+        setEditingStructure(starter);
+      }
+    } else {
+      setSelectedPickerEmployeeId('');
+      const blankStarter = createDefaultSalaryStructure(targetSchoolId, {
+        id: '',
+        name: '',
+        designation: '',
+        email: '',
+      });
+      blankStarter.employeeId = '';
+      blankStarter.employeeUid = undefined;
+      setEditingStructure(blankStarter);
+    }
   };
+
+  const searchableApprovedEmployees = useMemo(() => {
+    const q = employeePickerSearch.trim().toLowerCase();
+    if (!q) return approvedEmployees;
+    return approvedEmployees.filter(
+      (emp) =>
+        emp.employeeName.toLowerCase().includes(q) ||
+        emp.designation.toLowerCase().includes(q) ||
+        (emp.employeeEmail && emp.employeeEmail.toLowerCase().includes(q)) ||
+        emp.roleLabel.toLowerCase().includes(q)
+    );
+  }, [approvedEmployees, employeePickerSearch]);
 
   const updateStructureField = <K extends keyof SalaryStructure>(
     field: K,
@@ -454,11 +620,22 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
 
   const handleSaveStructureSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setStructureModalError(null);
     if (!editingStructure || !targetSchoolId) return;
-    if (!editingStructure.employeeName.trim()) {
-      showToast('Employee Full Name is required.', 'error');
+
+    const validation = validateApprovedSalaryEmployee({
+      employeeId: editingStructure.employeeId,
+      employeeUid: editingStructure.employeeUid,
+      employeeEmail: editingStructure.employeeEmail,
+      approvedEmployees,
+    });
+    if (!validation.valid || !validation.matchedEmployee) {
+      setStructureModalError(EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR);
+      showToast(EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR, 'error');
       return;
     }
+
+    const verifiedEmp = validation.matchedEmployee;
     setSavingStructure(true);
     try {
       const totals = calculateSalaryTotals({
@@ -468,9 +645,15 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
       });
       const cleanRecord: Omit<SalaryStructure, 'schoolId'> = {
         ...editingStructure,
-        employeeName: editingStructure.employeeName.trim(),
-        designation: editingStructure.designation.trim() || 'Staff Member',
-        employeeEmail: editingStructure.employeeEmail?.trim().toLowerCase() || undefined,
+        id: sanitizePayrollIdSegment(verifiedEmp.employeeId),
+        employeeId: sanitizePayrollIdSegment(verifiedEmp.employeeId),
+        employeeUid: verifiedEmp.employeeUid || verifiedEmp.employeeId,
+        employeeName: verifiedEmp.employeeName,
+        designation: editingStructure.designation.trim() || verifiedEmp.designation,
+        employeeEmail:
+          (verifiedEmp.employeeEmail || editingStructure.employeeEmail || '')
+            .trim()
+            .toLowerCase() || undefined,
         basicSalary: totals.basicSalary,
         allowances: totals.allowances,
         deductions: totals.deductions,
@@ -482,7 +665,7 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
       const ok = await saveSalaryStructure(cleanRecord, targetSchoolId);
       if (ok) {
         showToast(
-          `Salary structure for ${cleanRecord.employeeName} saved (Net Pay: Rs. ${cleanRecord.netSalary.toLocaleString()}).`
+          `Salary structure for ${cleanRecord.employeeName} saved (Net Pay: Rs. ${cleanRecord.netSalary.toLocaleString()}). Teacher notified.`
         );
         setEditingStructure(null);
       }
@@ -577,15 +760,30 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
 
     setPayrollBusy(true);
     try {
-      const toCreate = ungeneratedConfiguredStructures.map((structure) =>
-        buildPayslipFromStructure(structure, {
+      const toCreate = ungeneratedConfiguredStructures.map((structure) => {
+        const matchedEmp = validateApprovedSalaryEmployee({
+          employeeId: structure.employeeId,
+          employeeUid: structure.employeeUid,
+          employeeEmail: structure.employeeEmail,
+          approvedEmployees,
+        }).matchedEmployee;
+        const enrichedStructure: SalaryStructure = matchedEmp
+          ? {
+              ...structure,
+              employeeUid: matchedEmp.employeeUid || structure.employeeUid,
+              employeeEmail:
+                matchedEmp.employeeEmail ||
+                (structure.employeeEmail ? structure.employeeEmail.trim().toLowerCase() : undefined),
+            }
+          : structure;
+        return buildPayslipFromStructure(enrichedStructure, {
           schoolId: targetSchoolId,
           month: selectedPayrollMonthKey,
           defaultPaymentMethod: disbursementMethod,
           generatedByUid: currentUserProfile?.uid,
           generatedByName: currentUserProfile?.fullName || (isSuperAdmin ? 'Super Admin' : 'School Admin'),
-        })
-      );
+        });
+      });
       const ok = await saveBulkPayslips(toCreate, targetSchoolId);
       if (ok) {
         showToast(
@@ -860,6 +1058,26 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
       scopedPayslips
     );
   }, [selectedHistoryEmployee, historyYear, scopedPayslips]);
+
+  const filteredStructureAuditRows = useMemo(() => {
+    const q = historySearch.trim().toLowerCase();
+    return buildSalaryStructureAuditFeed(scopedStructures).filter((row) => {
+      if (historyEmployeeId !== 'all') {
+        if (sanitizePayrollIdSegment(row.employeeId) !== sanitizePayrollIdSegment(historyEmployeeId)) {
+          return false;
+        }
+      }
+      if (
+        q &&
+        !row.employeeName.toLowerCase().includes(q) &&
+        !row.actorName.toLowerCase().includes(q) &&
+        !(row.designation || '').toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [scopedStructures, historyEmployeeId, historySearch]);
 
   const handleExportHistoryCsv = async () => {
     const headers = [
@@ -1230,13 +1448,27 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
                           className="hover:bg-[#FAF8F5]/70 dark:hover:bg-[#3F1014]/30 transition"
                         >
                           <td className="py-3 px-4">
-                            <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                              {emp.employeeName}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                                {emp.employeeName}
+                              </span>
+                              {!emp.isVerifiedFaculty && (
+                                <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 text-[9px] font-bold uppercase">
+                                  Unlinked Record
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-[#57534E] dark:text-[#D6CCC2]">
                               {emp.designation}
                               {emp.employeeEmail ? ` · ${emp.employeeEmail}` : ''}
                             </div>
+                            {s && (s.updatedByName || s.updatedAt) && (
+                              <div className="text-[10px] text-[#78716C] mt-0.5">
+                                {s.lastAction === 'created' ? 'Added' : 'Edited'} by{' '}
+                                <strong>{s.updatedByName || s.createdByName || 'Admin'}</strong>
+                                {s.updatedAt ? ` · ${new Date(s.updatedAt).toLocaleString()}` : ''}
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-3">
                             <span
@@ -2015,6 +2247,73 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
                 </div>
               )}
             </div>
+
+            {/* Admin Audit Log: Who Added / Edited Salary Structures & When */}
+            <div className="space-y-2 pt-2 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-xs font-bold uppercase tracking-wider text-[#57534E] dark:text-[#D6CCC2]">
+                  Salary Structure Audit Log ({filteredStructureAuditRows.length} Change{filteredStructureAuditRows.length === 1 ? '' : 's'})
+                </h3>
+                <span className="text-[11px] text-[#78716C]">
+                  Tracks every admin who added or edited an employee&apos;s salary structure
+                </span>
+              </div>
+              {filteredStructureAuditRows.length === 0 ? (
+                <div className="py-8 text-center bg-[#FAF8F5] dark:bg-[#2C1215]/40 rounded-xl border border-dashed border-[#E7E0D4] text-xs text-[#78716C]">
+                  No salary structure additions or edits recorded yet.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl">
+                  <table className="min-w-[760px] w-full text-left text-xs">
+                    <thead className="bg-[#FAF8F5] dark:bg-[#2C1215]/70 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] text-[10px] uppercase text-[#57534E] dark:text-[#D6CCC2]">
+                      <tr>
+                        <th className="py-2.5 px-3">Date &amp; Time</th>
+                        <th className="py-2.5 px-3">Action</th>
+                        <th className="py-2.5 px-3">Employee</th>
+                        <th className="py-2.5 px-3">Changed By (Admin)</th>
+                        <th className="py-2.5 px-3 text-right">Basic Pay</th>
+                        <th className="py-2.5 px-3 text-right">Net Salary</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#E7E0D4] dark:divide-[rgba(255,253,249,0.10)]">
+                      {filteredStructureAuditRows.map((entry) => (
+                        <tr key={`${entry.employeeId}_${entry.id}`} className="hover:bg-[#FAF8F5]/60 dark:hover:bg-[#3F1014]/25">
+                          <td className="py-2.5 px-3 font-mono text-[11px] text-[#57534E] dark:text-[#D6CCC2]">
+                            {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '—'}
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                entry.action === 'created'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                  : 'bg-[#FFF7ED] text-[#C2410C] border border-[#FED7AA] dark:bg-[#7C2D12]/60 dark:text-[#FDBA74]'
+                              }`}
+                            >
+                              {entry.action === 'created' ? 'Added' : 'Edited'}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3">
+                            <div className="font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              {entry.employeeName}
+                            </div>
+                            <div className="text-[10px] text-[#78716C]">{entry.designation}</div>
+                          </td>
+                          <td className="py-2.5 px-3 font-semibold text-[#1C1917] dark:text-[#FAF8F5]">
+                            {entry.actorName}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono">
+                            Rs. {(entry.basicSalary || 0).toLocaleString()}
+                          </td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-[#7F1D1D] dark:text-[#FCA5A5]">
+                            Rs. {(entry.netSalary || 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -2049,19 +2348,90 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
             </div>
 
             <form onSubmit={handleSaveStructureSubmit} className="space-y-4 text-xs">
-              {/* Employee Identity Row */}
+              {structureModalError && (
+                <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/60 border border-rose-200 dark:border-rose-800 text-xs text-rose-800 dark:text-rose-200 font-semibold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{structureModalError}</span>
+                </div>
+              )}
+
+              {/* Strict Verified Employee Selector (No Random Manual Names Allowed) */}
+              {isNewStaffMode ? (
+                <div className="p-3.5 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <label className="text-[11px] font-bold text-[#7F1D1D] dark:text-[#FCA5A5] uppercase tracking-wider">
+                      Select Verified School Teacher / Active Staff *
+                    </label>
+                    <span className="text-[10px] font-semibold text-[#57534E] dark:text-[#D6CCC2]">
+                      {approvedEmployees.length} Active Member{approvedEmployees.length === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  {approvedEmployees.length === 0 ? (
+                    <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-800 dark:text-amber-200 font-semibold">
+                      Employee not found in school records. Please add them to Faculty first (Faculty &amp; Requests).
+                    </div>
+                  ) : (
+                    <>
+                      <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-[#78716C] absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={employeePickerSearch}
+                          onChange={(e) => setEmployeePickerSearch(e.target.value)}
+                          placeholder="Filter approved teachers & staff by name, role, or email..."
+                          className="w-full min-h-[38px] pl-8 pr-3 py-1.5 bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs"
+                        />
+                      </div>
+                      <select
+                        required
+                        value={selectedPickerEmployeeId}
+                        onChange={(e) => applySelectedApprovedEmployeeToDraft(e.target.value)}
+                        className="w-full min-h-[42px] px-3 py-2 bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-semibold text-[#1C1917] dark:text-[#FAF8F5]"
+                      >
+                        <option value="">-- Select Approved Teacher / Staff --</option>
+                        {searchableApprovedEmployees.map((emp) => (
+                          <option key={emp.employeeId} value={emp.employeeId}>
+                            {emp.employeeName} — {emp.designation} ({emp.roleLabel}
+                            {emp.employeeEmail ? ` · ${emp.employeeEmail}` : ''})
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/70 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#78716C] block">
+                      Verified Employee Identity
+                    </span>
+                    <strong className="text-sm text-[#1C1917] dark:text-[#FAF8F5]">
+                      {editingStructure.employeeName}
+                    </strong>
+                    {editingStructure.employeeEmail && (
+                      <span className="text-[11px] text-[#57534E] dark:text-[#D6CCC2] ml-2">
+                        ({editingStructure.employeeEmail})
+                      </span>
+                    )}
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    ID: {editingStructure.employeeId}
+                  </span>
+                </div>
+              )}
+
+              {/* Employee Designation & Category (Name & Email Locked to Verified Faculty Record) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
-                    Employee Full Name *
+                    Verified Employee Name (Locked)
                   </label>
                   <input
                     type="text"
-                    required
-                    value={editingStructure.employeeName}
-                    onChange={(e) => updateStructureField('employeeName', e.target.value)}
-                    placeholder="e.g., Mr. Sajid Hussain"
-                    className="w-full min-h-[40px] px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs"
+                    readOnly
+                    value={editingStructure.employeeName || 'Select an employee above'}
+                    className="w-full min-h-[40px] px-3 py-2 bg-[#F3EFEA] dark:bg-[#2C1215]/80 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] cursor-not-allowed"
                   />
                 </div>
                 <div>
@@ -2094,14 +2464,14 @@ export const SalaryPayroll: React.FC<{ onBack?: () => void }> = ({ onBack }) => 
                 </div>
                 <div>
                   <label className="block text-[11px] font-semibold text-[#44403C] dark:text-[#E7E0D4] mb-1">
-                    Employee Email (for Teacher Payslip View)
+                    Registered Email (Teacher Self-Service Link)
                   </label>
                   <input
                     type="email"
+                    readOnly
                     value={editingStructure.employeeEmail || ''}
-                    onChange={(e) => updateStructureField('employeeEmail', e.target.value)}
-                    placeholder="teacher@seld.gos.pk"
-                    className="w-full min-h-[40px] px-3 py-2 bg-[#FAF8F5] dark:bg-[#2C1215] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs"
+                    placeholder="Linked from Faculty profile"
+                    className="w-full min-h-[40px] px-3 py-2 bg-[#F3EFEA] dark:bg-[#2C1215]/80 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-xl text-xs text-[#57534E] dark:text-[#D6CCC2] cursor-not-allowed"
                   />
                 </div>
               </div>

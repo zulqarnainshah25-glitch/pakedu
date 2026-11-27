@@ -29,6 +29,12 @@ import { calculateSindhSalary2026 } from '../data/salaryScale2026';
 import { determineSmartRoute, hasAdminCapabilities } from './smartRouting';
 import { School, UserProfile, ClassFeeStructure, FeeConcessionRule, FeePayment, Student, Exam, StudentExamMarks } from '../features/sms/types';
 import {
+  buildApprovedSchoolEmployees,
+  validateApprovedSalaryEmployee,
+  buildSalaryStructureAuditFeed,
+  EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR,
+} from '../features/sms/utils/payrollCalculations';
+import {
   calculateStudentDiscount,
   calculateStudentFeeLedger,
   getExpectedClassMonthlyFee,
@@ -2523,6 +2529,174 @@ async function runAllUnitTests() {
     assert.equal(qpCompSrc.includes('exportA4ElementAsPdf'), true);
 
     console.log('✅ PASS: AI Lesson Planner & Question Paper SMS Integration, Smart Linking & RBAC Tests');
+  }
+
+  // Test 31: Strict Approved-Employee Salary Validation, Audit History Log & Teacher Salary Notifications
+  {
+    console.log('\n--- Test 31: Salary Strict Employee Selection, Validation, Audit Log & Teacher Notifications ---');
+
+    const teachersList = [
+      {
+        id: 'uid_teacher_a',
+        name: 'Sir Tariq Mehmood',
+        designation: 'PST',
+        email: 'tariq@seld.gos.pk',
+        phone: '03001112233',
+        status: 'active' as const,
+        assignedClasses: ['cls_9a'],
+      },
+      {
+        id: 'uid_resigned_teacher',
+        name: 'Resigned Former Teacher',
+        designation: 'JEST',
+        email: 'resigned@seld.gos.pk',
+        status: 'resigned' as const,
+        assignedClasses: [],
+      },
+    ];
+    const staffUsersList: UserProfile[] = [
+      {
+        uid: 'uid_admin_a',
+        email: 'admin@seld.gos.pk',
+        fullName: 'Asif Ali',
+        role: 'admin',
+        schoolId: 'school_gbps_1',
+        status: 'active',
+        designation: 'Headmaster',
+        assignedClassIds: [],
+      },
+      {
+        uid: 'uid_pending_teacher',
+        email: 'pending@seld.gos.pk',
+        fullName: 'Unapproved Applicant',
+        role: 'teacher',
+        schoolId: 'school_gbps_1',
+        status: 'pending',
+        designation: 'JEST',
+        assignedClassIds: [],
+      },
+      {
+        uid: 'uid_other_school_teacher',
+        email: 'external@seld.gos.pk',
+        fullName: 'External Teacher',
+        role: 'teacher',
+        schoolId: 'school_other_2',
+        status: 'active',
+        designation: 'HST',
+        assignedClassIds: [],
+      },
+    ];
+
+    // 1. Only verified active members of school_gbps_1 appear in dropdown roster
+    const approved = buildApprovedSchoolEmployees({
+      schoolId: 'school_gbps_1',
+      teachers: teachersList,
+      staffUsers: staffUsersList,
+    });
+    assert.equal(approved.length, 2);
+    assert.equal(approved.some((e) => e.employeeName === 'Sir Tariq Mehmood'), true);
+    assert.equal(approved.some((e) => e.employeeName === 'Asif Ali'), true);
+    assert.equal(approved.some((e) => e.employeeName === 'Resigned Former Teacher'), false);
+    assert.equal(approved.some((e) => e.employeeName === 'Unapproved Applicant'), false);
+    assert.equal(approved.some((e) => e.employeeName === 'External Teacher'), false);
+
+    // 2. Random / unapproved employee rejected with exact error message
+    const badCheck = validateApprovedSalaryEmployee({
+      employeeId: 'random_person_999',
+      employeeEmail: 'nobody@example.com',
+      approvedEmployees: approved,
+    });
+    assert.equal(badCheck.valid, false);
+    assert.equal(badCheck.error, EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR);
+
+    const goodCheck = validateApprovedSalaryEmployee({
+      employeeId: 'uid_teacher_a',
+      approvedEmployees: approved,
+    });
+    assert.equal(goodCheck.valid, true);
+    assert.equal(goodCheck.matchedEmployee?.employeeName, 'Sir Tariq Mehmood');
+
+    // 3. Audit Feed tracks created & updated events with Admin actor and timestamp
+    const feed = buildSalaryStructureAuditFeed([
+      {
+        id: 'uid_teacher_a',
+        schoolId: 'school_gbps_1',
+        employeeId: 'uid_teacher_a',
+        employeeUid: 'uid_teacher_a',
+        employeeName: 'Sir Tariq Mehmood',
+        employeeEmail: 'tariq@seld.gos.pk',
+        designation: 'PST',
+        employeeType: 'teaching',
+        basicSalary: 35000,
+        allowances: [],
+        deductions: [],
+        totalAllowances: 0,
+        grossSalary: 35000,
+        totalDeductions: 0,
+        netSalary: 35000,
+        createdByName: 'Asif Ali',
+        updatedByName: 'Asif Ali',
+        createdAt: '2026-11-26T09:00:00.000Z',
+        updatedAt: '2026-11-27T10:00:00.000Z',
+        auditTrail: [
+          {
+            id: 'a2',
+            action: 'updated',
+            actorUid: 'uid_admin_a',
+            actorName: 'Asif Ali',
+            timestamp: '2026-11-27T10:00:00.000Z',
+            basicSalary: 35000,
+            netSalary: 35000,
+          },
+          {
+            id: 'a1',
+            action: 'created',
+            actorUid: 'uid_admin_a',
+            actorName: 'Asif Ali',
+            timestamp: '2026-11-26T09:00:00.000Z',
+            basicSalary: 30000,
+            netSalary: 30000,
+          },
+        ],
+      },
+    ]);
+    assert.equal(feed.length, 2);
+    assert.equal(feed[0].action, 'updated');
+    assert.equal(feed[0].actorName, 'Asif Ali');
+    assert.equal(feed[1].action, 'created');
+
+    // 4. Static Verification across Rules, Services, Context, Payroll UI & TeacherProfile
+    const root = process.cwd();
+    const rulesSrc = fs.readFileSync(path.resolve(root, 'firestore.rules'), 'utf-8');
+    const serviceSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/services/smsFirestoreService.ts'),
+      'utf-8'
+    );
+    const payrollSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/SalaryPayroll.tsx'),
+      'utf-8'
+    );
+    const teacherProfileSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/TeacherProfile.tsx'),
+      'utf-8'
+    );
+    const dashSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/SmsDashboard.tsx'),
+      'utf-8'
+    );
+
+    assert.equal(rulesSrc.includes('isSchoolMember(schoolId)'), true);
+    assert.equal(rulesSrc.includes("'auditTrail'"), true);
+    assert.equal(serviceSrc.includes('fetchApprovedSchoolStaffUsersFromFirestore'), true);
+    assert.equal(serviceSrc.includes('fetchTeacherOwnSalaryStructureFromFirestore'), true);
+    assert.equal(serviceSrc.includes('subscribeTeacherOwnPayrollFromFirestore'), true);
+    assert.equal(payrollSrc.includes('Select Verified School Teacher / Active Staff'), true);
+    assert.equal(payrollSrc.includes('Salary Structure Audit Log'), true);
+    assert.equal(teacherProfileSrc.includes('hasUnreadSalaryStructureUpdate'), true);
+    assert.equal(teacherProfileSrc.includes('Your salary structure has been updated by Admin'), true);
+    assert.equal(dashSrc.includes('hasUnreadSalaryStructureUpdate'), true);
+
+    console.log('✅ PASS: Strict Approved-Employee Salary Validation, Audit History & Teacher Auto-Sync Notification Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

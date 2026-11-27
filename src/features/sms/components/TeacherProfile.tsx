@@ -18,6 +18,8 @@ import {
   Banknote,
   Download,
   Lock,
+  Bell,
+  CheckCircle2,
 } from 'lucide-react';
 import { useSms } from '../context/SmsContext';
 import { AppointmentLetterModal } from './AppointmentLetterModal';
@@ -45,6 +47,9 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
     canAdmitStudents,
     demoMode,
     canViewOwnPayslips,
+    ownTeacherSalaryStructure,
+    hasUnreadSalaryStructureUpdate,
+    dismissTeacherSalaryNotification,
     ownTeacherPayslips,
     payrollSettings,
   } = useSms();
@@ -327,8 +332,66 @@ export const TeacherProfile: React.FC<TeacherProfileProps> = ({
         )}
       </div>
 
-      {/* Self-Service Monthly Salary Payslips (Strict Teacher Own-Records Only, If Enabled by Admin) */}
+      {/* Self-Service Monthly Salary Payslips & Live Salary Structure Notification */}
       <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 shadow-sm space-y-4">
+        {hasUnreadSalaryStructureUpdate && ownTeacherSalaryStructure && (
+          <div className="p-4 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/40 border border-[#FED7AA] dark:border-[#C2410C]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#C2410C] text-white flex items-center justify-center shrink-0">
+                <Bell className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[#9A3412] dark:text-[#FDBA74]">
+                  Your salary structure has been updated by Admin ({ownTeacherSalaryStructure.updatedByName || 'School Admin'})
+                </div>
+                <div className="text-[11px] text-[#7C2D12]/90 dark:text-[#FED7AA]/90 mt-0.5">
+                  New Configured Net Pay: <strong className="font-mono">Rs. {(ownTeacherSalaryStructure.netSalary || 0).toLocaleString()}</strong>
+                  {ownTeacherSalaryStructure.updatedAt
+                    ? ` · Updated ${new Date(ownTeacherSalaryStructure.updatedAt).toLocaleString()}`
+                    : ''}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={dismissTeacherSalaryNotification}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-[11px] font-bold transition cursor-pointer shrink-0 self-start sm:self-center"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Acknowledge</span>
+            </button>
+          </div>
+        )}
+
+        {ownTeacherSalaryStructure && (
+          <div className="p-4 rounded-xl bg-[#FAF8F5] dark:bg-[#2C1215]/60 border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <span className="text-[10px] font-bold uppercase text-[#78716C] block">Basic Salary</span>
+              <strong className="font-mono text-[#1C1917] dark:text-[#FAF8F5]">
+                Rs. {(ownTeacherSalaryStructure.basicSalary || 0).toLocaleString()}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-[#78716C] block">Allowances</span>
+              <strong className="font-mono text-emerald-700 dark:text-emerald-400">
+                + Rs. {(ownTeacherSalaryStructure.totalAllowances || 0).toLocaleString()}
+              </strong>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold uppercase text-[#78716C] block">Deductions</span>
+              <strong className="font-mono text-rose-700 dark:text-rose-400">
+                - Rs. {(ownTeacherSalaryStructure.totalDeductions || 0).toLocaleString()}
+              </strong>
+            </div>
+            <div className="sm:text-right">
+              <span className="text-[10px] font-bold uppercase text-[#78716C] block">Configured Net Pay</span>
+              <strong className="font-mono text-[#7F1D1D] dark:text-[#FCA5A5]">
+                Rs. {(ownTeacherSalaryStructure.netSalary || 0).toLocaleString()}
+              </strong>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Banknote className="w-5 h-5 text-[#7F1D1D] dark:text-[#FCA5A5]" />

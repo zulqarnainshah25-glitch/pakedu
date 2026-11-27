@@ -84,6 +84,9 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
     canAccessSalaryPayroll,
     canViewOwnPayslips,
     ownTeacherPayslips,
+    ownTeacherSalaryStructure,
+    hasUnreadSalaryStructureUpdate,
+    dismissTeacherSalaryNotification,
   } = useSms();
 
   const [dashboardTab, setDashboardTab] = React.useState<'overview' | 'notifications'>(
@@ -630,6 +633,45 @@ export const SmsDashboard: React.FC<SmsDashboardProps> = ({
         </div>
       ) : (
         <>
+      {!isAdmin && hasUnreadSalaryStructureUpdate && ownTeacherSalaryStructure && (
+        <div className="p-4 rounded-2xl bg-[#FFF7ED] dark:bg-[#7C2D12]/40 border border-[#FED7AA] dark:border-[#C2410C]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#C2410C] text-white flex items-center justify-center shrink-0">
+              <Banknote className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-[#9A3412] dark:text-[#FDBA74]">
+                Your salary structure has been updated by Admin ({ownTeacherSalaryStructure.updatedByName || 'School Admin'})
+              </div>
+              <div className="text-[11px] text-[#7C2D12]/90 dark:text-[#FED7AA]/90 mt-0.5">
+                Monthly Net Salary: <strong className="font-mono">Rs. {(ownTeacherSalaryStructure.netSalary || 0).toLocaleString()}</strong>
+                {ownTeacherPayslips.length > 0
+                  ? ` · ${ownTeacherPayslips.length} finalized payslip(s) available`
+                  : ''}
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {onNavigateToProfile && (
+              <button
+                type="button"
+                onClick={onNavigateToProfile}
+                className="px-3 py-1.5 rounded-lg bg-[#7F1D1D] hover:bg-[#651414] text-white text-[11px] font-bold transition cursor-pointer"
+              >
+                View Salary &amp; Payslips →
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={dismissTeacherSalaryNotification}
+              className="px-2.5 py-1.5 rounded-lg bg-[#F3EFEA] hover:bg-[#E7E0D4] text-[#44403C] text-[11px] font-semibold transition cursor-pointer"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Real-Time Attendance Command Center & Breakdown */}
       <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)]">

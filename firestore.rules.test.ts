@@ -530,9 +530,23 @@ export async function runFirestoreRulesTests() {
       })
     );
 
-    // Teacher A CANNOT read/write salaryStructures, cannot read other teachers' payslips, and cannot read unfinalized draft payslips
-    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid')));
+    // Teacher A CANNOT read/write salaryStructures of OTHER employees, cannot write any salaryStructure, cannot read other teachers' payslips, and cannot read unfinalized draft payslips
+    await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'salaryStructures', 'teacher_other')));
     await assertFails(getDocs(collection(teacherADb, 'schools', 'school_a', 'salaryStructures')));
+    // Teacher A CAN read ONLY their own salaryStructure for live notification updates
+    await assertSucceeds(getDoc(doc(teacherADb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid')));
+    await assertFails(
+      setDoc(doc(teacherADb, 'schools', 'school_a', 'salaryStructures', 'teacher_a_uid'), {
+        id: 'teacher_a_uid',
+        schoolId: 'school_a',
+        employeeId: 'teacher_a_uid',
+        employeeName: 'Tampered',
+        basicSalary: 999999,
+        allowances: [],
+        deductions: [],
+        netSalary: 999999,
+      })
+    );
     await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'payslips', '2026-11__teacher_other')));
     await assertFails(getDoc(doc(teacherADb, 'schools', 'school_a', 'payslips', '2026-12__teacher_a_uid')));
     await assertFails(getDocs(collection(teacherADb, 'schools', 'school_a', 'payslips')));

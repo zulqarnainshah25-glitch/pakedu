@@ -24,6 +24,7 @@ import {
   SchoolAnalyticsSummary,
   StudentPortalLink,
   SalaryStructure,
+  SalaryStructureAuditEntry,
   EmployeePayslip,
   PayrollSettings,
   SchoolLessonPlan,
@@ -128,6 +129,9 @@ import {
   savePayslipToFirestore,
   fetchPayslipsFromFirestore,
   fetchTeacherOwnPayslipsFromFirestore,
+  fetchTeacherOwnSalaryStructureFromFirestore,
+  subscribeTeacherOwnPayrollFromFirestore,
+  fetchApprovedSchoolStaffUsersFromFirestore,
   deletePayslipFromFirestore,
   savePayrollSettingsToFirestore,
   fetchPayrollSettingsFromFirestore,
@@ -139,7 +143,14 @@ import {
   fetchSchoolQuestionPapersFromFirestore,
   deleteSchoolQuestionPaperFromFirestore,
 } from '../services/smsFirestoreService';
-import { doesPayslipBelongToUser, sanitizePayrollIdSegment } from '../utils/payrollCalculations';
+import {
+  ApprovedSchoolEmployee,
+  EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR,
+  buildApprovedSchoolEmployees,
+  doesPayslipBelongToUser,
+  sanitizePayrollIdSegment,
+  validateApprovedSalaryEmployee,
+} from '../utils/payrollCalculations';
 import {
   getOfflineQueue,
   subscribeOfflineQueue,
@@ -384,8 +395,13 @@ interface SmsContextType {
   canManageCertificates: boolean;
 
   // Salary & Payroll Management (Admin & Super Admin + Optional Teacher Payslip Self-View)
+  approvedSchoolStaffUsers: UserProfile[];
+  approvedEmployeesForActiveSchool: ApprovedSchoolEmployee[];
   salaryStructures: SalaryStructure[];
   payslips: EmployeePayslip[];
+  ownTeacherSalaryStructure: SalaryStructure | null;
+  hasUnreadSalaryStructureUpdate: boolean;
+  dismissTeacherSalaryNotification: () => void;
   ownTeacherPayslips: EmployeePayslip[];
   payrollSettings: PayrollSettings;
   canAccessSalaryPayroll: boolean;
@@ -410,6 +426,7 @@ interface SmsContextType {
   ) => Promise<boolean>;
   loadSchoolPayrollData: (schoolId: string) => Promise<{
     teachers: TeacherInfo[];
+    staffUsers: UserProfile[];
     salaryStructures: SalaryStructure[];
     payslips: EmployeePayslip[];
     payrollSettings: PayrollSettings;
@@ -1451,6 +1468,10 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!demoMode) {
       setSalaryStructures([]);
       setPayslips([]);
+      setApprovedSchoolStaffUsers([]);
+      setTeachersBySchoolCache({});
+      setStaffUsersBySchoolCache({});
+      setOwnTeacherSalaryStructureState(null);
       setSchoolLessonPlans([]);
       setSchoolQuestionPapers([]);
     }
@@ -1824,6 +1845,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       defaultPaymentMethod: 'Bank Transfer',
     };
   });
+
+  const [approvedSchoolStaffUsers, setApprovedSchoolStaffUsers] = useState<UserProfile[]>([]);
+  const [teachersBySchoolCache, setTeachersBySchoolCache] = useState<Record<string, TeacherInfo[]>>({});
+  const [staffUsersBySchoolCache, setStaffUsersBySchoolCache] = useState<Record<string, UserProfile[]>>({});
+  const [ownTeacherSalaryStructureState, setOwnTeacherSalaryStructureState] =
+    useState<SalaryStructure | null>(null);
+  const [acknowledgedSalaryStamp, setAcknowledgedSalaryStamp] = useState<string>('');
 
   const [schoolLessonPlans, setSchoolLessonPlans] = useState<SchoolLessonPlan[]>(() => {
     try {
@@ -2671,6 +2699,15 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setPayrollSettings(resolvedSettings);
 
         if (isAdminForSync) {
+          fetchApprovedSchoolStaffUsersFromFirestore(schoolId)
+            .then((staffList) => {
+              if (!cancelled) {
+                setApprovedSchoolStaffUsers(staffList || []);
+                setStaffUsersBySchoolCache((prev) => ({ ...prev, [schoolId]: staffList || [] }));
+              }
+            })
+            .catch(() => {});
+
           fetchSalaryStructuresFromFirestore(schoolId)
             .then((remoteStructures) => {
               if (!cancelled) {
@@ -2700,8 +2737,23 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
             })
             .catch((err) => console.warn('[Firestore] Notice: Payslips fetch error:', err));
+          setOwnTeacherSalaryStructureState(null);
         } else {
           setSalaryStructures([]);
+          setApprovedSchoolStaffUsers([]);
+          fetchTeacherOwnSalaryStructureFromFirestore(schoolId, {
+            uid: authUserUid || currentUserProfile?.uid,
+            email: currentUserProfile?.email,
+          })
+            .then((ownStruct) => {
+              if (!cancelled) {
+                setOwnTeacherSalaryStructureState(ownStruct);
+              }
+            })
+            .catch(() => {
+              if (!cancelled) setOwnTeacherSalaryStructureState(null);
+            });
+
           if (resolvedSettings.teacherPayslipAccessEnabled) {
             fetchTeacherOwnPayslipsFromFirestore(schoolId, {
               uid: authUserUid || currentUserProfile?.uid,
@@ -5394,6 +5446,147 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return Boolean(payrollSettings.teacherPayslipAccessEnabled);
   }, [effectiveRole, isSuperAdmin, isImpersonating, payrollSettings.teacherPayslipAccessEnabled]);
 
+  // Real-time Auto-Sync for Teacher's Own Salary Structure & Payslip Notifications
+  useEffect(() => {
+    if (demoMode || isSuperAdmin || !activeSchool.id || activeSchool.id === 'sch_seld_khi_01') {
+      return;
+    }
+    const role = currentUserProfile?.role;
+    if (role !== 'teacher') return;
+
+    const uid = authUserUid || currentUserProfile?.uid;
+    const email = currentUserProfile?.email;
+    if (!uid && !email) return;
+
+    const unsub = subscribeTeacherOwnPayrollFromFirestore(
+      activeSchool.id,
+      {
+        uid,
+        email,
+        teacherId: activeTeacher?.id,
+      },
+      {
+        onSalaryStructureChange: (struct) => {
+          if (struct) {
+            setOwnTeacherSalaryStructureState(struct);
+          }
+        },
+        onPayslipsChange: (slips) => {
+          if (payrollSettings.teacherPayslipAccessEnabled && Array.isArray(slips)) {
+            setPayslips((prev) => {
+              const other = prev.filter((p) => p.schoolId !== activeSchool.id);
+              return [...slips, ...other];
+            });
+          }
+        },
+      }
+    );
+
+    return () => {
+      unsub();
+    };
+  }, [
+    demoMode,
+    isSuperAdmin,
+    activeSchool.id,
+    currentUserProfile?.role,
+    currentUserProfile?.uid,
+    currentUserProfile?.email,
+    authUserUid,
+    activeTeacher?.id,
+    payrollSettings.teacherPayslipAccessEnabled,
+  ]);
+
+  const approvedEmployeesForActiveSchool = useMemo<ApprovedSchoolEmployee[]>(() => {
+    const combinedUsers: UserProfile[] = [...approvedSchoolStaffUsers];
+    if (
+      currentUserProfile &&
+      currentUserProfile.status === 'active' &&
+      (!activeSchool.id || !currentUserProfile.schoolId || currentUserProfile.schoolId === activeSchool.id) &&
+      (currentUserProfile.role === 'teacher' ||
+        currentUserProfile.role === 'admin' ||
+        currentUserProfile.role === 'principal')
+    ) {
+      combinedUsers.push(currentUserProfile);
+    }
+    return buildApprovedSchoolEmployees({
+      schoolId: activeSchool.id,
+      teachers,
+      staffUsers: combinedUsers,
+    });
+  }, [activeSchool.id, teachers, approvedSchoolStaffUsers, currentUserProfile]);
+
+  const ownTeacherSalaryStructure = useMemo<SalaryStructure | null>(() => {
+    if (effectiveRole === 'parent' || effectiveRole === 'student' || isSuperAdmin || isImpersonating) {
+      return null;
+    }
+    if (ownTeacherSalaryStructureState && (!activeSchool.id || ownTeacherSalaryStructureState.schoolId === activeSchool.id)) {
+      return ownTeacherSalaryStructureState;
+    }
+    const uid = (currentUserProfile?.uid || authUserUid || '').trim();
+    const email = (currentUserProfile?.email || activeTeacher?.email || '').trim().toLowerCase();
+    const tid = (activeTeacher?.id || '').trim();
+    return (
+      salaryStructures.find(
+        (s) =>
+          (!activeSchool.id || s.schoolId === activeSchool.id) &&
+          ((uid && (s.employeeUid === uid || s.employeeId === uid)) ||
+            (tid && (s.employeeId === tid || s.employeeUid === tid)) ||
+            (email && (s.employeeEmail || '').trim().toLowerCase() === email))
+      ) || null
+    );
+  }, [
+    effectiveRole,
+    isSuperAdmin,
+    isImpersonating,
+    ownTeacherSalaryStructureState,
+    salaryStructures,
+    activeSchool.id,
+    currentUserProfile?.uid,
+    currentUserProfile?.email,
+    authUserUid,
+    activeTeacher?.id,
+    activeTeacher?.email,
+  ]);
+
+  const ackStorageKey = useMemo(() => {
+    const uid = currentUserProfile?.uid || authUserUid || activeTeacher?.id || 'anon';
+    return `pakedu_salary_struct_ack_${activeSchool.id || 'global'}_${uid}`;
+  }, [activeSchool.id, currentUserProfile?.uid, authUserUid, activeTeacher?.id]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(ackStorageKey) || '';
+      setAcknowledgedSalaryStamp(saved);
+    } catch {
+      setAcknowledgedSalaryStamp('');
+    }
+  }, [ackStorageKey]);
+
+  const salaryUpdateStamp = useMemo(() => {
+    if (!ownTeacherSalaryStructure) return '';
+    return String(
+      ownTeacherSalaryStructure.updatedAt ||
+        ownTeacherSalaryStructure.createdAt ||
+        ownTeacherSalaryStructure.netSalary
+    );
+  }, [ownTeacherSalaryStructure]);
+
+  const hasUnreadSalaryStructureUpdate = useMemo(() => {
+    if (!ownTeacherSalaryStructure || !salaryUpdateStamp) return false;
+    return acknowledgedSalaryStamp !== salaryUpdateStamp;
+  }, [ownTeacherSalaryStructure, salaryUpdateStamp, acknowledgedSalaryStamp]);
+
+  const dismissTeacherSalaryNotification = () => {
+    if (!salaryUpdateStamp) return;
+    setAcknowledgedSalaryStamp(salaryUpdateStamp);
+    try {
+      localStorage.setItem(ackStorageKey, salaryUpdateStamp);
+    } catch {
+      // Ignore storage errors
+    }
+  };
+
   const ownTeacherPayslips = useMemo(() => {
     if (!canViewOwnPayslips) return [];
     return payslips.filter(
@@ -5435,20 +5628,93 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ): Promise<boolean> => {
     if (blockUnauthorizedPayrollMutation('saveSalaryStructure')) return false;
     const targetSchoolId = overrideSchoolId || activeSchool.id || 'default_school';
-    const docId = sanitizePayrollIdSegment(structure.employeeId || structure.id);
+
+    // Strict Employee Verification: reject manually typed / unapproved employee names
+    const schoolTeachersPool =
+      targetSchoolId === activeSchool.id
+        ? teachers
+        : teachersBySchoolCache[targetSchoolId] || teachers;
+    const schoolUsersPool =
+      targetSchoolId === activeSchool.id
+        ? approvedSchoolStaffUsers
+        : staffUsersBySchoolCache[targetSchoolId] || [];
+    const activeCandidates = buildApprovedSchoolEmployees({
+      schoolId: targetSchoolId,
+      teachers: schoolTeachersPool,
+      staffUsers: [
+        ...schoolUsersPool,
+        ...(currentUserProfile &&
+        currentUserProfile.status === 'active' &&
+        currentUserProfile.schoolId === targetSchoolId
+          ? [currentUserProfile]
+          : []),
+      ],
+    });
+    const validation = validateApprovedSalaryEmployee({
+      employeeId: structure.employeeId || structure.id,
+      employeeUid: structure.employeeUid,
+      employeeEmail: structure.employeeEmail,
+      approvedEmployees: activeCandidates,
+    });
+    if (!validation.valid || !validation.matchedEmployee) {
+      setSyncError({
+        id: `invalid_emp_salary_${Date.now()}`,
+        message: EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR,
+        reason: EMPLOYEE_NOT_FOUND_IN_SCHOOL_ERROR,
+        operation: 'saveSalaryStructure',
+        retry: async () => {},
+      });
+      return false;
+    }
+
+    const verifiedEmp = validation.matchedEmployee;
+    const docId = sanitizePayrollIdSegment(verifiedEmp.employeeId);
     const existing = salaryStructures.find(
       (s) => s.schoolId === targetSchoolId && (s.employeeId === docId || s.id === docId)
     );
+    const nowIso = new Date().toISOString();
+    const actorUid = currentUserProfile?.uid || authUserUid || 'admin';
+    const actorName =
+      currentUserProfile?.fullName || (isSuperAdmin ? 'Super Admin' : 'School Admin');
+    const actionKind: 'created' | 'updated' = existing ? 'updated' : 'created';
+    const newAuditEntry: SalaryStructureAuditEntry = {
+      id: `audit_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
+      action: actionKind,
+      actorUid,
+      actorName,
+      timestamp: nowIso,
+      basicSalary: structure.basicSalary,
+      netSalary: structure.netSalary,
+      note:
+        actionKind === 'created'
+          ? `Added salary structure (${verifiedEmp.designation})`
+          : `Updated salary structure (Net: Rs. ${structure.netSalary.toLocaleString()})`,
+    };
+    const priorTrail = Array.isArray(existing?.auditTrail)
+      ? existing.auditTrail
+      : Array.isArray(structure.auditTrail)
+      ? structure.auditTrail
+      : [];
+    const nextAuditTrail = [newAuditEntry, ...priorTrail].slice(0, 30);
+
     const fullStructure: SalaryStructure = {
       ...structure,
       id: docId,
       employeeId: docId,
+      employeeUid: verifiedEmp.employeeUid || structure.employeeUid || docId,
+      employeeName: verifiedEmp.employeeName,
+      employeeEmail: (verifiedEmp.employeeEmail || structure.employeeEmail || '')
+        .trim()
+        .toLowerCase() || undefined,
       schoolId: targetSchoolId,
-      employeeEmail: structure.employeeEmail ? structure.employeeEmail.trim().toLowerCase() : undefined,
-      updatedByUid: currentUserProfile?.uid || authUserUid || 'admin',
-      updatedByName: currentUserProfile?.fullName || (isSuperAdmin ? 'Super Admin' : 'School Admin'),
-      createdAt: structure.createdAt || existing?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdByUid: existing?.createdByUid || structure.createdByUid || actorUid,
+      createdByName: existing?.createdByName || structure.createdByName || actorName,
+      updatedByUid: actorUid,
+      updatedByName: actorName,
+      lastAction: actionKind,
+      auditTrail: nextAuditTrail,
+      createdAt: existing?.createdAt || structure.createdAt || nowIso,
+      updatedAt: nowIso,
     };
 
     setSalaryStructures((prev) => {
@@ -5759,19 +6025,24 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         const scopedPayslips = payslips.filter((p) => p.schoolId === schoolId);
         return {
           teachers: schoolId === INITIAL_MOCK_SCHOOL.id ? INITIAL_MOCK_TEACHERS : teachers,
+          staffUsers: [],
           salaryStructures: scopedStructures,
           payslips: scopedPayslips,
           payrollSettings: payrollSettings.schoolId === schoolId ? payrollSettings : defaultConfig,
         };
       }
 
-      const [remoteTeachers, remoteStructures, remotePayslips, remoteSettings] =
+      const [remoteTeachers, remoteStaffUsers, remoteStructures, remotePayslips, remoteSettings] =
         await Promise.all([
           fetchTeachersFromFirestore(schoolId).catch(() => []),
+          fetchApprovedSchoolStaffUsersFromFirestore(schoolId).catch(() => []),
           fetchSalaryStructuresFromFirestore(schoolId).catch(() => []),
           fetchPayslipsFromFirestore(schoolId).catch(() => []),
           fetchPayrollSettingsFromFirestore(schoolId).catch(() => null),
         ]);
+
+      setTeachersBySchoolCache((prev) => ({ ...prev, [schoolId]: remoteTeachers || [] }));
+      setStaffUsersBySchoolCache((prev) => ({ ...prev, [schoolId]: remoteStaffUsers || [] }));
 
       const mergedStructures = mergeQueueIntoCollection(
         ['salaryStructure'],
@@ -5799,6 +6070,7 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       return {
         teachers: remoteTeachers || [],
+        staffUsers: remoteStaffUsers || [],
         salaryStructures: mergedStructures,
         payslips: mergedPayslips,
         payrollSettings: resolvedSettings,
@@ -6326,8 +6598,13 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         canManageTimetable,
         canPostHomework,
         canManageCertificates,
+        approvedSchoolStaffUsers,
+        approvedEmployeesForActiveSchool,
         salaryStructures,
         payslips,
+        ownTeacherSalaryStructure,
+        hasUnreadSalaryStructureUpdate,
+        dismissTeacherSalaryNotification,
         ownTeacherPayslips,
         payrollSettings,
         canAccessSalaryPayroll,
