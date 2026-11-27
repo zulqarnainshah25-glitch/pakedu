@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Award,
   BookOpen,
@@ -47,6 +47,9 @@ export type ExamTabId = 'setup' | 'marks' | 'reports' | 'papers';
 interface ExamsResultsProps {
   onBack?: () => void;
   initialTab?: ExamTabId;
+  initialExamId?: string;
+  initialReportStudentId?: string;
+  onOpenReportCardRoute?: (examId: string | null, studentId: string | null) => void;
 }
 
 interface ReportPrintModalShellProps {
@@ -154,6 +157,9 @@ const DefaultSchoolCrest: React.FC = () => (
 export const ExamsResults: React.FC<ExamsResultsProps> = ({
   onBack,
   initialTab,
+  initialExamId,
+  initialReportStudentId,
+  onOpenReportCardRoute,
 }) => {
   const {
     activeSchool,
@@ -356,13 +362,16 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
   // =========================================================================
   // TAB 2 & 3 SHARED SELECTION + MARKS ENTRY STATE
   // =========================================================================
-  const [selectedExamId, setSelectedExamId] = useState<string>(() => exams[0]?.id || '');
+  const [selectedExamId, setSelectedExamId] = useState<string>(() => initialExamId || exams[0]?.id || '');
+  const lastRouteReportStudentRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (exams.length > 0 && (!selectedExamId || !exams.some((e) => e.id === selectedExamId))) {
+    if (initialExamId && exams.some((e) => e.id === initialExamId)) {
+      setSelectedExamId(initialExamId);
+    } else if (exams.length > 0 && (!selectedExamId || !exams.some((e) => e.id === selectedExamId))) {
       setSelectedExamId(exams[0].id);
     }
-  }, [exams, selectedExamId]);
+  }, [exams, selectedExamId, initialExamId]);
 
   const activeExam = useMemo(
     () => exams.find((e) => e.id === selectedExamId) || null,
@@ -632,6 +641,53 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
   const [sortBy, setSortBy] = useState<'position' | 'gr'>('position');
   const [reportStudentsForPrint, setReportStudentsForPrint] = useState<Student[] | null>(null);
   const [logoError, setLogoError] = useState<string | null>(null);
+
+  // Sync dynamic report card URL param /sms/exams/:examId/report/:studentId
+  useEffect(() => {
+    if (!initialReportStudentId) {
+      if (lastRouteReportStudentRef.current) {
+        setReportStudentsForPrint(null);
+      }
+      lastRouteReportStudentRef.current = undefined;
+      return;
+    }
+    const targetExam =
+      (initialExamId && exams.find((e) => e.id === initialExamId)) || activeExam;
+    if (!targetExam) return;
+
+    const basePool = canManageExams ? classes : filteredClassesForUser;
+    const allowedClassIds = new Set(
+      (!targetExam.classIds || targetExam.classIds.length === 0
+        ? basePool
+        : basePool.filter((c) => targetExam.classIds.includes(c.id))
+      ).map((c) => c.id)
+    );
+    const matchedStudent = students.find(
+      (s) => s.id === initialReportStudentId && allowedClassIds.has(s.classId)
+    );
+    if (!matchedStudent) return;
+
+    lastRouteReportStudentRef.current = initialReportStudentId;
+    if (selectedExamId !== targetExam.id) {
+      setSelectedExamId(targetExam.id);
+    }
+    if (selectedClassId !== matchedStudent.classId) {
+      setSelectedClassId(matchedStudent.classId);
+    }
+    setActiveTab('reports');
+    setReportStudentsForPrint([matchedStudent]);
+  }, [
+    initialExamId,
+    initialReportStudentId,
+    exams,
+    activeExam,
+    classes,
+    filteredClassesForUser,
+    canManageExams,
+    students,
+    selectedExamId,
+    selectedClassId,
+  ]);
 
   const reportStandings = useMemo<Map<string, StudentClassStanding>>(() => {
     if (!activeExam) return new Map<string, StudentClassStanding>();
@@ -1823,7 +1879,12 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
                             <td className="py-3 px-4 text-right">
                               <button
                                 type="button"
-                                onClick={() => setReportStudentsForPrint([stu])}
+                                onClick={() => {
+                                  setReportStudentsForPrint([stu]);
+                                  if (activeExam) {
+                                    onOpenReportCardRoute?.(activeExam.id, stu.id);
+                                  }
+                                }}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7F1D1D] hover:bg-[#651414] text-white font-bold text-[11px] rounded-xl transition cursor-pointer"
                               >
                                 <Printer className="w-3.5 h-3.5" />
@@ -1858,7 +1919,12 @@ export const ExamsResults: React.FC<ExamsResultsProps> = ({
               : `Print All (${reportStudentsForPrint.length} Report Cards)`
           }
           onPrint={triggerPrintDocument}
-          onClose={() => setReportStudentsForPrint(null)}
+          onClose={() => {
+            setReportStudentsForPrint(null);
+            if (initialReportStudentId || onOpenReportCardRoute) {
+              onOpenReportCardRoute?.(null, null);
+            }
+          }}
         >
           <div className="printable-a4-sheet bg-white text-[#1C1917] space-y-8">
             {reportStudentsForPrint.map((stu, idx) => {

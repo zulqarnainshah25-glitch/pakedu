@@ -1327,7 +1327,7 @@ async function runAllUnitTests() {
     assert.equal(parentDashSrc.includes('triggerPrintDocument'), true);
     assert.equal(parentDashSrc.includes('Parent Portal · Strict Read-Only'), true);
     assert.equal(appSrc.includes('isParentUser'), true);
-    assert.equal(appSrc.includes("activeTool === 'sms-parent'"), true);
+    assert.equal(appSrc.includes('path="/parent/dashboard"'), true);
 
     console.log('✅ PASS: Phase C Parent Portal Routing, Strict Read-Only RBAC & Isolation Tests');
   }
@@ -1380,9 +1380,9 @@ async function runAllUnitTests() {
     assert.equal(certificatesSrc.includes('Character Certificate'), true);
     assert.equal(certificatesSrc.includes('exportA4ElementAsPdf'), true);
 
-    assert.equal(appSrc.includes("activeTool === 'sms-timetable'"), true);
-    assert.equal(appSrc.includes("activeTool === 'sms-homework'"), true);
-    assert.equal(appSrc.includes("activeTool === 'sms-certificates'"), true);
+    assert.equal(appSrc.includes('path="/sms/timetable"'), true);
+    assert.equal(appSrc.includes('path="/sms/homework"'), true);
+    assert.equal(appSrc.includes('path="/sms/certificates"'), true);
     assert.equal(smsContextSrc.includes('saveTimetableEntry'), true);
     assert.equal(smsContextSrc.includes('saveHomework'), true);
     assert.equal(smsContextSrc.includes('saveCertificate'), true);
@@ -1536,7 +1536,7 @@ async function runAllUnitTests() {
     assert.equal(sharedSectionsSrc.includes('Daily Homework Diary'), true);
     assert.equal(sharedSectionsSrc.includes('Class Timetable (Read-Only)'), true);
     assert.equal(appSrc.includes('isStudentUser'), true);
-    assert.equal(appSrc.includes("activeTool === 'sms-student-portal'"), true);
+    assert.equal(appSrc.includes('path="/student/dashboard"'), true);
 
     console.log('✅ PASS: Student Portal Auth, Invite Claim, Strict Read-Only RBAC & Isolation Tests');
   }
@@ -1865,9 +1865,9 @@ async function runAllUnitTests() {
 
     assert.equal(appSrc.includes('resetSmsSessionState()'), true);
     assert.equal(appSrc.includes('shellIdentityKey'), true);
-    assert.equal(appSrc.includes('guardedTool'), true);
-    assert.equal(appSrc.includes("guardedTool === 'super-admin'"), true);
-    assert.equal(appSrc.includes("currentUserProfile?.role === 'super-admin'"), true);
+    assert.equal(appSrc.includes('path="/super-admin"'), true);
+    assert.equal(appSrc.includes("allowedRoles={['super-admin']}"), true);
+    assert.equal(appSrc.includes('effectiveRole'), true);
 
     console.log('✅ PASS: Sidebar Badge Alignment & Stale Super Admin Logout/Role-Switch Reset Tests');
   }
@@ -2283,8 +2283,8 @@ async function runAllUnitTests() {
     assert.equal(smsCtxSrc.includes('canAccessSalaryPayroll'), true);
     assert.equal(smsCtxSrc.includes('canViewOwnPayslips'), true);
     assert.equal(smsCtxSrc.includes('ownTeacherPayslips'), true);
-    assert.equal(appSrc.includes("activeTool === 'sms-payroll'"), true);
-    assert.equal(appSrc.includes("guardedTool === 'sms-payroll' && canAccessSalaryPayroll"), true);
+    assert.equal(appSrc.includes('path="/sms/salary"'), true);
+    assert.equal(appSrc.includes('requirePayrollAccess'), true);
     assert.equal(payrollSrc.includes('Salary Structure'), true);
     assert.equal(payrollSrc.includes('Generate'), true);
     assert.equal(payrollSrc.includes('Salary History'), true);
@@ -2697,6 +2697,181 @@ async function runAllUnitTests() {
     assert.equal(dashSrc.includes('hasUnreadSalaryStructureUpdate'), true);
 
     console.log('✅ PASS: Strict Approved-Employee Salary Validation, Audit History & Teacher Auto-Sync Notification Tests');
+  }
+
+  // Test 32: React Router v7 Migration, ProtectedRoute RBAC Guards, Dynamic URL Params & Smart Routing Paths
+  {
+    console.log('\n--- Test 32: React Router Migration & ProtectedRoute RBAC Tests ---');
+    const fs = await import('fs');
+    const path = await import('path');
+    const { getRoutePathForTool, navigateBySmartRoute } = await import('./smartRouting');
+    const { evaluateRouteAccess } = await import('../components/ProtectedRoute');
+
+    // 1. Canonical route path resolution & navigateBySmartRoute helper
+    assert.equal(getRoutePathForTool('dashboard'), '/dashboard');
+    assert.equal(getRoutePathForTool('sms-dashboard'), '/sms');
+    assert.equal(getRoutePathForTool('sms-classes'), '/sms/classes');
+    assert.equal(getRoutePathForTool('sms-students'), '/sms/students');
+    assert.equal(getRoutePathForTool('sms-attendance'), '/sms/attendance');
+    assert.equal(getRoutePathForTool('sms-fees'), '/sms/fees');
+    assert.equal(getRoutePathForTool('sms-exams'), '/sms/exams');
+    assert.equal(getRoutePathForTool('sms-timetable'), '/sms/timetable');
+    assert.equal(getRoutePathForTool('sms-homework'), '/sms/homework');
+    assert.equal(getRoutePathForTool('sms-payroll'), '/sms/salary');
+    assert.equal(getRoutePathForTool('sms-profile'), '/sms/profile');
+    assert.equal(getRoutePathForTool('super-admin'), '/super-admin');
+    assert.equal(getRoutePathForTool('lesson-plan'), '/teacher/lesson-planner');
+    assert.equal(getRoutePathForTool('question-paper'), '/teacher/question-paper');
+    assert.equal(getRoutePathForTool('sms-parent'), '/parent/dashboard');
+    assert.equal(getRoutePathForTool('sms-student-portal'), '/student/dashboard');
+
+    const adminSmart = determineSmartRoute(
+      { email: 'principal@school.pk', uid: 'p_1' },
+      { uid: 'p_1', email: 'principal@school.pk', fullName: 'Principal', role: 'admin', status: 'active', schoolId: 'sch_1', assignedClassIds: [] },
+      []
+    );
+    assert.equal(adminSmart.targetPath, '/sms');
+
+    let capturedPath = '';
+    let capturedOpts: { replace?: boolean } | undefined;
+    navigateBySmartRoute(
+      (to, opts) => {
+        capturedPath = to;
+        capturedOpts = opts;
+      },
+      adminSmart
+    );
+    assert.equal(capturedPath, '/sms');
+    assert.equal(capturedOpts?.replace, true);
+
+    // 2. ProtectedRoute RBAC & Role Isolation evaluation
+    // Unauthenticated blocked to '/'
+    const unauthDecision = evaluateRouteAccess(
+      { isAuthenticated: false, effectiveRole: 'general' },
+      { allowedRoles: ['admin'] }
+    );
+    assert.equal(unauthDecision.allowed, false);
+    assert.equal(unauthDecision.redirectTo, '/');
+
+    // Teacher blocked from Salary & Payroll -> redirects to /dashboard with error message
+    const teacherSalaryDecision = evaluateRouteAccess(
+      {
+        isAuthenticated: true,
+        effectiveRole: 'teacher',
+        isAffiliated: true,
+        canAccessSalaryPayroll: false,
+      },
+      {
+        allowedRoles: ['admin', 'principal', 'super-admin'],
+        requirePayrollAccess: true,
+        requireAffiliated: true,
+      }
+    );
+    assert.equal(teacherSalaryDecision.allowed, false);
+    assert.equal(teacherSalaryDecision.redirectTo, '/dashboard');
+    assert.equal(Boolean(teacherSalaryDecision.reason && teacherSalaryDecision.reason.includes('Access Denied')), true);
+
+    // School Admin allowed on Salary & Payroll
+    const adminSalaryDecision = evaluateRouteAccess(
+      {
+        isAuthenticated: true,
+        effectiveRole: 'admin',
+        isAffiliated: true,
+        canAccessSalaryPayroll: true,
+      },
+      {
+        allowedRoles: ['admin', 'principal', 'super-admin'],
+        requirePayrollAccess: true,
+        requireAffiliated: true,
+      }
+    );
+    assert.equal(adminSalaryDecision.allowed, true);
+
+    // Non-super-admin blocked from /super-admin
+    const adminSuperDecision = evaluateRouteAccess(
+      { isAuthenticated: true, effectiveRole: 'admin', isAffiliated: true },
+      { allowedRoles: ['super-admin'] }
+    );
+    assert.equal(adminSuperDecision.allowed, false);
+    assert.equal(adminSuperDecision.redirectTo, '/dashboard');
+
+    // Super Admin allowed on /sms ONLY while impersonating
+    const superNoImpersonateSms = evaluateRouteAccess(
+      { isAuthenticated: true, effectiveRole: 'super-admin', isImpersonating: false },
+      { allowedRoles: ['admin', 'principal', 'teacher'], requireAffiliated: true, allowDuringImpersonation: true }
+    );
+    assert.equal(superNoImpersonateSms.allowed, false);
+
+    const superWithImpersonateSms = evaluateRouteAccess(
+      { isAuthenticated: true, effectiveRole: 'super-admin', isImpersonating: true },
+      { allowedRoles: ['admin', 'principal', 'teacher'], requireAffiliated: true, allowDuringImpersonation: true }
+    );
+    assert.equal(superWithImpersonateSms.allowed, true);
+
+    // Parent strictly blocked from Student/SMS routes
+    const parentToStudentDecision = evaluateRouteAccess(
+      { isAuthenticated: true, effectiveRole: 'parent' },
+      { allowedRoles: ['student'] }
+    );
+    assert.equal(parentToStudentDecision.allowed, false);
+    assert.equal(parentToStudentDecision.redirectTo, '/dashboard');
+
+    // 3. Source-level Verification: React Router hooks, routes, links, dynamic params, no legacy activeTool/selectTool state
+    const root = process.cwd();
+    const pkgJson = JSON.parse(fs.readFileSync(path.resolve(root, 'package.json'), 'utf-8'));
+    assert.equal(Boolean(pkgJson.dependencies?.['react-router-dom']), true);
+
+    const appSrc = fs.readFileSync(path.resolve(root, 'src/App.tsx'), 'utf-8');
+    const studentDirSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/StudentDirectory.tsx'),
+      'utf-8'
+    );
+    const examsSrc = fs.readFileSync(
+      path.resolve(root, 'src/features/sms/components/ExamsResults.tsx'),
+      'utf-8'
+    );
+
+    assert.equal(appSrc.includes('<BrowserRouter>'), true);
+    assert.equal(appSrc.includes('<Routes>'), true);
+    assert.equal(appSrc.includes('useNavigate'), true);
+    assert.equal(appSrc.includes('useLocation'), true);
+    assert.equal(appSrc.includes('useParams'), true);
+    assert.equal(appSrc.includes('<Link'), true);
+    assert.equal(appSrc.includes('activeTool'), false, 'activeTool state must be completely removed from App.tsx');
+    assert.equal(appSrc.includes('selectTool'), false, 'selectTool helper must be completely removed from App.tsx');
+
+    for (const expectedRoute of [
+      'path="/"',
+      'path="/dashboard"',
+      'path="/sms"',
+      'path="/sms/classes"',
+      'path="/sms/students"',
+      'path="/sms/students/:studentId"',
+      'path="/sms/attendance"',
+      'path="/sms/fees"',
+      'path="/sms/exams"',
+      'path="/sms/exams/:examId/report/:studentId"',
+      'path="/sms/timetable"',
+      'path="/sms/homework"',
+      'path="/sms/salary"',
+      'path="/sms/profile"',
+      'path="/super-admin"',
+      'path="/teacher/lesson-planner"',
+      'path="/teacher/question-paper"',
+      'path="/parent/dashboard"',
+      'path="/student/dashboard"',
+      'path="*"',
+    ]) {
+      assert.equal(appSrc.includes(expectedRoute), true, `Missing route definition: ${expectedRoute}`);
+    }
+
+    assert.equal(studentDirSrc.includes('initialStudentId'), true);
+    assert.equal(studentDirSrc.includes('onOpenStudentProfile'), true);
+    assert.equal(examsSrc.includes('initialExamId'), true);
+    assert.equal(examsSrc.includes('initialReportStudentId'), true);
+    assert.equal(examsSrc.includes('onOpenReportCardRoute'), true);
+
+    console.log('✅ PASS: React Router v7, ProtectedRoute RBAC, Dynamic URL Params & Smart Routing Tests');
   }
 
   console.log('\n🎉 ALL UNIT & SECURITY TESTS PASSED SUCCESSFULLY!');

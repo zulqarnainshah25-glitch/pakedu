@@ -27,8 +27,49 @@ export type ActiveToolId =
 
 export interface SmartRouteResult {
   targetTool: ActiveToolId;
+  targetPath: string;
   role: UserRole;
   reason: string;
+}
+
+export const TOOL_ROUTE_PATHS: Record<ActiveToolId, string> = {
+  dashboard: '/dashboard',
+  'sms-dashboard': '/sms',
+  'sms-classes': '/sms/classes',
+  'sms-students': '/sms/students',
+  'sms-attendance': '/sms/attendance',
+  'sms-onboarding': '/sms/onboarding',
+  'sms-staff': '/sms/staff',
+  'sms-profile': '/sms/profile',
+  'sms-fees': '/sms/fees',
+  'sms-exams': '/sms/exams',
+  'sms-timetable': '/sms/timetable',
+  'sms-homework': '/sms/homework',
+  'sms-certificates': '/sms/certificates',
+  'sms-payroll': '/sms/salary',
+  'sms-parent': '/parent/dashboard',
+  'sms-student-portal': '/student/dashboard',
+  'super-admin': '/super-admin',
+  'lesson-plan': '/teacher/lesson-planner',
+  'question-paper': '/teacher/question-paper',
+  'salary-calculator': '/tools/salary-calculator',
+  'leave-generator': '/tools/leave-generator',
+  'atlier-cv': '/tools/atlier-cv',
+  'service-book': '/tools/service-book',
+};
+
+export function getRoutePathForTool(tool: ActiveToolId): string {
+  return TOOL_ROUTE_PATHS[tool] || '/dashboard';
+}
+
+export function navigateBySmartRoute(
+  navigate: (to: string, options?: { replace?: boolean }) => void,
+  result: SmartRouteResult,
+  options: { replace?: boolean } = { replace: true }
+): string {
+  const path = result.targetPath || getRoutePathForTool(result.targetTool);
+  navigate(path, options);
+  return path;
 }
 
 /**
@@ -123,12 +164,11 @@ export function determineSmartRoute(
   if (!user && !profile) {
     return {
       targetTool: 'dashboard',
+      targetPath: getRoutePathForTool('dashboard'),
       role: 'teacher',
       reason: 'No authenticated user; routed to public tools.',
     };
   }
-
-  const email = (user?.email || profile?.email || '').trim().toLowerCase();
 
   // Condition A (Super Admin) - Via verified claim, profile role/flag, or verified profile owner email
   const hasSuperAdminFlag =
@@ -140,6 +180,7 @@ export function determineSmartRoute(
   if (hasSuperAdminFlag) {
     return {
       targetTool: 'super-admin',
+      targetPath: getRoutePathForTool('super-admin'),
       role: 'super-admin',
       reason: 'Condition A: Super Admin dashboard via verified administrative credentials.',
     };
@@ -161,6 +202,7 @@ export function determineSmartRoute(
   if (profile?.role === 'parent') {
     return {
       targetTool: 'sms-parent',
+      targetPath: getRoutePathForTool('sms-parent'),
       role: 'parent',
       reason: 'Condition P: Parent Portal access.',
     };
@@ -170,6 +212,7 @@ export function determineSmartRoute(
   if (profile?.role === 'student') {
     return {
       targetTool: 'sms-student-portal',
+      targetPath: getRoutePathForTool('sms-student-portal'),
       role: 'student',
       reason: 'Condition S: Student Portal access.',
     };
@@ -179,6 +222,7 @@ export function determineSmartRoute(
   if (profile?.status === 'pending') {
     return {
       targetTool: 'sms-onboarding',
+      targetPath: getRoutePathForTool('sms-onboarding'),
       role: profile.role || 'teacher',
       reason: 'Condition B: Application pending review.',
     };
@@ -191,12 +235,14 @@ export function determineSmartRoute(
     if (!isSchoolActive) {
       return {
         targetTool: 'sms-onboarding',
+        targetPath: getRoutePathForTool('sms-onboarding'),
         role: 'admin',
         reason: 'School is suspended or under review.',
       };
     }
     return {
       targetTool: 'sms-dashboard',
+      targetPath: getRoutePathForTool('sms-dashboard'),
       role: 'admin',
       reason: 'Condition C: Verified School Admin / Principal dashboard.',
     };
@@ -211,12 +257,14 @@ export function determineSmartRoute(
     if (!isSchoolActive) {
       return {
         targetTool: 'sms-onboarding',
+        targetPath: getRoutePathForTool('sms-onboarding'),
         role: 'teacher',
         reason: 'School is suspended or under review.',
       };
     }
     return {
       targetTool: 'sms-dashboard',
+      targetPath: getRoutePathForTool('sms-dashboard'),
       role: 'teacher',
       reason: 'Condition D: Verified Teacher dashboard.',
     };
@@ -225,6 +273,7 @@ export function determineSmartRoute(
   // Condition E (General User / Unaffiliated)
   return {
     targetTool: 'dashboard',
+    targetPath: getRoutePathForTool('dashboard'),
     role: 'teacher',
     reason: 'Condition E: General User (Teacher AI Studio public tools).',
   };

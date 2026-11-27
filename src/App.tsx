@@ -4,7 +4,16 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { onAuthStateChanged, signOut, User } from 'firebase/auth';
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  Link,
+  useNavigate,
+  useLocation,
+  useParams,
+} from 'react-router-dom';
 import { motion } from 'motion/react';
 import {
   BookOpen,
@@ -45,7 +54,7 @@ import {
   Cloud,
   Banknote,
 } from 'lucide-react';
-import { auth } from './firebase';
+import { ProtectedRoute, PortalAccessRole, RouteAccessContext } from './components/ProtectedRoute';
 import { LessonPlanTool } from './components/LessonPlanTool';
 import { SalaryCalculatorTool } from './components/SalaryCalculatorTool';
 import { LeaveApplicationTool } from './components/LeaveApplicationTool';
@@ -63,11 +72,14 @@ import {
   DemoUserSession,
   isPortalAccessAllowed,
   shouldTriggerSsoLogoutFromSearch,
-  parseIncomingSsoSessionFromSearch,
 } from './utils/authAndSso';
 import { SmsProvider, useSms } from './features/sms/context/SmsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { hasAdminCapabilities } from './utils/smartRouting';
+import {
+  hasAdminCapabilities,
+  getRoutePathForTool,
+  navigateBySmartRoute,
+} from './utils/smartRouting';
 import { ClassesManagement } from './features/sms/components/ClassesManagement';
 import { SmsDashboard } from './features/sms/components/SmsDashboard';
 import { StudentDirectory } from './features/sms/components/StudentDirectory';
@@ -308,6 +320,131 @@ const TOOL_METADATA: Record<ActiveToolId, ToolMeta> = {
 
 const DEMO_SESSION_STORAGE_KEY = 'pakedu_seld_demo_session_v1';
 
+export function getRouteMetaForPathname(pathname: string): { toolId: ActiveToolId; meta: ToolMeta } {
+  if (pathname === '/sms') {
+    return { toolId: 'sms-dashboard', meta: TOOL_METADATA['sms-dashboard'] };
+  }
+  if (pathname === '/sms/classes') {
+    return { toolId: 'sms-classes', meta: TOOL_METADATA['sms-classes'] };
+  }
+  if (pathname === '/sms/students' || pathname.startsWith('/sms/students/')) {
+    return { toolId: 'sms-students', meta: TOOL_METADATA['sms-students'] };
+  }
+  if (pathname === '/sms/attendance') {
+    return { toolId: 'sms-attendance', meta: TOOL_METADATA['sms-attendance'] };
+  }
+  if (pathname === '/sms/onboarding') {
+    return { toolId: 'sms-onboarding', meta: TOOL_METADATA['sms-onboarding'] };
+  }
+  if (pathname === '/sms/staff') {
+    return { toolId: 'sms-staff', meta: TOOL_METADATA['sms-staff'] };
+  }
+  if (pathname === '/sms/profile') {
+    return { toolId: 'sms-profile', meta: TOOL_METADATA['sms-profile'] };
+  }
+  if (pathname === '/sms/fees') {
+    return { toolId: 'sms-fees', meta: TOOL_METADATA['sms-fees'] };
+  }
+  if (pathname === '/sms/exams' || pathname.startsWith('/sms/exams/')) {
+    return { toolId: 'sms-exams', meta: TOOL_METADATA['sms-exams'] };
+  }
+  if (pathname === '/sms/timetable') {
+    return { toolId: 'sms-timetable', meta: TOOL_METADATA['sms-timetable'] };
+  }
+  if (pathname === '/sms/homework') {
+    return { toolId: 'sms-homework', meta: TOOL_METADATA['sms-homework'] };
+  }
+  if (pathname === '/sms/certificates') {
+    return { toolId: 'sms-certificates', meta: TOOL_METADATA['sms-certificates'] };
+  }
+  if (pathname === '/sms/salary' || pathname === '/sms/payroll') {
+    return { toolId: 'sms-payroll', meta: TOOL_METADATA['sms-payroll'] };
+  }
+  if (pathname === '/parent/dashboard') {
+    return { toolId: 'sms-parent', meta: TOOL_METADATA['sms-parent'] };
+  }
+  if (pathname === '/student/dashboard') {
+    return { toolId: 'sms-student-portal', meta: TOOL_METADATA['sms-student-portal'] };
+  }
+  if (pathname === '/super-admin') {
+    return { toolId: 'super-admin', meta: TOOL_METADATA['super-admin'] };
+  }
+  if (pathname === '/teacher/lesson-planner') {
+    return { toolId: 'lesson-plan', meta: TOOL_METADATA['lesson-plan'] };
+  }
+  if (pathname === '/teacher/question-paper') {
+    return { toolId: 'question-paper', meta: TOOL_METADATA['question-paper'] };
+  }
+  if (pathname === '/tools/salary-calculator') {
+    return { toolId: 'salary-calculator', meta: TOOL_METADATA['salary-calculator'] };
+  }
+  if (pathname === '/tools/leave-generator') {
+    return { toolId: 'leave-generator', meta: TOOL_METADATA['leave-generator'] };
+  }
+  if (pathname === '/tools/atlier-cv') {
+    return { toolId: 'atlier-cv', meta: TOOL_METADATA['atlier-cv'] };
+  }
+  if (pathname === '/tools/service-book') {
+    return { toolId: 'service-book', meta: TOOL_METADATA['service-book'] };
+  }
+  return { toolId: 'dashboard', meta: TOOL_METADATA.dashboard };
+}
+
+export function isRoutePathMatch(pathname: string, targetPath: string): boolean {
+  if (targetPath === '/sms/students') {
+    return pathname === '/sms/students' || pathname.startsWith('/sms/students/');
+  }
+  if (targetPath === '/sms/exams') {
+    return pathname === '/sms/exams' || pathname.startsWith('/sms/exams/');
+  }
+  if (targetPath === '/sms/salary' || targetPath === '/sms/payroll') {
+    return pathname === '/sms/salary' || pathname === '/sms/payroll';
+  }
+  return pathname === targetPath;
+}
+
+const StudentDirectoryRoute: React.FC<{
+  initialClassId?: string;
+  onNavigateToAttendance: (classId?: string) => void;
+}> = ({ initialClassId, onNavigateToAttendance }) => {
+  const { studentId } = useParams<{ studentId?: string }>();
+  const navigate = useNavigate();
+  return (
+    <StudentDirectory
+      onBack={() => navigate('/sms')}
+      onNavigateToAttendance={onNavigateToAttendance}
+      initialClassId={initialClassId}
+      initialStudentId={studentId}
+      onOpenStudentProfile={(id) => {
+        if (id) {
+          navigate(`/sms/students/${id}`);
+        } else {
+          navigate('/sms/students');
+        }
+      }}
+    />
+  );
+};
+
+const ExamsResultsRoute: React.FC = () => {
+  const { examId, studentId } = useParams<{ examId?: string; studentId?: string }>();
+  const navigate = useNavigate();
+  return (
+    <ExamsResults
+      onBack={() => navigate('/sms')}
+      initialExamId={examId}
+      initialReportStudentId={studentId}
+      onOpenReportCardRoute={(nextExamId, nextStudentId) => {
+        if (nextExamId && nextStudentId) {
+          navigate(`/sms/exams/${nextExamId}/report/${nextStudentId}`);
+        } else {
+          navigate('/sms/exams');
+        }
+      }}
+    />
+  );
+};
+
 function AppContent() {
   const {
     userRole,
@@ -343,10 +480,23 @@ function AppContent() {
     signOutUser,
   } = useAuth();
 
-  const [activeTool, setActiveTool] = useState<ActiveToolId>('dashboard');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routeLocationState =
+    (location.state as { routeError?: string; attemptedPath?: string } | null) || null;
+  const routeError = routeLocationState?.routeError || null;
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [smsDashboardTab, setSmsDashboardTab] = useState<'overview' | 'notifications'>('overview');
   const [noticesModalOpen, setNoticesModalOpen] = useState(false);
+
+  // Close mobile drawer and scroll to top on route navigation
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [location.pathname]);
 
   // Prevent background page scroll when mobile drawer is open on Android / mobile viewports
   useEffect(() => {
@@ -359,7 +509,7 @@ function AppContent() {
       };
     }
   }, [mobileMenuOpen]);
-  const [pendingSmsRedirect, setPendingSmsRedirect] = useState(false);
+
   const [demoSession, setDemoSession] = useState<DemoUserSession | null>(() => {
     // Demo session is strictly disabled in production builds (gated behind DEV)
     if (!import.meta.env.DEV) {
@@ -390,13 +540,6 @@ function AppContent() {
   const [smsOnboardingTab, setSmsOnboardingTab] = useState<'register' | 'join'>('register');
   const [superAdminTab, setSuperAdminTab] = useState<SuperAdminTab>('analytics');
 
-  // Focused Workspace Modes:
-  // 1. Parent User: Strictly read-only access isolated inside Child Progress Portal
-  // 1B. Student User: Strictly read-only access isolated inside Student Portal
-  // 2. Super Admin: Platform oversight ONLY (Overview Analytics, Schools Fleet, Notice Board) + Read-Only Impersonation
-  // 3. Affiliated User: Real Auth mode, verified with active status & schoolId -> Focus strictly on SMS operations
-  // 4. Unaffiliated User: Real Auth mode, but not affiliated with a school -> Show AI Studio & onboarding prompt
-  // 5. Demo Mode: All tools visible for evaluation & sandbox testing
   const isParentUser = !demoMode && currentUserProfile?.role === 'parent';
   const isStudentUser = !demoMode && currentUserProfile?.role === 'student';
 
@@ -430,8 +573,6 @@ function AppContent() {
     return hasAdminCapabilities(currentUser, currentUserProfile, registeredSchools);
   }, [currentUser, currentUserProfile, registeredSchools, isSuperAdminSession]);
 
-  // Focused Workspace Modes:
-  // Affiliated Staff User: Real Auth mode, verified with active status & schoolId, or school-level admin privileges (excludes Super Admin, Parents & Students)
   const isAffiliatedUser =
     !demoMode &&
     !isParentUser &&
@@ -441,87 +582,84 @@ function AppContent() {
     (isAdminUser ||
       (currentUserProfile?.status === 'active' && Boolean(currentUserProfile?.schoolId)));
 
-  const isUnaffiliatedUser =
-    !demoMode &&
-    !isParentUser &&
-    !isStudentUser &&
-    !isSuperAdminSession &&
-    !isImpersonating &&
-    !isAdminUser &&
-    (!currentUser ||
-      currentUserProfile?.status !== 'active' ||
-      !currentUserProfile?.schoolId);
+  const effectiveRole: PortalAccessRole = useMemo(() => {
+    if (isParentUser) return 'parent';
+    if (isStudentUser) return 'student';
+    if (isSuperAdminActive) return 'super-admin';
+    if (demoMode) {
+      if (userRole === 'super-admin') return 'super-admin';
+      if (userRole === 'admin') return 'admin';
+      return 'teacher';
+    }
+    if (isAdminUser || (currentUserProfile?.role === 'admin' && isAffiliatedUser)) {
+      return 'admin';
+    }
+    if (currentUserProfile?.role === 'principal' && isAffiliatedUser) {
+      return 'principal';
+    }
+    if (isAffiliatedUser) {
+      return 'teacher';
+    }
+    return 'general';
+  }, [
+    isParentUser,
+    isStudentUser,
+    isSuperAdminActive,
+    demoMode,
+    userRole,
+    isAdminUser,
+    currentUserProfile?.role,
+    isAffiliatedUser,
+  ]);
 
-  // Strict Parent Portal isolation: parent accounts stay locked on 'sms-parent'
-  useEffect(() => {
-    if (isParentUser && activeTool !== 'sms-parent') {
-      setActiveTool('sms-parent');
-    }
-  }, [isParentUser, activeTool]);
+  const defaultHomePath = useMemo(() => {
+    if (isParentUser) return '/parent/dashboard';
+    if (isStudentUser) return '/student/dashboard';
+    if (isSuperAdminActive) return isImpersonating ? '/sms' : '/super-admin';
+    if (isAffiliatedUser && !showPublicTools) return '/sms';
+    return '/dashboard';
+  }, [isParentUser, isStudentUser, isSuperAdminActive, isImpersonating, isAffiliatedUser, showPublicTools]);
 
-  // Strict Student Portal isolation: student accounts stay locked on 'sms-student-portal'
-  useEffect(() => {
-    if (isStudentUser && activeTool !== 'sms-student-portal') {
-      setActiveTool('sms-student-portal');
-    }
-  }, [isStudentUser, activeTool]);
+  const isRouteActive = useCallback(
+    (targetPath: string) => isRoutePathMatch(location.pathname, targetPath),
+    [location.pathname]
+  );
 
-  // Strict Super Admin RBAC isolation: platform oversight & Salary/Payroll ONLY, or 'sms-dashboard' during read-only view;
-  // conversely, NEVER allow non-super-admin users to stay on 'super-admin', and restrict 'sms-payroll' to School Admin / Super Admin.
-  useEffect(() => {
-    if (!isSuperAdminActive) {
-      if (activeTool === 'super-admin') {
-        setActiveTool(
-          isParentUser
-            ? 'sms-parent'
-            : isStudentUser
-            ? 'sms-student-portal'
-            : isAffiliatedUser
-            ? 'sms-dashboard'
-            : 'dashboard'
-        );
-      } else if (activeTool === 'sms-payroll' && !canAccessSalaryPayroll) {
-        setActiveTool(
-          isParentUser
-            ? 'sms-parent'
-            : isStudentUser
-            ? 'sms-student-portal'
-            : isAffiliatedUser
-            ? 'sms-dashboard'
-            : 'dashboard'
-        );
-      }
-      return;
-    }
-    if (isImpersonating) {
-      if (activeTool !== 'sms-dashboard') {
-        setActiveTool('sms-dashboard');
-      }
-      return;
-    }
-    if (activeTool !== 'super-admin' && activeTool !== 'sms-payroll') {
-      setActiveTool('super-admin');
-    }
-  }, [isSuperAdminActive, isImpersonating, activeTool, isParentUser, isStudentUser, isAffiliatedUser, canAccessSalaryPayroll]);
+  const { meta: currentToolMeta } = useMemo(
+    () => getRouteMetaForPathname(location.pathname),
+    [location.pathname]
+  );
 
-  // When an affiliated staff user enters the portal, ensure they land on the focused SMS dashboard unless they toggle public tools
-  useEffect(() => {
-    if (
-      isAffiliatedUser &&
-      !showPublicTools &&
-      !activeTool.startsWith('sms-') &&
-      !isImpersonating
-    ) {
-      setActiveTool('sms-dashboard');
-    }
-  }, [isAffiliatedUser, showPublicTools, activeTool, isImpersonating]);
+  const routeAccessContext: RouteAccessContext = useMemo(
+    () => ({
+      isAuthenticated: Boolean(currentUser || (import.meta.env.DEV && demoSession)),
+      isInitializing: authLoading,
+      effectiveRole,
+      isAffiliated: isAffiliatedUser,
+      isImpersonating,
+      canCollectFee,
+      canAccessSalaryPayroll,
+      demoMode,
+    }),
+    [
+      currentUser,
+      demoSession,
+      authLoading,
+      effectiveRole,
+      isAffiliatedUser,
+      isImpersonating,
+      canCollectFee,
+      canAccessSalaryPayroll,
+      demoMode,
+    ]
+  );
 
-  // When an unaffiliated user attempts to access an SMS internal sub-tool, guide them to the onboarding screen
+  // If Super Admin navigates back to /super-admin via browser history while impersonating, end read-only impersonation cleanly
   useEffect(() => {
-    if (isUnaffiliatedUser && activeTool.startsWith('sms-') && activeTool !== 'sms-onboarding') {
-      setActiveTool('sms-onboarding');
+    if (isSuperAdminActive && isImpersonating && location.pathname === '/super-admin') {
+      exitImpersonation();
     }
-  }, [isUnaffiliatedUser, activeTool]);
+  }, [isSuperAdminActive, isImpersonating, location.pathname, exitImpersonation]);
 
   useEffect(() => {
     let active = true;
@@ -535,14 +673,14 @@ function AppContent() {
     };
   }, []);
 
+  const hasInitialRoutedRef = useRef<string | null>(null);
+
   const performUnifiedLogout = useCallback(async (customNotice?: string) => {
     hasInitialRoutedRef.current = null;
     setDemoSession(null);
     setDemoMode(false);
-    setActiveTool('dashboard');
     setSuperAdminTab('analytics');
     setShowPublicTools(false);
-    setPendingSmsRedirect(false);
     setSmsFilterClassId(undefined);
     setSmsAttendanceClassId(undefined);
     setMobileMenuOpen(false);
@@ -557,7 +695,11 @@ function AppContent() {
       sessionStorage.removeItem(DEMO_SESSION_STORAGE_KEY);
       sessionStorage.removeItem('pakedu_active_tool');
       sessionStorage.removeItem('pakedu_signup_sms_role');
-      if (typeof window !== 'undefined' && (window.location.pathname !== '/' || window.location.search)) {
+      if (
+        typeof window !== 'undefined' &&
+        window.location.protocol !== 'file:' &&
+        (window.location.pathname !== '/' || window.location.search)
+      ) {
         window.history.replaceState({}, document.title, '/');
       }
     } catch {
@@ -568,14 +710,15 @@ function AppContent() {
     } catch (err) {
       console.error('Sign-out error:', err);
     }
+    navigate('/', { replace: true });
     setAuthModalMode('signin');
     setLogoutNotice(
       customNotice ||
         'Aap successfully Logout ho chuke hain. Portal kholne ke liye dobara Sign In karein.'
     );
-  }, [signOutUser, setDemoMode, setUserRole, exitImpersonation, resetSmsSessionState]);
+  }, [signOutUser, setDemoMode, setUserRole, exitImpersonation, resetSmsSessionState, navigate]);
 
-  // Listen to SSO query parameters (logout trigger only; unverified ?sso_email is disabled)
+  // Listen to SSO query parameters (logout trigger only)
   useEffect(() => {
     const searchStr = typeof window !== 'undefined' ? window.location.search : '';
     const triggeredByAtlierLogout = shouldTriggerSsoLogoutFromSearch(searchStr);
@@ -589,9 +732,7 @@ function AppContent() {
     }
   }, [performUnifiedLogout]);
 
-  // Automatic Smart Login Routing System & Role Transition Reset
-  const hasInitialRoutedRef = useRef<string | null>(null);
-
+  // Automatic Smart Login Routing System & Role Transition Reset (React Router navigate)
   useEffect(() => {
     if (!authLoading && currentUser && currentUserProfile && currentUserProfile.uid === currentUser.uid && smartRoute) {
       setLogoutNotice(null);
@@ -613,48 +754,54 @@ function AppContent() {
         exitImpersonation();
       }
 
-      // Check if routing for this user + role/status state has already occurred
       const routeSignature = `${currentUser.uid}:${currentUserProfile.role || ''}:${currentUserProfile.status || ''}:${smartRoute.targetTool}`;
-      if (hasInitialRoutedRef.current === routeSignature) {
+      const previousSignature = hasInitialRoutedRef.current;
+      if (previousSignature === routeSignature) {
         return;
       }
       hasInitialRoutedRef.current = routeSignature;
       setShowPublicTools(false);
       setSuperAdminTab('analytics');
 
-      // Clear previous role's cached active tool on fresh user/role authentication
-      try {
-        sessionStorage.removeItem('pakedu_active_tool');
-      } catch {}
+      const resolvedRoute = resolvedSuperAdmin
+        ? { ...smartRoute, targetTool: 'super-admin' as const, targetPath: '/super-admin', role: 'super-admin' as const }
+        : smartRoute.targetTool === 'sms-onboarding'
+        ? { ...smartRoute, targetPath: '/sms/onboarding' }
+        : smartRoute.role === 'admin' || isAdminUser
+        ? { ...smartRoute, targetTool: 'sms-dashboard' as const, targetPath: '/sms', role: 'admin' as const }
+        : { ...smartRoute, targetPath: smartRoute.targetPath || getRoutePathForTool(smartRoute.targetTool) };
 
-      // Condition A: Super Admin (verified from current auth/profile only)
       if (resolvedSuperAdmin) {
         setUserRole('super-admin');
-        setActiveTool('super-admin');
-        return;
-      }
-
-      // Condition B: Pending Approval / Unaffiliated (Force to onboarding "Application Under Review")
-      if (smartRoute.targetTool === 'sms-onboarding') {
-        setUserRole(smartRoute.role);
-        setActiveTool('sms-onboarding');
-        return;
-      }
-
-      // Condition C: Verified School Admin -> Force-reset to default landing view (SMS Command Center)
-      if (smartRoute.role === 'admin' || isAdminUser) {
+      } else if (smartRoute.role === 'admin' || isAdminUser) {
         setUserRole('admin');
-        setActiveTool('sms-dashboard');
-        return;
+      } else {
+        setUserRole(smartRoute.role);
       }
 
-      // Condition D: Verified Teacher / Parent / Student / General User -> Force-reset to role default view
-      setUserRole(smartRoute.role);
-      setActiveTool(smartRoute.targetTool);
+      const isAtLandingEntry =
+        location.pathname === '/' ||
+        location.pathname === '' ||
+        location.pathname.endsWith('/index.html');
+
+      if (isAtLandingEntry || previousSignature !== null) {
+        navigateBySmartRoute(navigate, resolvedRoute, { replace: true });
+      }
     } else if (!currentUser) {
       hasInitialRoutedRef.current = null;
     }
-  }, [authLoading, currentUser, currentUserProfile, smartRoute, isImpersonating, isAdminUser, setUserRole, exitImpersonation]);
+  }, [
+    authLoading,
+    currentUser,
+    currentUserProfile,
+    smartRoute,
+    isImpersonating,
+    isAdminUser,
+    setUserRole,
+    exitImpersonation,
+    location.pathname,
+    navigate,
+  ]);
 
   const handleDemoSessionSuccess = (session: DemoUserSession) => {
     // Demo sessions are strictly restricted to local development environments
@@ -667,10 +814,8 @@ function AppContent() {
     } catch {
       // Ignore storage errors
     }
-    // Demo sessions strictly access public AI Studio tools; never Super Admin or SMS
-    setPendingSmsRedirect(false);
     setUserRole('teacher');
-    setActiveTool('dashboard');
+    navigate('/dashboard', { replace: true });
   };
 
   const toggleDarkMode = () => {
@@ -705,21 +850,13 @@ function AppContent() {
     smsRole?: 'admin' | 'teacher'
   ) => {
     if (intent === 'parent') {
-      setPendingSmsRedirect(false);
       setUserRole('parent');
-      setActiveTool('sms-parent');
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      navigate('/parent/dashboard', { replace: true });
       return;
     }
     if (intent === 'student') {
-      setPendingSmsRedirect(false);
       setUserRole('student');
-      setActiveTool('sms-student-portal');
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      navigate('/student/dashboard', { replace: true });
       return;
     }
     if (intent === 'sms') {
@@ -728,98 +865,9 @@ function AppContent() {
       try {
         sessionStorage.setItem('pakedu_signup_sms_role', targetTab);
       } catch {}
-      setPendingSmsRedirect(true);
-      setActiveTool('sms-onboarding');
-      if (typeof window !== 'undefined') {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      navigate('/sms/onboarding', { replace: true });
     } else {
-      setPendingSmsRedirect(false);
-      setActiveTool('dashboard');
-    }
-  };
-
-  const selectTool = (tool: ActiveToolId) => {
-    // Strict Parent Isolation: parents may only view the read-only Child Progress Portal
-    if (isParentUser && tool !== 'sms-parent') {
-      setActiveTool('sms-parent');
-      setMobileMenuOpen(false);
-      return;
-    }
-
-    // Strict Student Isolation: students may only view their own read-only Student Portal
-    if (isStudentUser && tool !== 'sms-student-portal') {
-      setActiveTool('sms-student-portal');
-      setMobileMenuOpen(false);
-      return;
-    }
-
-    // Strict Super Admin RBAC Isolation: block all tenant Student/Class/Attendance/Fee/Exam/Staff modules (allow Platform Console + Salary & Payroll)
-    if (isSuperAdminActive) {
-      if (isImpersonating) {
-        if (tool === 'super-admin') {
-          exitImpersonation();
-          setActiveTool('super-admin');
-        } else {
-          setActiveTool('sms-dashboard');
-        }
-      } else if (tool === 'sms-payroll') {
-        setActiveTool('sms-payroll');
-      } else {
-        setActiveTool('super-admin');
-      }
-      setMobileMenuOpen(false);
-      return;
-    }
-
-    // Strict Salary & Payroll RBAC guard: only School Admin or Super Admin
-    if (tool === 'sms-payroll' && !canAccessSalaryPayroll) {
-      setActiveTool(isAffiliatedUser ? 'sms-dashboard' : 'sms-onboarding');
-      setMobileMenuOpen(false);
-      return;
-    }
-
-    // SMS & Super Admin Access Protection:
-    if (!demoMode && (tool.startsWith('sms-') || tool === 'super-admin')) {
-      if (!currentUser) {
-        setPendingSmsRedirect(true);
-        openAuthModal('signin');
-        return;
-      }
-      if (tool === 'super-admin') {
-        const canSuperAdmin =
-          isSuperAdmin ||
-          userRole === 'super-admin' ||
-          Boolean(currentUserProfile?.isSuperAdmin);
-        if (!canSuperAdmin) {
-          setActiveTool('sms-onboarding');
-          return;
-        }
-      } else if (tool !== 'sms-onboarding') {
-        const canAccessSms =
-          isSuperAdmin ||
-          isImpersonating ||
-          isAdminUser ||
-          currentUserProfile?.status === 'active';
-
-        if (!canAccessSms) {
-          setActiveTool('sms-onboarding');
-          setMobileMenuOpen(false);
-          if (typeof window !== 'undefined') {
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-          }
-          return;
-        }
-      }
-    }
-    setActiveTool(tool);
-    try {
-      sessionStorage.setItem('pakedu_active_tool', tool);
-    } catch {}
-    setMobileMenuOpen(false);
-    // Smooth scroll to top when switching views
-    if (typeof window !== 'undefined') {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      navigate('/dashboard', { replace: true });
     }
   };
 
@@ -887,15 +935,40 @@ function AppContent() {
 
   if (portalAccess.mustShowLoginGate) {
     return (
-      <AuthModal
-        isOpen={true}
-        isMandatoryGate={true}
-        logoutNotice={logoutNotice}
-        onClose={() => {}}
-        onDemoSessionSuccess={handleDemoSessionSuccess}
-        onSignupSuccess={handleSignupSuccess}
-        initialMode={authModalMode}
-      />
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <AuthModal
+              isOpen={true}
+              isMandatoryGate={true}
+              logoutNotice={logoutNotice}
+              onClose={() => {}}
+              onDemoSessionSuccess={handleDemoSessionSuccess}
+              onSignupSuccess={handleSignupSuccess}
+              initialMode={authModalMode}
+            />
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <Navigate
+              to="/"
+              replace
+              state={
+                location.pathname !== '/' &&
+                !location.pathname.endsWith('/index.html')
+                  ? {
+                      routeError: 'Please sign in to access this page.',
+                      attemptedPath: location.pathname,
+                    }
+                  : null
+              }
+            />
+          }
+        />
+      </Routes>
     );
   }
 
@@ -905,19 +978,6 @@ function AppContent() {
     ? `${demoSession.displayName}`
     : 'Authenticated Educator';
 
-  const guardedTool: ActiveToolId =
-    (activeTool === 'super-admin' && !isSuperAdminActive) ||
-    (activeTool === 'sms-payroll' && !canAccessSalaryPayroll)
-      ? isParentUser
-        ? 'sms-parent'
-        : isStudentUser
-        ? 'sms-student-portal'
-        : isAffiliatedUser
-        ? 'sms-dashboard'
-        : 'dashboard'
-      : activeTool;
-
-  const currentToolMeta = TOOL_METADATA[guardedTool];
   const shellIdentityKey = `${currentUser?.uid || demoSession?.uid || 'anon'}-${currentUserProfile?.role || userRole}`;
 
   return (
@@ -971,22 +1031,9 @@ function AppContent() {
         <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">
           {/* Sidebar Brand Header */}
           <div className="px-3 py-4 border-b border-[rgba(255,253,249,0.10)] flex items-center justify-between gap-2">
-            <div
-              onClick={() =>
-                selectTool(
-                  isParentUser
-                    ? 'sms-parent'
-                    : isStudentUser
-                    ? 'sms-student-portal'
-                    : isSuperAdminActive
-                    ? isImpersonating
-                      ? 'sms-dashboard'
-                      : 'super-admin'
-                    : isAffiliatedUser && !showPublicTools
-                    ? 'sms-dashboard'
-                    : 'dashboard'
-                )
-              }
+            <Link
+              to={defaultHomePath}
+              onClick={() => setMobileMenuOpen(false)}
               className="flex items-center gap-2.5 flex-1 min-w-0 pr-2 cursor-pointer group"
             >
               <div className="w-10 h-10 rounded-xl bg-[#C2410C] text-[#FFFDF9] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
@@ -1003,7 +1050,7 @@ function AppContent() {
               <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#C2410C]/25 text-[#FED7AA] border border-[#C2410C]/40">
                 ENTERPRISE
               </span>
-            </div>
+            </Link>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
@@ -1018,17 +1065,17 @@ function AppContent() {
           <div className="px-3 py-3 space-y-1 overflow-x-hidden">
             {/* Dashboard / Home Link - HIDDEN for Affiliated Staff Users, Parents, Students & Super Admin */}
             {!isParentUser && !isStudentUser && !isSuperAdminActive && (!isAffiliatedUser || showPublicTools) && (
-              <button
-                type="button"
-                onClick={() => selectTool('dashboard')}
+              <Link
+                to="/dashboard"
+                onClick={() => setMobileMenuOpen(false)}
                 className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                  activeTool === 'dashboard'
+                  isRouteActive('/dashboard')
                     ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                     : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                 }`}
               >
                 <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                  <Home className={`w-4 h-4 shrink-0 ${activeTool === 'dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                  <Home className={`w-4 h-4 shrink-0 ${isRouteActive('/dashboard') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                   <div className="min-w-0 flex-1">
                     <span className="block truncate">Platform Overview</span>
                     <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1036,7 +1083,7 @@ function AppContent() {
                     </span>
                   </div>
                 </div>
-              </button>
+              </Link>
             )}
 
             {/* Strict Read-Only Parent Portal Section */}
@@ -1048,11 +1095,11 @@ function AppContent() {
                     Read-Only
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-parent')}
+                <Link
+                  to="/parent/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-parent'
+                    isRouteActive('/parent/dashboard')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
@@ -1066,7 +1113,7 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
               </>
             )}
 
@@ -1079,11 +1126,11 @@ function AppContent() {
                     Read-Only
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-student-portal')}
+                <Link
+                  to="/student/dashboard"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-student-portal'
+                    isRouteActive('/student/dashboard')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
@@ -1097,7 +1144,7 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
               </>
             )}
 
@@ -1124,18 +1171,18 @@ function AppContent() {
                   }`}>
                     {userRole === 'admin' ? '👑 School Admin' : '🧑‍🏫 Faculty'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-onboarding')}
+                  <Link
+                    to="/sms/onboarding"
+                    onClick={() => setMobileMenuOpen(false)}
                     className="shrink-0 ml-auto text-[#FED7AA] hover:text-[#FAF8F5] font-semibold hover:underline cursor-pointer"
                   >
                     Switch School
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}
 
-            {/* Strict Super Admin Sidebar: ONLY Platform Overview, Super Admin Fleet, and Notice Board (or Read-Only School View) */}
+            {/* Strict Super Admin Sidebar: ONLY Platform Overview, Super Admin Fleet, Notice Board & Salary/Payroll */}
             {isSuperAdminActive && !isImpersonating && (
               <>
                 <div className="pt-1 pb-1 px-2.5 text-[10px] font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between gap-2">
@@ -1145,20 +1192,20 @@ function AppContent() {
                   </span>
                 </div>
 
-                <button
-                  type="button"
+                <Link
+                  to="/super-admin"
                   onClick={() => {
                     setSuperAdminTab('analytics');
-                    selectTool('super-admin');
+                    setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'super-admin' && superAdminTab === 'analytics'
+                    isRouteActive('/super-admin') && superAdminTab === 'analytics'
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <TrendingUp className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'analytics' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
+                    <TrendingUp className={`w-4 h-4 shrink-0 ${isRouteActive('/super-admin') && superAdminTab === 'analytics' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">Platform Overview</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]">
@@ -1166,22 +1213,22 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
-                <button
-                  type="button"
+                <Link
+                  to="/super-admin"
                   onClick={() => {
                     setSuperAdminTab('directory');
-                    selectTool('super-admin');
+                    setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
+                    isRouteActive('/super-admin') && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
                       ? 'bg-[#7F1D1D] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-rose-200/80 hover:text-white hover:bg-rose-950/40 pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <ShieldAlert className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests') ? 'text-rose-400' : 'text-rose-400/80'}`} />
+                    <ShieldAlert className={`w-4 h-4 shrink-0 ${isRouteActive('/super-admin') && (superAdminTab === 'directory' || superAdminTab === 'pending_requests') ? 'text-rose-400' : 'text-rose-400/80'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate font-bold text-rose-200">Super Admin Fleet</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]">
@@ -1192,22 +1239,22 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40">
                     Root
                   </span>
-                </button>
+                </Link>
 
-                <button
-                  type="button"
+                <Link
+                  to="/super-admin"
                   onClick={() => {
                     setSuperAdminTab('notices');
-                    selectTool('super-admin');
+                    setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'super-admin' && superAdminTab === 'notices'
+                    isRouteActive('/super-admin') && superAdminTab === 'notices'
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <Megaphone className={`w-4 h-4 shrink-0 ${activeTool === 'super-admin' && superAdminTab === 'notices' ? 'text-amber-400' : 'text-[#D6CCC2]'}`} />
+                    <Megaphone className={`w-4 h-4 shrink-0 ${isRouteActive('/super-admin') && superAdminTab === 'notices' ? 'text-amber-400' : 'text-[#D6CCC2]'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">Notice Board</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]">
@@ -1215,19 +1262,19 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-payroll')}
+                <Link
+                  to="/sms/salary"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-payroll'
+                    isRouteActive('/sms/salary')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#E7E0D4] hover:text-white hover:bg-[#58181D]/60 pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <Banknote className={`w-4 h-4 shrink-0 ${activeTool === 'sms-payroll' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
+                    <Banknote className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/salary') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">Salary &amp; Payroll</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]">
@@ -1238,7 +1285,7 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
                     Payroll
                   </span>
-                </button>
+                </Link>
               </>
             )}
 
@@ -1251,9 +1298,9 @@ function AppContent() {
                   <div className="font-semibold text-white truncate">{activeSchool?.name}</div>
                   <div className="text-[11px] text-amber-200/80 mt-0.5 truncate">SEMIS {activeSchool?.semisCode}</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-dashboard')}
+                <Link
+                  to="/sms"
+                  onClick={() => setMobileMenuOpen(false)}
                   className="w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5 cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
@@ -1263,13 +1310,13 @@ function AppContent() {
                       <span className="text-[11px] block truncate text-[#D6CCC2]">Strict Read-Only Oversight</span>
                     </div>
                   </div>
-                </button>
+                </Link>
                 <button
                   type="button"
                   onClick={() => {
                     exitImpersonation();
                     setSuperAdminTab('directory');
-                    setActiveTool('super-admin');
+                    navigate('/super-admin', { replace: true });
                   }}
                   className="w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm text-rose-300 hover:text-white hover:bg-rose-950/40 pl-3 transition cursor-pointer"
                 >
@@ -1308,17 +1355,17 @@ function AppContent() {
                   )}
                 </div>
                 {/* SMS Command Center / My Dashboard */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-dashboard')}
+                <Link
+                  to="/sms"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-dashboard'
+                    isRouteActive('/sms')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <SchoolIcon className={`w-4 h-4 shrink-0 ${activeTool === 'sms-dashboard' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <SchoolIcon className={`w-4 h-4 shrink-0 ${isRouteActive('/sms') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'My Dashboard' : 'SMS Command Center'}
@@ -1328,20 +1375,20 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
                 {/* Classes & Sections / My Classes */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-classes')}
+                <Link
+                  to="/sms/classes"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-classes'
+                    isRouteActive('/sms/classes')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <GraduationCap className={`w-4 h-4 shrink-0 ${activeTool === 'sms-classes' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <GraduationCap className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/classes') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'My Classes' : 'Classes & Sections'}
@@ -1358,23 +1405,23 @@ function AppContent() {
                   }`}>
                     {userRole === 'admin' ? 'Admin' : 'Assigned'}
                   </span>
-                </button>
+                </Link>
 
                 {/* Student Register (SIS) / My Students */}
-                <button
-                  type="button"
+                <Link
+                  to="/sms/students"
                   onClick={() => {
                     setSmsFilterClassId(undefined);
-                    selectTool('sms-students');
+                    setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-students'
+                    isRouteActive('/sms/students')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <Users className={`w-4 h-4 shrink-0 ${activeTool === 'sms-students' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <Users className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/students') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'My Students' : 'Student Register (SIS)'}
@@ -1387,23 +1434,23 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     {userRole === 'teacher' ? 'Roster' : 'Active'}
                   </span>
-                </button>
+                </Link>
 
                 {/* Daily Attendance Register / Take Attendance */}
-                <button
-                  type="button"
+                <Link
+                  to="/sms/attendance"
                   onClick={() => {
                     setSmsAttendanceClassId(undefined);
-                    selectTool('sms-attendance');
+                    setMobileMenuOpen(false);
                   }}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-attendance'
+                    isRouteActive('/sms/attendance')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <CalendarCheck2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-attendance' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <CalendarCheck2 className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/attendance') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'Take Attendance' : 'Daily Attendance'}
@@ -1416,20 +1463,20 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     {userRole === 'teacher' ? 'Roll Call' : 'Active'}
                   </span>
-                </button>
+                </Link>
 
                 {/* Exams & Results (Admin Setup + Teacher Assigned-Class Marks) */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-exams')}
+                <Link
+                  to="/sms/exams"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-exams'
+                    isRouteActive('/sms/exams')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <Award className={`w-4 h-4 shrink-0 ${activeTool === 'sms-exams' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <Award className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/exams') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">Exams &amp; Results</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1440,20 +1487,20 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
                     {userRole === 'teacher' ? 'Marks' : 'Phase B'}
                   </span>
-                </button>
+                </Link>
 
                 {/* Phase D: Class Timetable */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-timetable')}
+                <Link
+                  to="/sms/timetable"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-timetable'
+                    isRouteActive('/sms/timetable')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <CalendarDays className={`w-4 h-4 shrink-0 ${activeTool === 'sms-timetable' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <CalendarDays className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/timetable') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">Timetable &amp; Routine</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1464,20 +1511,20 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#C2410C]/20 text-[#FED7AA] border border-[#C2410C]/30">
                     Phase D
                   </span>
-                </button>
+                </Link>
 
                 {/* Phase D: Daily Homework Diary */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-homework')}
+                <Link
+                  to="/sms/homework"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-homework'
+                    isRouteActive('/sms/homework')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'sms-homework' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <BookOpen className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/homework') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">Homework &amp; Diary</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1488,21 +1535,21 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                     Diary
                   </span>
-                </button>
+                </Link>
 
                 {/* Phase D (Admin Only): Transfer & Character Certificates */}
                 {userRole === 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-certificates')}
+                  <Link
+                    to="/sms/certificates"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
-                      activeTool === 'sms-certificates'
+                      isRouteActive('/sms/certificates')
                         ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                         : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                      <FileBadge2 className={`w-4 h-4 shrink-0 ${activeTool === 'sms-certificates' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <FileBadge2 className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/certificates') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate">Certificates (TC / CC)</span>
                         <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1513,22 +1560,22 @@ function AppContent() {
                     <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-amber-500/20 text-amber-300 border border-amber-500/30">
                       Admin
                     </span>
-                  </button>
+                  </Link>
                 )}
 
                 {/* Admin Only: Faculty Management & Join Requests */}
                 {userRole === 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-staff')}
+                  <Link
+                    to="/sms/staff"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                      activeTool === 'sms-staff'
+                      isRouteActive('/sms/staff')
                         ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                         : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                      <UserCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-staff' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <UserCheck className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/staff') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate">Faculty &amp; Requests</span>
                         <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1545,22 +1592,22 @@ function AppContent() {
                         Admin
                       </span>
                     )}
-                  </button>
+                  </Link>
                 )}
 
                 {/* Fee Management (Admin & Admission Incharge) */}
                 {canCollectFee && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-fees')}
+                  <Link
+                    to="/sms/fees"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                      activeTool === 'sms-fees'
+                      isRouteActive('/sms/fees')
                         ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                         : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                      <Receipt className={`w-4 h-4 shrink-0 ${activeTool === 'sms-fees' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <Receipt className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/fees') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate">Fee Management</span>
                         <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1575,22 +1622,22 @@ function AppContent() {
                     }`}>
                       {userRole === 'admin' ? 'Accounts' : 'Incharge'}
                     </span>
-                  </button>
+                  </Link>
                 )}
 
                 {/* Salary & Payroll (School Admin Only) */}
                 {canAccessSalaryPayroll && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-payroll')}
+                  <Link
+                    to="/sms/salary"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 min-h-[44px] rounded-xl text-left text-sm transition-all cursor-pointer ${
-                      activeTool === 'sms-payroll'
+                      isRouteActive('/sms/salary')
                         ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                         : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                      <Banknote className={`w-4 h-4 shrink-0 ${activeTool === 'sms-payroll' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <Banknote className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/salary') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate">Salary &amp; Payroll</span>
                         <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1601,21 +1648,21 @@ function AppContent() {
                     <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
                       Admin
                     </span>
-                  </button>
+                  </Link>
                 )}
 
                 {/* Teacher Profile & Portfolio / My Profile */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-profile')}
+                <Link
+                  to="/sms/profile"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'sms-profile'
+                    isRouteActive('/sms/profile')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <ShieldCheck className={`w-4 h-4 shrink-0 ${activeTool === 'sms-profile' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <ShieldCheck className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/profile') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">
                         {userRole === 'teacher' ? 'My Profile' : 'My School Profile'}
@@ -1625,21 +1672,21 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
                 {/* School Onboarding / Switch School (Admin / Demo Only) */}
                 {(userRole === 'admin' || demoMode) && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-onboarding')}
+                  <Link
+                    to="/sms/onboarding"
+                    onClick={() => setMobileMenuOpen(false)}
                     className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                      activeTool === 'sms-onboarding'
+                      isRouteActive('/sms/onboarding')
                         ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                         : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                      <Building className={`w-4 h-4 shrink-0 ${activeTool === 'sms-onboarding' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                      <Building className={`w-4 h-4 shrink-0 ${isRouteActive('/sms/onboarding') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                       <div className="min-w-0 flex-1">
                         <span className="block truncate">{isAffiliatedUser ? 'Switch / Add School' : 'Join / Register School'}</span>
                         <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1647,7 +1694,7 @@ function AppContent() {
                         </span>
                       </div>
                     </div>
-                  </button>
+                  </Link>
                 )}
               </>
             )}
@@ -1669,17 +1716,17 @@ function AppContent() {
             {/* If Affiliated and currently viewing public tools, provide button to return to focused mode */}
             {isAffiliatedUser && showPublicTools && (
               <div className="pt-2">
-                <button
-                  type="button"
+                <Link
+                  to="/sms"
                   onClick={() => {
                     setShowPublicTools(false);
-                    setActiveTool('sms-dashboard');
+                    setMobileMenuOpen(false);
                   }}
                   className="w-full py-2 px-2.5 rounded-xl bg-[#7F1D1D]/20 hover:bg-[#651414]/30 border border-[#7F1D1D]/40 text-[#FED7AA] text-xs font-medium flex items-center justify-between gap-2 transition cursor-pointer"
                 >
                   <span className="truncate flex-1 min-w-0 pr-2 text-left">← Return to School SMS</span>
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/30">Focused</span>
-                </button>
+                </Link>
               </div>
             )}
 
@@ -1697,17 +1744,17 @@ function AppContent() {
                 </div>
 
                 {/* MODULE 1: AI Lesson Plan */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('lesson-plan')}
+                <Link
+                  to="/teacher/lesson-planner"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'lesson-plan'
+                    isRouteActive('/teacher/lesson-planner')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <BookOpen className={`w-4 h-4 shrink-0 ${activeTool === 'lesson-plan' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <BookOpen className={`w-4 h-4 shrink-0 ${isRouteActive('/teacher/lesson-planner') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">1. AI Lesson Planner</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1715,20 +1762,20 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
                 {/* MODULE 2: Salary Calculator */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('salary-calculator')}
+                <Link
+                  to="/tools/salary-calculator"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'salary-calculator'
+                    isRouteActive('/tools/salary-calculator')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <Calculator className={`w-4 h-4 shrink-0 ${activeTool === 'salary-calculator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <Calculator className={`w-4 h-4 shrink-0 ${isRouteActive('/tools/salary-calculator') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">2. Sindh Salary Calculator</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1736,20 +1783,20 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
                 {/* MODULE 3: Leave Application */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('leave-generator')}
+                <Link
+                  to="/tools/leave-generator"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'leave-generator'
+                    isRouteActive('/tools/leave-generator')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <FileSignature className={`w-4 h-4 shrink-0 ${activeTool === 'leave-generator' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <FileSignature className={`w-4 h-4 shrink-0 ${isRouteActive('/tools/leave-generator') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">3. SELD FRAMES Leave</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1757,20 +1804,20 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
                 {/* MODULE 4: AtlierCV Studio */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('atlier-cv')}
+                <Link
+                  to="/tools/atlier-cv"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'atlier-cv'
+                    isRouteActive('/tools/atlier-cv')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <Briefcase className={`w-4 h-4 shrink-0 ${activeTool === 'atlier-cv' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <Briefcase className={`w-4 h-4 shrink-0 ${isRouteActive('/tools/atlier-cv') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">4. AtlierCV Studio</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1781,20 +1828,20 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
                     ATS
                   </span>
-                </button>
+                </Link>
 
                 {/* MODULE 5: Service Book Calculator */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('service-book')}
+                <Link
+                  to="/tools/service-book"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'service-book'
+                    isRouteActive('/tools/service-book')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <BookCheck className={`w-4 h-4 shrink-0 ${activeTool === 'service-book' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <BookCheck className={`w-4 h-4 shrink-0 ${isRouteActive('/tools/service-book') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">5. Service Book &amp; Pension</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1802,20 +1849,20 @@ function AppContent() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </Link>
 
                 {/* MODULE 6: AI Question Paper Maker */}
-                <button
-                  type="button"
-                  onClick={() => selectTool('question-paper')}
+                <Link
+                  to="/teacher/question-paper"
+                  onClick={() => setMobileMenuOpen(false)}
                   className={`w-full flex items-center justify-between gap-2 py-2.5 pr-2.5 rounded-xl text-left text-sm transition-all cursor-pointer ${
-                    activeTool === 'question-paper'
+                    isRouteActive('/teacher/question-paper')
                       ? 'bg-[#C2410C] text-[#FFFDF9] font-semibold shadow-xs border-l-[3px] border-[#FED7AA] pl-2.5'
                       : 'text-[#D6CCC2] hover:text-[#FAF8F5] hover:bg-[rgba(255,253,249,0.08)] pl-3'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 flex-1 min-w-0 pr-2">
-                    <FileSpreadsheet className={`w-4 h-4 shrink-0 ${activeTool === 'question-paper' ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
+                    <FileSpreadsheet className={`w-4 h-4 shrink-0 ${isRouteActive('/teacher/question-paper') ? 'text-[#FED7AA]' : 'text-[#D6CCC2]/75'}`} />
                     <div className="min-w-0 flex-1">
                       <span className="block truncate">6. AI Question Paper</span>
                       <span className="text-[11px] block truncate text-[#D6CCC2]/75">
@@ -1826,7 +1873,7 @@ function AppContent() {
                   <span className="shrink-0 ml-auto text-[10px] px-1.5 py-0.5 rounded font-semibold tracking-wider uppercase bg-[#7F1D1D]/20 text-[#FED7AA] border border-[#7F1D1D]/30">
                     AI
                   </span>
-                </button>
+                </Link>
               </>
             )}
           </div>
@@ -1883,7 +1930,7 @@ function AppContent() {
               type="button"
               onClick={() => {
                 exitImpersonation();
-                setActiveTool('super-admin');
+                navigate('/super-admin', { replace: true });
               }}
               className="px-3 py-1 bg-[#2C1215] hover:bg-[#58181D] text-white rounded-lg text-xs font-bold transition cursor-pointer shrink-0 ml-2"
             >
@@ -2044,27 +2091,12 @@ function AppContent() {
 
             {/* Breadcrumb Navigation */}
             <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm min-w-0 truncate">
-              <button
-                type="button"
-                onClick={() =>
-                  selectTool(
-                    isParentUser
-                      ? 'sms-parent'
-                      : isStudentUser
-                      ? 'sms-student-portal'
-                      : isSuperAdminActive
-                      ? isImpersonating
-                        ? 'sms-dashboard'
-                        : 'super-admin'
-                      : isAffiliatedUser && !showPublicTools
-                      ? 'sms-dashboard'
-                      : 'dashboard'
-                  )
-                }
+              <Link
+                to={defaultHomePath}
                 className="font-medium text-[#57534E] dark:text-[#D6CCC2] hover:text-[#651414] dark:hover:text-[#FED7AA] cursor-pointer shrink-0"
               >
                 PakEdu
-              </button>
+              </Link>
               <span className="text-[#78716C] shrink-0">/</span>
               <span className="font-semibold text-[#1C1917] dark:text-[#FAF8F5] truncate max-w-[120px] sm:max-w-[200px]">
                 {currentToolMeta.title}
@@ -2088,37 +2120,34 @@ function AppContent() {
           {/* Center Horizontal Quick Links (Large Screens) */}
           <nav className="hidden xl:flex items-center gap-1 text-xs font-medium text-[#57534E] dark:text-[#D6CCC2]">
             {isParentUser ? (
-              <button
-                type="button"
-                onClick={() => selectTool('sms-parent')}
+              <Link
+                to="/parent/dashboard"
                 className="px-3 py-1.5 rounded-t-lg border-b-2 border-[#C2410C] bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold cursor-pointer"
               >
                 Parent Portal (Read-Only)
-              </button>
+              </Link>
             ) : isStudentUser ? (
-              <button
-                type="button"
-                onClick={() => selectTool('sms-student-portal')}
+              <Link
+                to="/student/dashboard"
                 className="px-3 py-1.5 rounded-t-lg border-b-2 border-[#C2410C] bg-[#FFF7ED] dark:bg-[#2C1215] text-[#C2410C] dark:text-[#FDBA74] font-bold cursor-pointer"
               >
                 Student Portal (Read-Only)
-              </button>
+              </Link>
             ) : isSuperAdminActive ? (
               isImpersonating ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-dashboard')}
+                  <Link
+                    to="/sms"
                     className="px-3 py-1.5 rounded-lg bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 font-bold cursor-pointer"
                   >
                     School Admin View (Read-Only)
-                  </button>
+                  </Link>
                   <button
                     type="button"
                     onClick={() => {
                       exitImpersonation();
                       setSuperAdminTab('directory');
-                      setActiveTool('super-admin');
+                      navigate('/super-admin', { replace: true });
                     }}
                     className="px-3 py-1.5 rounded-lg bg-[#2C1215] text-white font-semibold hover:bg-[#58181D] cursor-pointer"
                   >
@@ -2127,300 +2156,266 @@ function AppContent() {
                 </>
               ) : (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuperAdminTab('analytics');
-                      selectTool('super-admin');
-                    }}
+                  <Link
+                    to="/super-admin"
+                    onClick={() => setSuperAdminTab('analytics')}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'super-admin' && superAdminTab === 'analytics'
+                      isRouteActive('/super-admin') && superAdminTab === 'analytics'
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Platform Overview
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuperAdminTab('directory');
-                      selectTool('super-admin');
-                    }}
+                  </Link>
+                  <Link
+                    to="/super-admin"
+                    onClick={() => setSuperAdminTab('directory')}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'super-admin' && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
+                      isRouteActive('/super-admin') && (superAdminTab === 'directory' || superAdminTab === 'pending_requests')
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Super Admin Fleet
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSuperAdminTab('notices');
-                      selectTool('super-admin');
-                    }}
+                  </Link>
+                  <Link
+                    to="/super-admin"
+                    onClick={() => setSuperAdminTab('notices')}
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'super-admin' && superAdminTab === 'notices'
+                      isRouteActive('/super-admin') && superAdminTab === 'notices'
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Notice Board
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-payroll')}
+                  </Link>
+                  <Link
+                    to="/sms/salary"
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'sms-payroll'
+                      isRouteActive('/sms/salary')
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Salary &amp; Payroll
-                  </button>
+                  </Link>
                 </>
               )
             ) : isAffiliatedUser && !showPublicTools ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-dashboard')}
+                <Link
+                  to="/sms"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-dashboard'
+                    isRouteActive('/sms')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'My Dashboard' : 'Command Center'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-classes')}
+                </Link>
+                <Link
+                  to="/sms/classes"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-classes'
+                    isRouteActive('/sms/classes')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'My Classes' : 'Classes'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSmsFilterClassId(undefined);
-                    selectTool('sms-students');
-                  }}
+                </Link>
+                <Link
+                  to="/sms/students"
+                  onClick={() => setSmsFilterClassId(undefined)}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-students'
+                    isRouteActive('/sms/students')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'My Students' : 'Students'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSmsAttendanceClassId(undefined);
-                    selectTool('sms-attendance');
-                  }}
+                </Link>
+                <Link
+                  to="/sms/attendance"
+                  onClick={() => setSmsAttendanceClassId(undefined)}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-attendance'
+                    isRouteActive('/sms/attendance')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {userRole === 'teacher' ? 'Take Attendance' : 'Attendance'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-exams')}
+                </Link>
+                <Link
+                  to="/sms/exams"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-exams'
+                    isRouteActive('/sms/exams')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Exams &amp; Results
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-timetable')}
+                </Link>
+                <Link
+                  to="/sms/timetable"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-timetable'
+                    isRouteActive('/sms/timetable')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Timetable
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-homework')}
+                </Link>
+                <Link
+                  to="/sms/homework"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-homework'
+                    isRouteActive('/sms/homework')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Homework
-                </button>
+                </Link>
                 {userRole === 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-certificates')}
+                  <Link
+                    to="/sms/certificates"
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'sms-certificates'
+                      isRouteActive('/sms/certificates')
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Certificates
-                  </button>
+                  </Link>
                 )}
                 {userRole === 'admin' && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-staff')}
+                  <Link
+                    to="/sms/staff"
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'sms-staff'
+                      isRouteActive('/sms/staff')
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Faculty
-                  </button>
+                  </Link>
                 )}
                 {canCollectFee && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-fees')}
+                  <Link
+                    to="/sms/fees"
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'sms-fees'
+                      isRouteActive('/sms/fees')
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Fees &amp; Accounts
-                  </button>
+                  </Link>
                 )}
                 {canAccessSalaryPayroll && (
-                  <button
-                    type="button"
-                    onClick={() => selectTool('sms-payroll')}
+                  <Link
+                    to="/sms/salary"
                     className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                      activeTool === 'sms-payroll'
+                      isRouteActive('/sms/salary')
                         ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                         : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                     }`}
                   >
                     Payroll
-                  </button>
+                  </Link>
                 )}
-                <button
-                  type="button"
-                  onClick={() => selectTool('sms-profile')}
+                <Link
+                  to="/sms/profile"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'sms-profile'
+                    isRouteActive('/sms/profile')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   My Profile
-                </button>
+                </Link>
               </>
             ) : (
               <>
-                <button
-                  type="button"
-                  onClick={() => selectTool('dashboard')}
+                <Link
+                  to="/dashboard"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'dashboard'
+                    isRouteActive('/dashboard')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Overview
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool(demoMode || isAffiliatedUser ? 'sms-dashboard' : 'sms-onboarding')}
+                </Link>
+                <Link
+                  to={demoMode || isAffiliatedUser ? '/sms' : '/sms/onboarding'}
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool.startsWith('sms-')
+                    location.pathname.startsWith('/sms')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   {isAffiliatedUser ? 'School Operations' : demoMode ? 'School SMS' : 'Join School'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('lesson-plan')}
+                </Link>
+                <Link
+                  to="/teacher/lesson-planner"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'lesson-plan'
+                    isRouteActive('/teacher/lesson-planner')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Lesson Plans
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('salary-calculator')}
+                </Link>
+                <Link
+                  to="/tools/salary-calculator"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'salary-calculator'
+                    isRouteActive('/tools/salary-calculator')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Salary
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('leave-generator')}
+                </Link>
+                <Link
+                  to="/tools/leave-generator"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'leave-generator'
+                    isRouteActive('/tools/leave-generator')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Leave
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('atlier-cv')}
+                </Link>
+                <Link
+                  to="/tools/atlier-cv"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'atlier-cv'
+                    isRouteActive('/tools/atlier-cv')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   CV Studio
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('service-book')}
+                </Link>
+                <Link
+                  to="/tools/service-book"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'service-book'
+                    isRouteActive('/tools/service-book')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Service Book
-                </button>
-                <button
-                  type="button"
-                  onClick={() => selectTool('question-paper')}
+                </Link>
+                <Link
+                  to="/teacher/question-paper"
                   className={`px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
-                    activeTool === 'question-paper'
+                    isRouteActive('/teacher/question-paper')
                       ? 'bg-[#FEF2F2]/70 dark:bg-[#2C1215] text-[#7F1D1D] dark:text-[#FCA5A5] font-bold border-b-2 border-[#C2410C] rounded-b-none'
                       : 'hover:text-[#1C1917] dark:hover:text-[#FAF8F5]'
                   }`}
                 >
                   Exam Maker
-                </button>
+                </Link>
               </>
             )}
           </nav>
@@ -2490,7 +2485,12 @@ function AppContent() {
                 <div className="w-[1px] h-3 bg-amber-200 dark:bg-amber-800" />
                 <button
                   type="button"
-                  onClick={() => setUserRole('admin')}
+                  onClick={() => {
+                    setUserRole('admin');
+                    if (isRouteActive('/super-admin')) {
+                      navigate('/sms');
+                    }
+                  }}
                   className={`px-1.5 sm:px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[9px] sm:text-[10px] ${
                     userRole === 'admin'
                       ? 'bg-[#7F1D1D] text-white shadow-xs font-bold'
@@ -2502,7 +2502,12 @@ function AppContent() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUserRole('teacher')}
+                  onClick={() => {
+                    setUserRole('teacher');
+                    if (isRouteActive('/super-admin') || isRouteActive('/sms/salary')) {
+                      navigate('/sms');
+                    }
+                  }}
                   className={`px-1.5 sm:px-2 py-0.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-[9px] sm:text-[10px] ${
                     userRole === 'teacher'
                       ? 'bg-emerald-600 text-white shadow-xs font-bold'
@@ -2517,7 +2522,7 @@ function AppContent() {
                   type="button"
                   onClick={() => {
                     setUserRole('super-admin');
-                    selectTool('super-admin');
+                    navigate('/super-admin');
                   }}
                   className={`hidden sm:flex px-2 py-0.5 rounded-lg transition-all cursor-pointer items-center gap-1 text-[10px] ${
                     userRole === 'super-admin'
@@ -2620,6 +2625,27 @@ function AppContent() {
 
         {/* Main Content Container */}
         <main className="app-content-container flex-1 max-w-6xl w-full mx-auto px-3 sm:px-6 pt-4 pb-24 lg:py-6 space-y-5 sm:space-y-6 min-w-0 overflow-x-hidden">
+          {/* Route Authorization / Access Error Banner */}
+          {routeError && (
+            <div
+              role="alert"
+              className="no-print bg-rose-50 dark:bg-rose-950/50 border border-rose-200 dark:border-rose-800/70 text-rose-900 dark:text-rose-200 rounded-xl px-4 py-3 text-xs font-semibold flex items-center justify-between gap-3 shadow-xs"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                <span>{routeError}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => navigate(location.pathname, { replace: true, state: null })}
+                className="p-1 rounded-lg hover:bg-rose-200/60 dark:hover:bg-rose-900/50 text-rose-700 dark:text-rose-300 cursor-pointer shrink-0"
+                aria-label="Dismiss route access notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           {/* Animated Updates Ticker */}
           <div className="no-print flex items-center bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-xl shadow-xs overflow-hidden">
             <div className="bg-[#2C1215] dark:bg-[#2C1215] text-white px-3.5 py-2 text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0 z-10">
@@ -2628,8 +2654,8 @@ function AppContent() {
             </div>
             <div className="flex-1 overflow-hidden relative py-2">
               <div className="allforu-ticker-track items-center gap-8 text-xs font-medium text-[#57534E] dark:text-[#E7E0D4]">
-                <span
-                  onClick={() => selectTool('atlier-cv')}
+                <Link
+                  to="/tools/atlier-cv"
                   className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-[#651414]"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#7F1D1D]" />
@@ -2637,265 +2663,27 @@ function AppContent() {
                   <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#FEF2F2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5] border border-[#FECACA]/60 dark:border-[#7F1D1D]/60">
                     NEW
                   </span>
-                </span>
-                <span
-                  onClick={() => selectTool('salary-calculator')}
+                </Link>
+                <Link
+                  to="/tools/salary-calculator"
                   className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-[#651414]"
                 >
                   <span>Sindh Budget 2026 Pay &amp; Pension scales active for BPS-01 to BPS-22.</span>
-                </span>
-                <span
-                  onClick={() => selectTool('question-paper')}
+                </Link>
+                <Link
+                  to="/teacher/question-paper"
                   className="inline-flex items-center gap-2 px-4 cursor-pointer hover:text-[#651414]"
                 >
                   <span>Question Paper Maker: Class 1–12 bilingual exam builder with school logo.</span>
-                </span>
+                </Link>
               </div>
             </div>
           </div>
 
           {/* =================================================================== */}
-          {/* CONDITIONAL HEADER: ONLY HERO ON DASHBOARD, COMPACT HEADER ON TOOLS */}
+          {/* CONDITIONAL HEADER: COMPACT TOOL HEADER ON NON-DASHBOARD ROUTES     */}
           {/* =================================================================== */}
-          {activeTool === 'dashboard' ? (
-            /* DASHBOARD OVERVIEW: Hero & 6 ERP Module Cards */
-            <div className="no-print space-y-6">
-              {/* SaaS Hero Section */}
-              <section
-                className="rounded-3xl px-6 py-9 sm:py-12 text-center text-[#FAF8F5] shadow-lg relative overflow-hidden"
-                style={{
-                  background: 'linear-gradient(135deg, #58181D 0%, #3F1014 100%)',
-                }}
-              >
-                <div className="relative z-10 max-w-3xl mx-auto">
-                  <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
-                    <span className="inline-block bg-[#FFFDF9]/10 backdrop-blur-md text-[#FED7AA] border border-[rgba(255,253,249,0.2)] px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase">
-                      SELD SINDH OFFICIAL EDUCATION ERP
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 px-3 py-1 rounded-full text-xs font-semibold">
-                      <UserCheck className="w-3.5 h-3.5" />
-                      {activeUserDisplay}
-                    </span>
-                  </div>
-                  <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#FAF8F5] leading-tight mb-3">
-                    The Intelligent Portal That Plans Your Year With AI
-                  </h1>
-                  <p className="text-xs sm:text-base text-[#E7E0D4] max-w-2xl mx-auto mb-6 leading-relaxed">
-                    Generate official Sindh STBB &amp; PTB curriculum lesson plans,
-                    calculate 2026 BPS payroll, prepare SELD leave applications,
-                    and build ATS-ready resumes with{' '}
-                    <strong className="text-[#FED7AA]">AtlierCV Studio</strong>.
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => selectTool('lesson-plan')}
-                      className="allforu-btn-demo px-6 py-2.5 text-xs sm:text-sm cursor-pointer"
-                    >
-                      Open Lesson Planner →
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => selectTool('atlier-cv')}
-                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-[#FFFDF9]/10 hover:bg-[#FFFDF9]/20 text-[#FFFDF9] border border-[#FFFDF9]/30 transition-colors cursor-pointer"
-                    >
-                      <Sparkles className="w-4 h-4 text-[#FED7AA]" />
-                      <span>Launch AtlierCV Studio</span>
-                    </button>
-                    {!demoMode && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDemoMode(true);
-                          selectTool('sms-dashboard');
-                        }}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#B45309] hover:bg-[#92400E] text-[#FFFDF9] shadow-md transition-all cursor-pointer"
-                      >
-                        <span>🧪 Try Demo Mode (Sandbox)</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div
-                  className="pointer-events-none absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
-                  style={{
-                    background:
-                      'radial-gradient(circle, rgba(194,65,12,0.16) 0%, transparent 60%)',
-                  }}
-                />
-              </section>
-
-              {/* Highlight Banner: School Management System (SMS) */}
-              <div
-                onClick={() => selectTool('sms-dashboard')}
-                className="bg-gradient-to-r from-[#58181D] via-[#4A1318] to-[#2C1215] border border-[rgba(255,253,249,0.16)] text-[#FAF8F5] rounded-2xl p-5 shadow-sm hover:border-[#FED7AA]/40 transition cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#C2410C]/25 border border-[#FED7AA]/30 text-[#FED7AA] flex items-center justify-center shrink-0">
-                    <SchoolIcon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-[#FAF8F5]">School Management System (SMS)</span>
-                      <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#FFFDF9]/10 text-[#FED7AA] border border-[#FFFDF9]/20">
-                        Phase 1 Ready
-                      </span>
-                    </div>
-                    <p className="text-xs text-[#E7E0D4] mt-0.5">
-                      Role-Based Access Control, Grade sections (KG–Class 12), instruction mediums, and faculty allocations.
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); selectTool('sms-classes'); }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-[#FFFDF9] text-xs font-semibold rounded-xl shrink-0 transition cursor-pointer"
-                >
-                  <span>Manage Classes &amp; Sections</span>
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* 6 ERP Module Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Card 1 */}
-                <div
-                  onClick={() => selectTool('lesson-plan')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#7F1D1D]/50"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <BookOpen className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                      Lesson Planning System
-                    </h3>
-                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
-                      AI &amp; Firestore academic plans aligned with Sindh STBB &amp; Punjab PTB.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
-                    <span>Open Module</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-
-                {/* Card 2 */}
-                <div
-                  onClick={() => selectTool('salary-calculator')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#C2410C]/50"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <Calculator className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                      Payroll &amp; Finance 2026
-                    </h3>
-                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
-                      Automated BPS-01 to BPS-22 salary &amp; 2026 allowance breakdown.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#C2410C] dark:text-[#FDBA74]">
-                    <span>Calculate Pay</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-
-                {/* Card 3 */}
-                <div
-                  onClick={() => selectTool('leave-generator')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-emerald-500/50"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <FileSignature className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                      SELD FRAMES Leave
-                    </h3>
-                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
-                      Official A4 leave proforma with 38 Sindh Civil Service leave types.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                    <span>Generate Leave</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-
-                {/* Card 4 */}
-                <div
-                  onClick={() => selectTool('atlier-cv')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#7F1D1D]/50 relative"
-                >
-                  <span className="absolute top-4 right-4 px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-[#FEF2F2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5] border border-[#FECACA]/60 dark:border-[#7F1D1D]/60">
-                    ATS Studio
-                  </span>
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <Briefcase className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                      AtlierCV Studio
-                    </h3>
-                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
-                      AI-Powered Professional CV Studio with live A4 editor &amp; PDF/Word export.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
-                    <span>Build Resume</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-
-                {/* Card 5 */}
-                <div
-                  onClick={() => selectTool('service-book')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-teal-500/50"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <BookCheck className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                      Service Book &amp; Pension
-                    </h3>
-                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
-                      Qualifying Service, Pension, JEST/HST Time Scale &amp; 365-Day Encashment.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-teal-600 dark:text-teal-400">
-                    <span>Open Record</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-
-                {/* Card 6 */}
-                <div
-                  onClick={() => selectTool('question-paper')}
-                  className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#C2410C]/50"
-                >
-                  <div>
-                    <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
-                      <FileSpreadsheet className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
-                      AI Question Paper Maker
-                    </h3>
-                    <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
-                      Class 1–12 Exam Builder in English, Urdu &amp; Sindhi with School Logo.
-                    </p>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#C2410C] dark:text-[#FDBA74]">
-                    <span>Create Exam</span>
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            /* COMPACT TOOL HEADER: Shows only when inside a specific tool */
+          {!isRouteActive('/dashboard') && (
             <div className="no-print bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4]/80 dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div
@@ -2923,186 +2711,723 @@ function AppContent() {
 
               <button
                 type="button"
-                onClick={() => selectTool('dashboard')}
+                onClick={() =>
+                  navigate(
+                    isParentUser || isStudentUser || isSuperAdminActive
+                      ? defaultHomePath
+                      : '/dashboard'
+                  )
+                }
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#44403C] dark:text-[#E7E0D4] bg-[#F3EFEA] hover:bg-[#E7E0D4] dark:bg-[#2C1215] dark:hover:bg-[#4A1C20] rounded-xl transition-colors shrink-0 cursor-pointer"
               >
                 <Home className="w-3.5 h-3.5" />
-                <span>All Modules</span>
+                <span>
+                  {isParentUser || isStudentUser || isSuperAdminActive ? 'Portal Home' : 'All Modules'}
+                </span>
               </button>
             </div>
           )}
 
           {/* =================================================================== */}
-          {/* ACTIVE TOOL WORKSPACE WITH SMOOTH MOTION FADE-IN                   */}
+          {/* ROUTE WORKSPACE WITH SMOOTH MOTION FADE-IN                          */}
           {/* =================================================================== */}
           <motion.div
-            key={activeTool}
+            key={location.pathname}
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
           >
-            {/* SCHOOL MANAGEMENT SYSTEM (SMS) VIEWS */}
-            {activeTool === 'sms-dashboard' && (
-              <SmsDashboard
-                onNavigateToClasses={() => selectTool('sms-classes')}
-                onNavigateToStudents={() => {
-                  setSmsFilterClassId(undefined);
-                  selectTool('sms-students');
-                }}
-                onNavigateToAttendance={(classId) => {
-                  setSmsAttendanceClassId(classId);
-                  selectTool('sms-attendance');
-                }}
-                onNavigateToStaff={() => selectTool('sms-staff')}
-                onNavigateToProfile={() => selectTool('sms-profile')}
-                onNavigateToExams={() => selectTool('sms-exams')}
-                onNavigateToTimetable={() => selectTool('sms-timetable')}
-                onNavigateToHomework={() => selectTool('sms-homework')}
-                onNavigateToCertificates={() => selectTool('sms-certificates')}
-                onNavigateToPayroll={() => selectTool('sms-payroll')}
-                requestedTab={smsDashboardTab}
-                onTabChange={setSmsDashboardTab}
-              />
-            )}
+            <Routes>
+              <Route path="/" element={<Navigate to={defaultHomePath} replace />} />
 
-            {activeTool === 'sms-classes' && (
-              <ClassesManagement
-                onNavigateToAttendance={(classId) => {
-                  setSmsAttendanceClassId(classId);
-                  selectTool('sms-attendance');
-                }}
-                onNavigateToStudents={(classId) => {
-                  setSmsFilterClassId(classId);
-                  selectTool('sms-students');
-                }}
-              />
-            )}
+              <Route
+                path="/dashboard"
+                element={
+                  isParentUser || isStudentUser || isSuperAdminActive ? (
+                    <div className="no-print bg-[#FFFDF9] dark:bg-[#211415] border border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-sm">
+                      <div className="w-12 h-12 rounded-2xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mx-auto">
+                        <ShieldCheck className="w-6 h-6" />
+                      </div>
+                      <h2 className="text-lg font-extrabold text-[#1C1917] dark:text-[#FAF8F5]">
+                        Focused Portal Session Active
+                      </h2>
+                      <p className="text-xs sm:text-sm text-[#57534E] dark:text-[#D6CCC2] max-w-md mx-auto">
+                        Your account operates inside a dedicated workspace portal. Return to your primary dashboard below.
+                      </p>
+                      <div>
+                        <Link
+                          to={defaultHomePath}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-bold shadow-xs transition"
+                        >
+                          <span>
+                            {isParentUser
+                              ? 'Open Parent Portal'
+                              : isStudentUser
+                              ? 'Open Student Portal'
+                              : 'Open Super Admin Console'}
+                          </span>
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
+                      </div>
+                    </div>
+                  ) : (
+                    /* DASHBOARD OVERVIEW: Hero & 6 ERP Module Cards */
+                    <div className="no-print space-y-6">
+                      {/* SaaS Hero Section */}
+                      <section
+                        className="rounded-3xl px-6 py-9 sm:py-12 text-center text-[#FAF8F5] shadow-lg relative overflow-hidden"
+                        style={{
+                          background: 'linear-gradient(135deg, #58181D 0%, #3F1014 100%)',
+                        }}
+                      >
+                        <div className="relative z-10 max-w-3xl mx-auto">
+                          <div className="flex flex-wrap items-center justify-center gap-2 mb-4">
+                            <span className="inline-block bg-[#FFFDF9]/10 backdrop-blur-md text-[#FED7AA] border border-[rgba(255,253,249,0.2)] px-3.5 py-1 rounded-full text-[11px] font-bold tracking-wider uppercase">
+                              SELD SINDH OFFICIAL EDUCATION ERP
+                            </span>
+                            <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/30 text-emerald-200 px-3 py-1 rounded-full text-xs font-semibold">
+                              <UserCheck className="w-3.5 h-3.5" />
+                              {activeUserDisplay}
+                            </span>
+                          </div>
+                          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-[#FAF8F5] leading-tight mb-3">
+                            The Intelligent Portal That Plans Your Year With AI
+                          </h1>
+                          <p className="text-xs sm:text-base text-[#E7E0D4] max-w-2xl mx-auto mb-6 leading-relaxed">
+                            Generate official Sindh STBB &amp; PTB curriculum lesson plans,
+                            calculate 2026 BPS payroll, prepare SELD leave applications,
+                            and build ATS-ready resumes with{' '}
+                            <strong className="text-[#FED7AA]">AtlierCV Studio</strong>.
+                          </p>
+                          <div className="flex flex-wrap items-center justify-center gap-3">
+                            <button
+                              type="button"
+                              onClick={() => navigate('/teacher/lesson-planner')}
+                              className="allforu-btn-demo px-6 py-2.5 text-xs sm:text-sm cursor-pointer"
+                            >
+                              Open Lesson Planner →
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => navigate('/tools/atlier-cv')}
+                              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-semibold bg-[#FFFDF9]/10 hover:bg-[#FFFDF9]/20 text-[#FFFDF9] border border-[#FFFDF9]/30 transition-colors cursor-pointer"
+                            >
+                              <Sparkles className="w-4 h-4 text-[#FED7AA]" />
+                              <span>Launch AtlierCV Studio</span>
+                            </button>
+                            {!demoMode && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDemoMode(true);
+                                  navigate('/sms');
+                                }}
+                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-[#B45309] hover:bg-[#92400E] text-[#FFFDF9] shadow-md transition-all cursor-pointer"
+                              >
+                                <span>🧪 Try Demo Mode (Sandbox)</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className="pointer-events-none absolute -top-1/2 -left-1/2 w-[200%] h-[200%]"
+                          style={{
+                            background:
+                              'radial-gradient(circle, rgba(194,65,12,0.16) 0%, transparent 60%)',
+                          }}
+                        />
+                      </section>
 
-            {activeTool === 'sms-students' && (
-              <StudentDirectory
-                onBack={() => selectTool('sms-dashboard')}
-                onNavigateToAttendance={(classId) => {
-                  setSmsAttendanceClassId(classId);
-                  selectTool('sms-attendance');
-                }}
-                initialClassId={smsFilterClassId}
-              />
-            )}
+                      {/* Highlight Banner: School Management System (SMS) */}
+                      <div
+                        onClick={() => navigate(isAffiliatedUser || demoMode ? '/sms' : '/sms/onboarding')}
+                        className="bg-gradient-to-r from-[#58181D] via-[#4A1318] to-[#2C1215] border border-[rgba(255,253,249,0.16)] text-[#FAF8F5] rounded-2xl p-5 shadow-sm hover:border-[#FED7AA]/40 transition cursor-pointer flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-xl bg-[#C2410C]/25 border border-[#FED7AA]/30 text-[#FED7AA] flex items-center justify-center shrink-0">
+                            <SchoolIcon className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-[#FAF8F5]">School Management System (SMS)</span>
+                              <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-[#FFFDF9]/10 text-[#FED7AA] border border-[#FFFDF9]/20">
+                                Phase 1 Ready
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#E7E0D4] mt-0.5">
+                              Role-Based Access Control, Grade sections (KG–Class 12), instruction mediums, and faculty allocations.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(isAffiliatedUser || demoMode ? '/sms/classes' : '/sms/onboarding');
+                          }}
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#C2410C] hover:bg-[#9A3412] text-[#FFFDF9] text-xs font-semibold rounded-xl shrink-0 transition cursor-pointer"
+                        >
+                          <span>{isAffiliatedUser || demoMode ? 'Manage Classes & Sections' : 'Register / Join School'}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </button>
+                      </div>
 
-            {activeTool === 'sms-attendance' && (
-              <DailyAttendanceRegister
-                onBack={() => selectTool('sms-dashboard')}
-                initialClassId={smsAttendanceClassId}
-              />
-            )}
+                      {/* 6 ERP Module Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {/* Card 1 */}
+                        <div
+                          onClick={() => navigate('/teacher/lesson-planner')}
+                          className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#7F1D1D]/50"
+                        >
+                          <div>
+                            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <BookOpen className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              Lesson Planning System
+                            </h3>
+                            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                              AI &amp; Firestore academic plans aligned with Sindh STBB &amp; Punjab PTB.
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
+                            <span>Open Module</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
 
-            {activeTool === 'sms-onboarding' && (
-              <SmsOnboarding
-                currentUser={currentUser}
-                onOpenAuthModal={() => openAuthModal('signin')}
-                onOnboardingComplete={() => selectTool('sms-dashboard')}
-                initialTab={smsOnboardingTab}
-              />
-            )}
+                        {/* Card 2 */}
+                        <div
+                          onClick={() => navigate('/tools/salary-calculator')}
+                          className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#C2410C]/50"
+                        >
+                          <div>
+                            <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <Calculator className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              Payroll &amp; Finance 2026
+                            </h3>
+                            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                              Automated BPS-01 to BPS-22 salary &amp; 2026 allowance breakdown.
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#C2410C] dark:text-[#FDBA74]">
+                            <span>Calculate Pay</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
 
-            {activeTool === 'sms-staff' && (
-              <TeacherManagement onBack={() => selectTool('sms-dashboard')} />
-            )}
+                        {/* Card 3 */}
+                        <div
+                          onClick={() => navigate('/tools/leave-generator')}
+                          className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-emerald-500/50"
+                        >
+                          <div>
+                            <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <FileSignature className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              SELD FRAMES Leave
+                            </h3>
+                            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                              Official A4 leave proforma with 38 Sindh Civil Service leave types.
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                            <span>Generate Leave</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
 
-            {activeTool === 'sms-profile' && (
-              <TeacherProfile
-                onBack={() => selectTool('sms-dashboard')}
-                onNavigateToAttendance={(classId) => {
-                  setSmsAttendanceClassId(classId);
-                  selectTool('sms-attendance');
-                }}
-                onNavigateToStudents={(classId) => {
-                  setSmsFilterClassId(classId);
-                  selectTool('sms-students');
-                }}
-              />
-            )}
+                        {/* Card 4 */}
+                        <div
+                          onClick={() => navigate('/tools/atlier-cv')}
+                          className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#7F1D1D]/50 relative"
+                        >
+                          <span className="absolute top-4 right-4 px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-[#FEF2F2] text-[#7F1D1D] dark:bg-[#3F1014]/60 dark:text-[#FCA5A5] border border-[#FECACA]/60 dark:border-[#7F1D1D]/60">
+                            ATS Studio
+                          </span>
+                          <div>
+                            <div className="w-12 h-12 rounded-xl bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <Briefcase className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              AtlierCV Studio
+                            </h3>
+                            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                              AI-Powered Professional CV Studio with live A4 editor &amp; PDF/Word export.
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#7F1D1D] dark:text-[#FCA5A5]">
+                            <span>Build Resume</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
 
-            {/* Fee Management & Financials Module */}
-            {activeTool === 'sms-fees' && (
-              <FeeManagement onBack={() => selectTool('sms-dashboard')} />
-            )}
+                        {/* Card 5 */}
+                        <div
+                          onClick={() => navigate('/tools/service-book')}
+                          className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-teal-500/50"
+                        >
+                          <div>
+                            <div className="w-12 h-12 rounded-xl bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <BookCheck className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              Service Book &amp; Pension
+                            </h3>
+                            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                              Qualifying Service, Pension, JEST/HST Time Scale &amp; 365-Day Encashment.
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-teal-600 dark:text-teal-400">
+                            <span>Open Record</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
 
-            {/* Phase B: Exams & Student Results Module */}
-            {activeTool === 'sms-exams' && (
-              <ExamsResults onBack={() => selectTool('sms-dashboard')} />
-            )}
-
-            {/* Phase D: Class Timetable, Homework Diary & Official Certificates */}
-            {activeTool === 'sms-timetable' && (
-              <TimetableManager onBack={() => selectTool('sms-dashboard')} />
-            )}
-
-            {activeTool === 'sms-homework' && (
-              <HomeworkManager onBack={() => selectTool('sms-dashboard')} />
-            )}
-
-            {activeTool === 'sms-certificates' && (
-              <CertificatesManager onBack={() => selectTool('sms-dashboard')} />
-            )}
-
-            {/* Salary & Payroll Management (School Admin & Super Admin Only) */}
-            {guardedTool === 'sms-payroll' && canAccessSalaryPayroll && (
-              <SalaryPayroll
-                onBack={() => selectTool(isSuperAdminActive ? 'super-admin' : 'sms-dashboard')}
-              />
-            )}
-
-            {/* Phase C: Parent Portal (Strict Read-Only Child Progress) */}
-            {activeTool === 'sms-parent' && <ParentDashboard />}
-
-            {/* Student Portal (Strict Read-Only Self Progress) */}
-            {activeTool === 'sms-student-portal' && <StudentDashboard />}
-
-            {/* SUPER ADMIN CONSOLE VIEW (Strict Role Guard) */}
-            {guardedTool === 'super-admin' &&
-              isSuperAdminActive &&
-              (demoMode ||
-                currentUserProfile?.role === 'super-admin' ||
-                Boolean(currentUserProfile?.isSuperAdmin) ||
-                currentUser?.email?.toLowerCase() === 'owner@pakedu.com') && (
-                <SuperAdminDashboard
-                  activeTab={superAdminTab}
-                  onTabChange={setSuperAdminTab}
-                  onNavigateToSchool={() => setActiveTool('sms-dashboard')}
-                  onOpenRegisterSchool={() => selectTool('sms-onboarding')}
-                  onOpenPayroll={() => selectTool('sms-payroll')}
-                />
-              )}
-
-            {/* TEACHER'S AI STUDIO VIEWS (EXISTING MODULES) */}
-            {activeTool === 'lesson-plan' && (
-              <LessonPlanTool
-                currentUser={currentUser}
-                onRequestSignIn={() => openAuthModal('signin')}
-              />
-            )}
-
-            {activeTool === 'salary-calculator' && <SalaryCalculatorTool />}
-
-            {activeTool === 'leave-generator' && <LeaveApplicationTool />}
-
-            {activeTool === 'atlier-cv' && (
-              <AtlierCvTool
-                currentUser={currentUser}
-                demoSession={demoSession}
-                onOpenAuthModal={openAuthModal}
-                onSignOutToPortalLogin={() =>
-                  performUnifiedLogout(
-                    'Aap successfully Logout ho kar wapas Main Portal Login Page par aa gaye hain.'
+                        {/* Card 6 */}
+                        <div
+                          onClick={() => navigate('/teacher/question-paper')}
+                          className="allforu-tool-card p-5 cursor-pointer flex flex-col justify-between group hover:border-[#C2410C]/50"
+                        >
+                          <div>
+                            <div className="w-12 h-12 rounded-xl bg-[#FFF7ED] dark:bg-[#7C2D12]/60 text-[#C2410C] dark:text-[#FDBA74] flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                              <FileSpreadsheet className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-sm font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+                              AI Question Paper Maker
+                            </h3>
+                            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] mt-1 leading-relaxed">
+                              Class 1–12 Exam Builder in English, Urdu &amp; Sindhi with School Logo.
+                            </p>
+                          </div>
+                          <div className="mt-4 pt-3 border-t border-[#E7E0D4] dark:border-[rgba(255,253,249,0.14)] flex items-center justify-between text-xs font-semibold text-[#C2410C] dark:text-[#FDBA74]">
+                            <span>Create Exam</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )
                 }
               />
-            )}
 
-            {activeTool === 'service-book' && <ServiceBookCalculatorTool />}
+              {/* SCHOOL MANAGEMENT SYSTEM (SMS) ROUTES */}
+              <Route
+                path="/sms"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                    allowDuringImpersonation
+                    unauthorizedMessage="Access Denied: Complete school affiliation or sign in as school staff to open SMS Command Center."
+                  >
+                    <SmsDashboard
+                      onNavigateToClasses={() => navigate('/sms/classes')}
+                      onNavigateToStudents={() => {
+                        setSmsFilterClassId(undefined);
+                        navigate('/sms/students');
+                      }}
+                      onNavigateToAttendance={(classId) => {
+                        setSmsAttendanceClassId(classId);
+                        navigate('/sms/attendance');
+                      }}
+                      onNavigateToStaff={() => navigate('/sms/staff')}
+                      onNavigateToProfile={() => navigate('/sms/profile')}
+                      onNavigateToExams={() => navigate('/sms/exams')}
+                      onNavigateToTimetable={() => navigate('/sms/timetable')}
+                      onNavigateToHomework={() => navigate('/sms/homework')}
+                      onNavigateToCertificates={() => navigate('/sms/certificates')}
+                      onNavigateToPayroll={() => navigate('/sms/salary')}
+                      requestedTab={smsDashboardTab}
+                      onTabChange={setSmsDashboardTab}
+                    />
+                  </ProtectedRoute>
+                }
+              />
 
-            {activeTool === 'question-paper' && <QuestionPaperTool />}
+              <Route
+                path="/sms/classes"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <ClassesManagement
+                      onNavigateToAttendance={(classId) => {
+                        setSmsAttendanceClassId(classId);
+                        navigate('/sms/attendance');
+                      }}
+                      onNavigateToStudents={(classId) => {
+                        setSmsFilterClassId(classId);
+                        navigate('/sms/students');
+                      }}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/students"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <StudentDirectoryRoute
+                      initialClassId={smsFilterClassId}
+                      onNavigateToAttendance={(classId) => {
+                        setSmsAttendanceClassId(classId);
+                        navigate('/sms/attendance');
+                      }}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/students/:studentId"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <StudentDirectoryRoute
+                      initialClassId={smsFilterClassId}
+                      onNavigateToAttendance={(classId) => {
+                        setSmsAttendanceClassId(classId);
+                        navigate('/sms/attendance');
+                      }}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/attendance"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <DailyAttendanceRegister
+                      onBack={() => navigate('/sms')}
+                      initialClassId={smsAttendanceClassId}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/onboarding"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general', 'super-admin']}
+                  >
+                    <SmsOnboarding
+                      currentUser={currentUser}
+                      onOpenAuthModal={() => openAuthModal('signin')}
+                      onOnboardingComplete={() => navigate('/sms', { replace: true })}
+                      initialTab={smsOnboardingTab}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/staff"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal']}
+                    requireAffiliated
+                    unauthorizedMessage="Access Denied: Faculty & Staff management is restricted to School Administrators."
+                  >
+                    <TeacherManagement onBack={() => navigate('/sms')} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/profile"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <TeacherProfile
+                      onBack={() => navigate('/sms')}
+                      onNavigateToAttendance={(classId) => {
+                        setSmsAttendanceClassId(classId);
+                        navigate('/sms/attendance');
+                      }}
+                      onNavigateToStudents={(classId) => {
+                        setSmsFilterClassId(classId);
+                        navigate('/sms/students');
+                      }}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/fees"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                    requireCanCollectFee
+                  >
+                    <FeeManagement onBack={() => navigate('/sms')} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/exams"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <ExamsResultsRoute />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/exams/:examId/report/:studentId"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <ExamsResultsRoute />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/timetable"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <TimetableManager onBack={() => navigate('/sms')} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/homework"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher']}
+                    requireAffiliated
+                  >
+                    <HomeworkManager onBack={() => navigate('/sms')} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/certificates"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal']}
+                    requireAffiliated
+                    unauthorizedMessage="Access Denied: Official Certificates are restricted to School Administrators."
+                  >
+                    <CertificatesManager onBack={() => navigate('/sms')} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/salary"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'super-admin']}
+                    requirePayrollAccess
+                    requireAffiliated={!isSuperAdminActive}
+                  >
+                    <SalaryPayroll
+                      onBack={() => navigate(isSuperAdminActive ? '/super-admin' : '/sms')}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/sms/payroll"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'super-admin']}
+                    requirePayrollAccess
+                    requireAffiliated={!isSuperAdminActive}
+                  >
+                    <SalaryPayroll
+                      onBack={() => navigate(isSuperAdminActive ? '/super-admin' : '/sms')}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* PARENT PORTAL ROUTE */}
+              <Route
+                path="/parent/dashboard"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['parent']}
+                    unauthorizedMessage="Access Denied: Parent Portal is restricted to verified Parent accounts."
+                  >
+                    <ParentDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* STUDENT PORTAL ROUTE */}
+              <Route
+                path="/student/dashboard"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['student']}
+                    unauthorizedMessage="Access Denied: Student Portal is restricted to verified Student accounts."
+                  >
+                    <StudentDashboard />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* SUPER ADMIN CONSOLE ROUTE */}
+              <Route
+                path="/super-admin"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['super-admin']}
+                    allowDuringImpersonation
+                    unauthorizedMessage="Access Denied: Super Admin Fleet Console requires Super Administrator privileges."
+                  >
+                    <SuperAdminDashboard
+                      activeTab={superAdminTab}
+                      onTabChange={setSuperAdminTab}
+                      onNavigateToSchool={() => navigate('/sms')}
+                      onOpenRegisterSchool={() => navigate('/sms/onboarding')}
+                      onOpenPayroll={() => navigate('/sms/salary')}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* TEACHER AI STUDIO ROUTES */}
+              <Route
+                path="/teacher/lesson-planner"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general']}
+                  >
+                    <LessonPlanTool
+                      currentUser={currentUser}
+                      onRequestSignIn={() => openAuthModal('signin')}
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/teacher/question-paper"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general']}
+                  >
+                    <QuestionPaperTool />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tools/salary-calculator"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general']}
+                  >
+                    <SalaryCalculatorTool />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tools/leave-generator"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general']}
+                  >
+                    <LeaveApplicationTool />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tools/atlier-cv"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general']}
+                  >
+                    <AtlierCvTool
+                      currentUser={currentUser}
+                      demoSession={demoSession}
+                      onOpenAuthModal={openAuthModal}
+                      onSignOutToPortalLogin={() =>
+                        performUnifiedLogout(
+                          'Aap successfully Logout ho kar wapas Main Portal Login Page par aa gaye hain.'
+                        )
+                      }
+                    />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/tools/service-book"
+                element={
+                  <ProtectedRoute
+                    access={routeAccessContext}
+                    allowedRoles={['admin', 'principal', 'teacher', 'general']}
+                  >
+                    <ServiceBookCalculatorTool />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* FALLBACK ROUTE (Also catches Electron file:///.../dist/index.html paths) */}
+              <Route path="*" element={<Navigate to={defaultHomePath} replace />} />
+            </Routes>
           </motion.div>
         </main>
 
@@ -3146,33 +3471,33 @@ function AppContent() {
             onClick={() => {
               setMobileMenuOpen(false);
               if (isParentUser) {
-                selectTool('sms-parent');
+                navigate('/parent/dashboard');
               } else if (isStudentUser) {
-                selectTool('sms-student-portal');
+                navigate('/student/dashboard');
               } else if (isSuperAdminActive) {
                 if (isImpersonating) {
                   setSmsDashboardTab('overview');
-                  selectTool('sms-dashboard');
+                  navigate('/sms');
                 } else {
                   setSuperAdminTab('analytics');
-                  selectTool('super-admin');
+                  navigate('/super-admin');
                 }
               } else if (isAffiliatedUser) {
                 setShowPublicTools(false);
                 setSmsDashboardTab('overview');
-                selectTool('sms-dashboard');
+                navigate('/sms');
               } else {
-                selectTool('dashboard');
+                navigate('/dashboard');
               }
             }}
             className={`min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
               !mobileMenuOpen &&
               !noticesModalOpen &&
-              (activeTool === 'dashboard' ||
-                activeTool === 'sms-parent' ||
-                activeTool === 'sms-student-portal' ||
-                (activeTool === 'sms-dashboard' && smsDashboardTab === 'overview') ||
-                (activeTool === 'super-admin' && superAdminTab === 'analytics'))
+              (isRouteActive('/dashboard') ||
+                isRouteActive('/parent/dashboard') ||
+                isRouteActive('/student/dashboard') ||
+                (isRouteActive('/sms') && smsDashboardTab === 'overview') ||
+                (isRouteActive('/super-admin') && superAdminTab === 'analytics'))
                 ? 'text-[#FED7AA] bg-[#C2410C]/20'
                 : 'text-[#D6CCC2] hover:text-white'
             }`}
@@ -3187,23 +3512,23 @@ function AppContent() {
             onClick={() => {
               setMobileMenuOpen(false);
               if (isParentUser) {
-                selectTool('sms-parent');
+                navigate('/parent/dashboard');
               } else if (isStudentUser) {
-                selectTool('sms-student-portal');
+                navigate('/student/dashboard');
               } else if (isSuperAdminActive && !isImpersonating) {
                 setSuperAdminTab('directory');
-                selectTool('super-admin');
+                navigate('/super-admin');
               } else if (isAffiliatedUser || demoMode) {
-                selectTool('sms-profile');
+                navigate('/sms/profile');
               } else if (currentUser) {
-                selectTool('sms-onboarding');
+                navigate('/sms/onboarding');
               } else {
                 openAuthModal('signin');
               }
             }}
             className={`min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
               !mobileMenuOpen &&
-              (activeTool === 'sms-profile' || activeTool === 'sms-onboarding')
+              (isRouteActive('/sms/profile') || isRouteActive('/sms/onboarding'))
                 ? 'text-[#FED7AA] bg-[#C2410C]/20'
                 : 'text-[#D6CCC2] hover:text-white'
             }`}
@@ -3267,11 +3592,11 @@ function AppContent() {
               setMobileMenuOpen(false);
               if (isSuperAdminActive && !isImpersonating) {
                 setSuperAdminTab('notices');
-                selectTool('super-admin');
+                navigate('/super-admin');
               } else if (isAffiliatedUser || (demoMode && userRole !== 'super-admin')) {
                 setShowPublicTools(false);
                 setSmsDashboardTab('notifications');
-                selectTool('sms-dashboard');
+                navigate('/sms');
               } else {
                 setNoticesModalOpen(true);
               }
@@ -3279,8 +3604,8 @@ function AppContent() {
             className={`relative min-h-[48px] flex flex-col items-center justify-center gap-0.5 px-1 text-[10px] font-semibold transition cursor-pointer ${
               !mobileMenuOpen &&
               (noticesModalOpen ||
-                (activeTool === 'super-admin' && superAdminTab === 'notices') ||
-                (activeTool === 'sms-dashboard' && smsDashboardTab === 'notifications'))
+                (isRouteActive('/super-admin') && superAdminTab === 'notices') ||
+                (isRouteActive('/sms') && smsDashboardTab === 'notifications'))
                 ? 'text-[#FED7AA] bg-[#C2410C]/20'
                 : 'text-[#D6CCC2] hover:text-white'
             }`}
@@ -3382,10 +3707,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <SmsProvider>
-        <AppContent />
-      </SmsProvider>
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <SmsProvider>
+          <AppContent />
+        </SmsProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

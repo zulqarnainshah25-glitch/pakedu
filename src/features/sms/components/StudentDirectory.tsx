@@ -39,12 +39,16 @@ interface StudentDirectoryProps {
   onBack: () => void;
   onNavigateToAttendance?: (classId?: string) => void;
   initialClassId?: string;
+  initialStudentId?: string;
+  onOpenStudentProfile?: (studentId: string | null) => void;
 }
 
 export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
   onBack,
   onNavigateToAttendance,
   initialClassId,
+  initialStudentId,
+  onOpenStudentProfile,
 }) => {
   const {
     userRole,
@@ -163,6 +167,25 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setCopiedStudentInvite(false);
     setStudentInviteMessage(null);
   }, [viewingStudent?.id]);
+
+  // Sync student profile modal with dynamic route param /sms/students/:studentId
+  useEffect(() => {
+    if (!initialStudentId) {
+      setViewingStudent(null);
+      return;
+    }
+    const matched = filteredStudentsForUser.find((s) => s.id === initialStudentId);
+    if (matched) {
+      setViewingStudent(matched);
+    }
+  }, [initialStudentId, filteredStudentsForUser]);
+
+  const closeStudentProfileModal = () => {
+    setViewingStudent(null);
+    if (initialStudentId || onOpenStudentProfile) {
+      onOpenStudentProfile?.(null);
+    }
+  };
 
   // Ensure classes for the active school are fetched from Firestore
   useEffect(() => {
@@ -942,7 +965,10 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                         <div className="flex items-center justify-end gap-1">
                           <button
                             type="button"
-                            onClick={() => setViewingStudent(student)}
+                            onClick={() => {
+                              setViewingStudent(student);
+                              onOpenStudentProfile?.(student.id);
+                            }}
                             className="p-1.5 text-[#78716C] hover:text-[#651414] dark:hover:text-[#FED7AA] hover:bg-[#F3EFEA] dark:hover:bg-[#3F1014] rounded-lg transition cursor-pointer"
                             title="View Full Profile"
                           >
@@ -1060,7 +1086,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
 
               <button
                 type="button"
-                onClick={() => setViewingStudent(null)}
+                onClick={closeStudentProfileModal}
                 className="p-1.5 text-[#78716C] hover:text-[#57534E] dark:hover:text-[#FAF8F5] rounded-lg"
               >
                 <X className="w-5 h-5" />
@@ -1573,7 +1599,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                   type="button"
                   onClick={() => {
                     const target = viewingStudent;
-                    setViewingStudent(null);
+                    closeStudentProfileModal();
                     openEditModal(target);
                   }}
                   className="px-3.5 py-1.5 bg-[#FEF2F2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5] rounded-xl text-xs font-semibold cursor-pointer"
@@ -1583,7 +1609,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
               )}
               <button
                 type="button"
-                onClick={() => setViewingStudent(null)}
+                onClick={closeStudentProfileModal}
                 className="px-4 py-1.5 bg-[#2C1215] dark:bg-white text-white dark:text-[#1C1917] rounded-xl text-xs font-semibold cursor-pointer"
               >
                 Close

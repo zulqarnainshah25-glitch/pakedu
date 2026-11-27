@@ -249,7 +249,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('pakedu_seld_demo_session_v1');
       sessionStorage.removeItem('pakedu_active_tool');
       sessionStorage.removeItem('pakedu_signup_sms_role');
-      if (typeof window !== 'undefined' && (window.location.pathname !== '/' || window.location.search)) {
+      if (
+        typeof window !== 'undefined' &&
+        window.location.protocol !== 'file:' &&
+        (window.location.pathname !== '/' || window.location.search)
+      ) {
         window.history.replaceState({}, document.title, '/');
       }
     } catch {
