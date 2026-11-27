@@ -445,6 +445,87 @@ const ExamsResultsRoute: React.FC = () => {
   );
 };
 
+interface RouteErrorBoundaryProps {
+  resetKey: string;
+  onResetToHome: () => void;
+  children: React.ReactNode;
+}
+
+interface RouteErrorBoundaryState {
+  hasError: boolean;
+  errorMessage: string;
+}
+
+class RouteErrorBoundary extends React.Component<
+  RouteErrorBoundaryProps,
+  RouteErrorBoundaryState
+> {
+  constructor(props: RouteErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, errorMessage: '' };
+  }
+
+  static getDerivedStateFromError(error: Error): RouteErrorBoundaryState {
+    return {
+      hasError: true,
+      errorMessage: error?.message || 'Unexpected error while rendering this portal route.',
+    };
+  }
+
+  componentDidUpdate(prevProps: RouteErrorBoundaryProps) {
+    if (this.state.hasError && prevProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, errorMessage: '' });
+    }
+  }
+
+  componentDidCatch(error: Error) {
+    console.error('[RouteErrorBoundary] Caught route render error:', error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="bg-[#FFFDF9] dark:bg-[#211415] border border-rose-200 dark:border-rose-800/60 rounded-2xl p-6 text-center space-y-4 shadow-sm">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
+            <AlertTriangle className="w-6 h-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-[#1C1917] dark:text-[#FAF8F5]">
+              Unable to Display This Module Right Now
+            </h2>
+            <p className="text-xs text-[#57534E] dark:text-[#D6CCC2] max-w-md mx-auto">
+              {this.state.errorMessage}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => {
+                this.setState({ hasError: false, errorMessage: '' });
+                this.props.onResetToHome();
+              }}
+              className="px-4 py-2 rounded-xl bg-[#7F1D1D] hover:bg-[#651414] text-white text-xs font-bold cursor-pointer"
+            >
+              Return to Dashboard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined') window.location.reload();
+              }}
+              className="px-4 py-2 rounded-xl bg-[#F3EFEA] hover:bg-[#E7E0D4] text-[#44403C] text-xs font-semibold cursor-pointer"
+            >
+              Reload Page
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 function AppContent() {
   const {
     userRole,
@@ -565,13 +646,18 @@ function AppContent() {
     }
     if (
       currentUserProfile?.status === 'pending' ||
-      currentUserProfile?.status === 'rejected' ||
-      currentUserProfile?.status === 'none'
+      currentUserProfile?.status === 'rejected'
     ) {
       return false;
     }
+    if (smartRoute?.role === 'admin') {
+      return true;
+    }
+    if (currentUserProfile?.status === 'none') {
+      return false;
+    }
     return hasAdminCapabilities(currentUser, currentUserProfile, registeredSchools);
-  }, [currentUser, currentUserProfile, registeredSchools, isSuperAdminSession]);
+  }, [currentUser, currentUserProfile, registeredSchools, isSuperAdminSession, smartRoute?.role]);
 
   const isAffiliatedUser =
     !demoMode &&
@@ -2737,6 +2823,10 @@ function AppContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18, ease: 'easeOut' }}
           >
+            <RouteErrorBoundary
+              resetKey={location.pathname}
+              onResetToHome={() => navigate('/dashboard', { replace: true })}
+            >
             <Routes>
               <Route path="/" element={<Navigate to={defaultHomePath} replace />} />
 
@@ -3428,6 +3518,7 @@ function AppContent() {
               {/* FALLBACK ROUTE (Also catches Electron file:///.../dist/index.html paths) */}
               <Route path="*" element={<Navigate to={defaultHomePath} replace />} />
             </Routes>
+            </RouteErrorBoundary>
           </motion.div>
         </main>
 

@@ -32,6 +32,7 @@ jobs:
       # Step 4: Build Vite Production Bundle (with secure GitHub Secrets)
       - name: Build Web Application (Vite)
         env:
+          ELECTRON_BUILD: 'true'
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}

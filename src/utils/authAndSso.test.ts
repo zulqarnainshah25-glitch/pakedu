@@ -1680,7 +1680,9 @@ async function runAllUnitTests() {
     assert.equal(Boolean(pkgJson.devDependencies?.['electron-builder']), true);
     assert.equal(Boolean(pkgJson.devDependencies?.concurrently), true);
 
-    assert.equal(viteConfigSrc.includes("base: './'"), true);
+    assert.equal(viteConfigSrc.includes("isElectronTarget ? './' : '/'"), true);
+    assert.equal(pkgJson.scripts?.['electron:build']?.includes('--base=./'), true);
+    assert.equal(winWorkflowSrc.includes("ELECTRON_BUILD: 'true'"), true);
     assert.equal(gitignoreSrc.includes('release/'), true);
     assert.equal(winWorkflowSrc.includes('windows-latest'), true);
     assert.equal(winWorkflowSrc.includes('npm install --legacy-peer-deps'), true);
@@ -2865,8 +2867,12 @@ async function runAllUnitTests() {
       assert.equal(appSrc.includes(expectedRoute), true, `Missing route definition: ${expectedRoute}`);
     }
 
+    const viteConfigSrc = fs.readFileSync(path.resolve(root, 'vite.config.ts'), 'utf-8');
+    assert.equal(viteConfigSrc.includes("isElectronTarget ? './' : '/'"), true, 'Web builds must use root / base so nested React Router routes do not break relative asset loading');
+    assert.equal(appSrc.includes('RouteErrorBoundary'), true);
     assert.equal(studentDirSrc.includes('initialStudentId'), true);
     assert.equal(studentDirSrc.includes('onOpenStudentProfile'), true);
+    assert.equal(studentDirSrc.includes('decodeURIComponent'), true);
     assert.equal(examsSrc.includes('initialExamId'), true);
     assert.equal(examsSrc.includes('initialReportStudentId'), true);
     assert.equal(examsSrc.includes('onOpenReportCardRoute'), true);

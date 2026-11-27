@@ -74,9 +74,11 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
 
   // Students belonging to the current selected class (only active students)
   const classStudents = useMemo(() => {
-    return students
+    return (students || [])
       .filter((s) => s.classId === selectedClassId && s.status === 'active')
-      .sort((a, b) => a.grNumber.localeCompare(b.grNumber, undefined, { numeric: true }));
+      .sort((a, b) =>
+        (a.grNumber || '').localeCompare(b.grNumber || '', undefined, { numeric: true })
+      );
   }, [students, selectedClassId]);
 
   // In-memory working attendance records for the selected date & class: studentId -> AttendanceRecord
@@ -406,7 +408,7 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
             {savedRegister ? (
               <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-200">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                <span className="truncate">Saved ({savedRegister.summary.percentage}% Present)</span>
+                <span className="truncate">Saved ({savedRegister.summary?.percentage ?? 0}% Present)</span>
               </div>
             ) : (
               <div className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 rounded-xl text-xs font-semibold text-amber-800 dark:text-amber-200">
@@ -618,7 +620,7 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
                                 : 'bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]'
                             }`}
                           >
-                            {st.fullName.charAt(0)}
+                            {((st.fullName || '?').trim().charAt(0) || '?')}
                           </div>
                           <div>
                             <span className="font-bold text-[#1C1917] dark:text-[#FAF8F5] block">
@@ -726,9 +728,9 @@ export const DailyAttendanceRegister: React.FC<DailyAttendanceRegisterProps> = (
                 <span>
                   Last saved at{' '}
                   <strong className="text-[#44403C] dark:text-[#FAF8F5]">
-                    {new Date(savedRegister.markedAt).toLocaleTimeString()}
+                    {savedRegister.markedAt ? new Date(savedRegister.markedAt).toLocaleTimeString() : 'Recently'}
                   </strong>{' '}
-                  by {savedRegister.markedByName}
+                  by {savedRegister.markedByName || 'Faculty'}
                 </span>
               ) : (
                 <span>Unsaved ledger. Click save to record today's register.</span>

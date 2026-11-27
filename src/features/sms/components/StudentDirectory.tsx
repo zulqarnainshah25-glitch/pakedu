@@ -168,13 +168,24 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
     setStudentInviteMessage(null);
   }, [viewingStudent?.id]);
 
-  // Sync student profile modal with dynamic route param /sms/students/:studentId
+  // Sync student profile modal with dynamic route param /sms/students/:studentId (supports Doc ID or GR Number)
   useEffect(() => {
     if (!initialStudentId) {
       setViewingStudent(null);
       return;
     }
-    const matched = filteredStudentsForUser.find((s) => s.id === initialStudentId);
+    let decodedId = initialStudentId.trim();
+    try {
+      decodedId = decodeURIComponent(decodedId);
+    } catch {
+      // Keep raw param if malformed URI sequence
+    }
+    const targetLower = decodedId.toLowerCase();
+    const matched = (filteredStudentsForUser || []).find(
+      (s) =>
+        s.id === decodedId ||
+        (s.grNumber || '').trim().toLowerCase() === targetLower
+    );
     if (matched) {
       setViewingStudent(matched);
     }
@@ -500,9 +511,9 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
       const q = searchQuery.toLowerCase().trim();
       const matchSearch =
         !q ||
-        s.fullName.toLowerCase().includes(q) ||
-        s.fatherName.toLowerCase().includes(q) ||
-        s.grNumber.toLowerCase().includes(q) ||
+        (s.fullName || '').toLowerCase().includes(q) ||
+        (s.fatherName || '').toLowerCase().includes(q) ||
+        (s.grNumber || '').toLowerCase().includes(q) ||
         (s.bFormNumber && s.bFormNumber.toLowerCase().includes(q)) ||
         (s.guardianPhone && s.guardianPhone.includes(q));
 
@@ -858,13 +869,16 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                                   : 'bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]'
                               }`}
                             >
-                              {student.fullName.charAt(0)}
+                              {((student.fullName || '?').trim().charAt(0) || '?')}
                             </div>
                           )}
                           <div>
                             <button
                               type="button"
-                              onClick={() => setViewingStudent(student)}
+                              onClick={() => {
+                                setViewingStudent(student);
+                                onOpenStudentProfile?.(student.id);
+                              }}
                               className="font-bold text-[#1C1917] dark:text-[#FAF8F5] hover:text-[#651414] dark:hover:text-[#FED7AA] transition cursor-pointer text-left block"
                             >
                               {student.fullName}
@@ -1067,7 +1081,7 @@ export const StudentDirectory: React.FC<StudentDirectoryProps> = ({
                         : 'bg-[#FEE2E2] dark:bg-[#3F1014]/60 text-[#7F1D1D] dark:text-[#FCA5A5]'
                     }`}
                   >
-                    {viewingStudent.fullName.charAt(0)}
+                    {((viewingStudent.fullName || '?').trim().charAt(0) || '?')}
                   </div>
                 )}
                 <div>

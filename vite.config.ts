@@ -4,8 +4,9 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const isElectronTarget = process.env.ELECTRON_BUILD === 'true';
   return {
-    base: './',
+    base: isElectronTarget ? './' : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

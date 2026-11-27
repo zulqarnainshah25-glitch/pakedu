@@ -16,7 +16,7 @@
     "lint": "tsc --noEmit",
     "test:rules": "tsx firestore.rules.test.ts",
     "electron:dev": "concurrently -k \"npm run dev\" \"electron . --dev\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:build": "vite build --base=./ && electron-builder"
   },
   "dependencies": {
     "@capacitor/android": "^8.6.2",

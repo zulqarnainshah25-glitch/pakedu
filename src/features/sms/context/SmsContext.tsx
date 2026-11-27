@@ -670,10 +670,34 @@ export const SmsProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!currentExistsInDirectory) {
         setActiveSchool(registeredSchools[0]);
       }
+    } else if (
+      !demoMode &&
+      currentUserProfile?.schoolId &&
+      currentUserProfile.schoolId !== 'sch_seld_khi_01'
+    ) {
+      if (activeSchool.id !== currentUserProfile.schoolId) {
+        setActiveSchool((prev) => ({
+          ...EMPTY_DEFAULT_SCHOOL,
+          ...prev,
+          id: currentUserProfile.schoolId!,
+          name: currentUserProfile.schoolName || prev.name || 'School Workspace',
+          semisCode: currentUserProfile.semisCode || prev.semisCode || '',
+          status: 'active',
+        }));
+      }
     } else if (!activeSchool.id || activeSchool.id === '') {
       setActiveSchool(INITIAL_MOCK_SCHOOL);
     }
-  }, [registeredSchools, currentUserProfile?.schoolId, currentUserProfile?.semisCode, isImpersonating, isSuperAdmin]);
+  }, [
+    registeredSchools,
+    currentUserProfile?.schoolId,
+    currentUserProfile?.schoolName,
+    currentUserProfile?.semisCode,
+    isImpersonating,
+    isSuperAdmin,
+    demoMode,
+    activeSchool.id,
+  ]);
 
   // Cloud Sync Resilience, IndexedDB Queue & Conflict Resolution State
   const [syncError, setSyncError] = useState<SyncErrorInfo | null>(null);
